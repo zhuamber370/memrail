@@ -47,7 +47,7 @@
 
 - 定义：仅存“要做动作”。
 - 字段策略：MVP 固定字段，不允许自定义字段。
-- 字段：`id, title, status, priority, due, project, source, cycle_id, next_review_at, blocked_by_task_id, archived_at, created_at, updated_at`。
+- 字段：`id, title, status, priority, due, source, cycle_id, next_review_at, blocked_by_task_id, archived_at, created_at, updated_at`。
 - 状态：`todo | in_progress | done | cancelled`。
 - 预置视图：`today | overdue | this_week | backlog | blocked | done`。
 
@@ -139,7 +139,6 @@
   "status": "todo",
   "priority": "P2",
   "due": "2026-03-01",
-  "project": "string",
   "source": "meeting notes 2026-02-21",
   "cycle_id": "cyc_001",
   "next_review_at": "2026-03-02T09:00:00Z",
@@ -149,11 +148,11 @@
 
 #### `GET /tasks`
 
-查询参数：`view, status, priority, project, cycle_id, blocked, stale_days, due_before, updated_before, q, page, page_size`
+查询参数：`view, status, priority, cycle_id, blocked, stale_days, due_before, updated_before, q, page, page_size`
 
 #### `PATCH /tasks/{task_id}`
 
-允许字段：`status, priority, due, project, cycle_id, next_review_at, blocked_by_task_id, archived_at`
+允许字段：`status, priority, due, cycle_id, next_review_at, blocked_by_task_id, archived_at`
 
 #### `POST /tasks/batch-update`
 

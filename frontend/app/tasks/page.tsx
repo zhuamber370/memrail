@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { apiGet, apiPatch, apiPost } from "../../src/lib/api";
+import { apiDelete, apiGet, apiPatch, apiPost } from "../../src/lib/api";
 import { useI18n } from "../../src/i18n";
 
 type TaskView = "today" | "overdue" | "this_week" | "backlog" | "blocked" | "done";
@@ -14,7 +14,6 @@ type Task = {
   status: "todo" | "in_progress" | "done" | "cancelled";
   priority?: "P0" | "P1" | "P2" | "P3";
   due?: string;
-  project?: string;
   source: string;
   cycle_id?: string;
   blocked_by_task_id?: string;
@@ -31,7 +30,6 @@ const VIEWS: TaskView[] = ["today", "overdue", "this_week", "backlog", "blocked"
 export default function TasksPage() {
   const [title, setTitle] = useState("");
   const [priority, setPriority] = useState<"P0" | "P1" | "P2" | "P3">("P2");
-  const [project, setProject] = useState("");
   const [due, setDue] = useState("");
   const [source, setSource] = useState("ui://tasks");
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -51,7 +49,6 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [detailProject, setDetailProject] = useState("");
   const [detailDue, setDetailDue] = useState("");
   const { t } = useI18n();
 
@@ -66,9 +63,8 @@ export default function TasksPage() {
   }, [view]);
 
   useEffect(() => {
-    setDetailProject(selectedTask?.project ?? "");
     setDetailDue(selectedTask?.due ?? "");
-  }, [selectedTaskId, selectedTask?.project, selectedTask?.due]);
+  }, [selectedTaskId, selectedTask?.due]);
 
   function userErrorMessage(err: Error): string {
     const raw = err.message;
@@ -88,11 +84,9 @@ export default function TasksPage() {
         status: "todo",
         priority,
         due: due || undefined,
-        project: project || undefined,
         source
       });
       setTitle("");
-      setProject("");
       setDue("");
       setNotice(t("tasks.noticeCreated"));
       await onRefresh(view);
@@ -130,6 +124,22 @@ export default function TasksPage() {
     try {
       await apiPatch<Task>(`/api/v1/tasks/${taskId}`, { status });
       setNotice(`${t("tasks.noticeUpdated")}: ${status}`);
+      await onRefresh(view);
+    } catch (e) {
+      setError(userErrorMessage(e as Error));
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onDelete(taskId: string) {
+    if (!window.confirm(t("tasks.confirmDelete"))) return;
+    setError("");
+    setNotice("");
+    setLoading(true);
+    try {
+      await apiDelete(`/api/v1/tasks/${taskId}`);
+      setNotice(t("tasks.noticeDeleted"));
       await onRefresh(view);
     } catch (e) {
       setError(userErrorMessage(e as Error));
@@ -179,10 +189,6 @@ export default function TasksPage() {
     setLoading(true);
     try {
       const patch: Record<string, unknown> = {};
-      const normalizedProject = detailProject.trim();
-      if (normalizedProject !== (selectedTask.project ?? "")) {
-        patch.project = normalizedProject || null;
-      }
       if (detailDue && detailDue !== (selectedTask.due ?? "")) {
         patch.due = detailDue;
       } else if (!detailDue && (selectedTask.due ?? "")) {
@@ -249,7 +255,6 @@ export default function TasksPage() {
               <option value="P2">P2</option>
               <option value="P3">P3</option>
             </select>
-            <input value={project} onChange={(e) => setProject(e.target.value)} placeholder={t("tasks.placeholderProject")} className="taskInput" />
             <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="taskInput" />
             <button className="badge" onClick={onCreate} disabled={!title.trim() || loading}>
               {t("tasks.create")}
@@ -299,13 +304,14 @@ export default function TasksPage() {
                 <div className="taskRowMain">
                   <div className="taskTitle">{task.title}</div>
                   <div className="meta">
-                    {task.status} | {task.priority ?? "-"} | {task.project ?? "-"}
+                    {task.status} | {task.priority ?? "-"} | {task.due ?? "-"}
                   </div>
                 </div>
                 <div className="taskQuickActions">
                   <button className="badge" onClick={(e) => { e.stopPropagation(); onStatus(task.id, "in_progress"); }} disabled={loading}>{t("tasks.start")}</button>
                   <button className="badge" onClick={(e) => { e.stopPropagation(); onStatus(task.id, "done"); }} disabled={loading}>{t("tasks.done")}</button>
                   <button className="badge" onClick={(e) => { e.stopPropagation(); onReopen(task.id); }} disabled={loading}>{t("tasks.reopen")}</button>
+                  <button className="badge" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} disabled={loading}>{t("tasks.delete")}</button>
                 </div>
               </div>
             ))}
@@ -327,10 +333,6 @@ export default function TasksPage() {
                 <div>
                   <div className="changesSummaryKey">{t("tasks.priority")}</div>
                   <div className="changesLedgerText">{selectedTask.priority ?? "-"}</div>
-                </div>
-                <div>
-                  <div className="changesSummaryKey">{t("tasks.project")}</div>
-                  <div className="changesLedgerText">{selectedTask.project ?? "-"}</div>
                 </div>
                 <div>
                   <div className="changesSummaryKey">{t("tasks.due")}</div>
@@ -360,12 +362,6 @@ export default function TasksPage() {
               <div className="taskDetailEdit">
                 <h3 className="changesGroupTitle">{t("tasks.quickEdit")}</h3>
                 <div className="taskDetailEditRow">
-                  <input
-                    value={detailProject}
-                    onChange={(e) => setDetailProject(e.target.value)}
-                    placeholder={t("tasks.placeholderProject")}
-                    className="taskInput"
-                  />
                   <input
                     type="date"
                     value={detailDue}

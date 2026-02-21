@@ -10,7 +10,6 @@ def test_create_and_delete_link():
             "title": "Task A",
             "status": "todo",
             "priority": "P2",
-            "project": "Core",
             "source": "manual",
         },
     ).json()

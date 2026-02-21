@@ -18,7 +18,6 @@ class TaskCreate(BaseModel):
     status: TaskStatus
     priority: Optional[TaskPriority] = None
     due: Optional[date] = None
-    project: Optional[str] = Field(default=None, min_length=1, max_length=120)
     source: str = Field(min_length=1)
     cycle_id: Optional[str] = None
     next_review_at: Optional[datetime] = None
@@ -32,7 +31,6 @@ class TaskPatch(BaseModel):
     status: Optional[TaskStatus] = None
     priority: Optional[TaskPriority] = None
     due: Optional[date] = None
-    project: Optional[str] = Field(default=None, min_length=1, max_length=120)
     source: Optional[str] = Field(default=None, min_length=1)
     cycle_id: Optional[str] = None
     next_review_at: Optional[datetime] = None
@@ -48,7 +46,6 @@ class TaskOut(BaseModel):
     status: TaskStatus
     priority: Optional[TaskPriority]
     due: Optional[date]
-    project: Optional[str]
     source: str
     cycle_id: Optional[str]
     next_review_at: Optional[datetime]

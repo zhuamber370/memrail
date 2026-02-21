@@ -10,7 +10,6 @@ def test_create_task_rejects_unknown_field():
             "title": "Task A",
             "status": "todo",
             "priority": "P2",
-            "project": "Core",
             "source": "manual",
             "unknown": "x",
         },
@@ -29,7 +28,6 @@ def test_create_and_list_tasks():
             "title": "Task A",
             "status": "todo",
             "priority": "P2",
-            "project": "Core",
             "source": marker,
         },
     )
@@ -54,7 +52,6 @@ def test_patch_task_status():
             "title": "Task A",
             "status": "todo",
             "priority": "P2",
-            "project": "Core",
             "source": "manual",
         },
     )
@@ -73,7 +70,6 @@ def test_patch_task_invalid_status_transition_returns_409():
             "title": "Task Done",
             "status": "done",
             "priority": "P2",
-            "project": "Core",
             "source": "manual",
         },
     )
@@ -95,7 +91,6 @@ def test_batch_update_tasks():
                 "title": f"Task Batch {i}",
                 "status": "todo",
                 "priority": "P3",
-                "project": "Core",
                 "source": "manual",
             },
         )
@@ -119,7 +114,6 @@ def test_reopen_task():
             "title": "Task Reopen",
             "status": "done",
             "priority": "P2",
-            "project": "Core",
             "source": "manual",
         },
     )
@@ -139,7 +133,7 @@ def test_task_views_summary():
         assert key in body
 
 
-def test_patch_task_can_clear_project_and_due_with_null():
+def test_patch_task_can_clear_due_with_null():
     client = make_client()
     create = client.post(
         "/api/v1/tasks",
@@ -147,7 +141,6 @@ def test_patch_task_can_clear_project_and_due_with_null():
             "title": "Task Clear Fields",
             "status": "todo",
             "priority": "P2",
-            "project": "Core",
             "due": "2026-03-01",
             "source": "manual",
         },
@@ -155,8 +148,47 @@ def test_patch_task_can_clear_project_and_due_with_null():
     assert create.status_code == 201
     task_id = create.json()["id"]
 
-    patch = client.patch(f"/api/v1/tasks/{task_id}", json={"project": None, "due": None})
+    patch = client.patch(f"/api/v1/tasks/{task_id}", json={"due": None})
     assert patch.status_code == 200
     body = patch.json()
-    assert body["project"] is None
     assert body["due"] is None
+
+
+def test_delete_task_hard_delete():
+    client = make_client()
+    create = client.post(
+        "/api/v1/tasks",
+        json={
+            "title": "Task Delete",
+            "status": "todo",
+            "priority": "P2",
+            "source": "manual",
+        },
+    )
+    assert create.status_code == 201
+    task_id = create.json()["id"]
+
+    delete = client.delete(f"/api/v1/tasks/{task_id}")
+    assert delete.status_code == 204
+
+    listed = client.get("/api/v1/tasks?page=1&page_size=100")
+    assert listed.status_code == 200
+    assert all(item["id"] != task_id for item in listed.json()["items"])
+
+    delete_again = client.delete(f"/api/v1/tasks/{task_id}")
+    assert delete_again.status_code == 404
+
+
+def test_create_task_rejects_project_field():
+    client = make_client()
+    res = client.post(
+        "/api/v1/tasks",
+        json={
+            "title": "Task With Project",
+            "status": "todo",
+            "priority": "P2",
+            "project": "Core",
+            "source": "manual",
+        },
+    )
+    assert res.status_code == 422

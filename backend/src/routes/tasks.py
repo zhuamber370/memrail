@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from src.schemas import (
@@ -39,7 +39,6 @@ def build_router(get_db_dep):
         page_size: int = Query(default=20, ge=1, le=100),
         status: Optional[str] = None,
         priority: Optional[str] = None,
-        project: Optional[str] = None,
         cycle_id: Optional[str] = None,
         blocked: Optional[bool] = None,
         stale_days: Optional[int] = Query(default=None, ge=1),
@@ -54,7 +53,6 @@ def build_router(get_db_dep):
             page_size=page_size,
             status=status,
             priority=priority,
-            project=project,
             cycle_id=cycle_id,
             blocked=blocked,
             stale_days=stale_days,
@@ -100,5 +98,12 @@ def build_router(get_db_dep):
     @router.get("/views/summary", response_model=TaskViewsSummaryOut)
     def task_views_summary(db: Session = Depends(get_db_dep)):
         return TaskService(db).views_summary()
+
+    @router.delete("/{task_id}", status_code=204)
+    def delete_task(task_id: str, db: Session = Depends(get_db_dep)):
+        deleted = TaskService(db).delete(task_id)
+        if not deleted:
+            raise HTTPException(status_code=404, detail={"code": "TASK_NOT_FOUND", "message": "task not found"})
+        return Response(status_code=204)
 
     return router

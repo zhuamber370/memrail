@@ -23,10 +23,10 @@
 ## 3. 动作总览（MVP）
 
 1. `capture_inbox(text, source)`
-2. `create_task(title, status, priority, due, project, source, cycle_id, next_review_at, blocked_by_task_id)`
+2. `create_task(title, status, priority, due, source, cycle_id, next_review_at, blocked_by_task_id)`
 3. `append_note(title, body, sources, tags)`
 4. `search_notes(query, tag, linked_task_id, page, page_size)`
-5. `list_tasks(view, status, priority, project, cycle_id, blocked, stale_days, due_before, updated_before, query, page, page_size)`
+5. `list_tasks(view, status, priority, cycle_id, blocked, stale_days, due_before, updated_before, query, page, page_size)`
 6. `propose_changes(actions, actor, tool)`
 7. `commit_changes(change_set_id, approved_by)`
 8. `undo_last_commit(requested_by, reason)`

@@ -10,7 +10,6 @@ def test_audit_events_contains_write_trace():
             "title": "Task A",
             "status": "todo",
             "priority": "P2",
-            "project": "Core",
             "source": "manual",
         },
     )

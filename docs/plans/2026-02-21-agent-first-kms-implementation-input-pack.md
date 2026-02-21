@@ -19,7 +19,7 @@
 5. Undo 仅支持“最近一次批量提交”。
 6. 去重/合并采用保守模式：只提案，不自动合并。
 7. `priority` 固定为 `P0|P1|P2|P3`。
-8. `project` 在 MVP 保持字符串宽类型。
+8. Task 不包含 `project` 字段，避免孤立维度。
 9. Inbox internal-only，source 仅允许 `chat://...`。
 
 ## 3. 非目标（MVP 不做）
@@ -50,7 +50,7 @@
 
 ### 5.1 Task 字段
 
-`id, title, status, priority, due, project, source, cycle_id, next_review_at, blocked_by_task_id, archived_at, created_at, updated_at`
+`id, title, status, priority, due, source, cycle_id, next_review_at, blocked_by_task_id, archived_at, created_at, updated_at`
 
 ### 5.2 Task 视图
 
@@ -115,10 +115,10 @@
 动作：
 
 1. `capture_inbox(text, source)`（internal-only）
-2. `create_task(title, status, priority, due, project, source, cycle_id, next_review_at, blocked_by_task_id)`
+2. `create_task(title, status, priority, due, source, cycle_id, next_review_at, blocked_by_task_id)`
 3. `append_note(title, body, sources, tags)`
 4. `search_notes(query, tag, linked_task_id, page, page_size)`
-5. `list_tasks(view, status, priority, project, cycle_id, blocked, stale_days, due_before, updated_before, query, page, page_size)`
+5. `list_tasks(view, status, priority, cycle_id, blocked, stale_days, due_before, updated_before, query, page, page_size)`
 6. `propose_changes(actions, actor, tool)`
 7. `commit_changes(change_set_id, approved_by)`
 8. `undo_last_commit(requested_by, reason)`

@@ -51,3 +51,16 @@ export async function apiPatch<T>(path: string, payload: unknown): Promise<T> {
   }
   return res.json() as Promise<T>;
 }
+
+
+export async function apiDelete(path: string): Promise<void> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+    headers: apiHeaders(),
+    cache: "no-store"
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`DELETE ${path} failed: ${res.status} ${text}`);
+  }
+}

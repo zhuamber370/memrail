@@ -18,7 +18,7 @@
 5. Knowledge 必须有 source，允许文本来源。
 6. 去重采用保守模式（仅提案，不自动合并）。
 7. `priority` 固定 `P0/P1/P2/P3`。
-8. `project` 为字符串宽类型。
+8. Task 不包含 `project` 字段，避免孤立信息结构。
 9. Inbox internal-only，仅接受 `chat://...` 来源。
 
 ## 0.1 技术架构（MVP 冻结）
@@ -43,7 +43,7 @@
 
 1. Tasks
 - 预置视图：`Today` / `Overdue` / `This Week` / `Backlog` / `Blocked` / `Done`
-- 列表字段：`title/status/priority/due/project/cycle/blocked_reason/updated_at`
+- 列表字段：`title/status/priority/due/cycle/blocked_reason/updated_at`
 - 交互：单条编辑、批量更新、状态推进、设置 review 时间、设置阻塞关系
 
 2. Task Detail
@@ -156,7 +156,7 @@
 `id, content, source, status, captured_at, updated_at`
 
 2. `tasks`  
-`id, title, status, priority, due, project, source, cycle_id, next_review_at, blocked_by_task_id, archived_at, created_at, updated_at`
+`id, title, status, priority, due, source, cycle_id, next_review_at, blocked_by_task_id, archived_at, created_at, updated_at`
 
 3. `cycles`  
 `id, name, start_date, end_date, status, created_at, updated_at`
@@ -192,7 +192,7 @@
 索引建议：
 
 1. `tasks(status, priority, due, updated_at desc)`
-2. `tasks(project, status)`
+2. `tasks(status, due)`
 3. `tasks(cycle_id, status)`
 4. `tasks(blocked_by_task_id) where blocked_by_task_id is not null`
 5. `tasks(next_review_at) where next_review_at is not null`

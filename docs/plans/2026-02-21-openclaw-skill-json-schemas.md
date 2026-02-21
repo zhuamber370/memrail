@@ -140,7 +140,6 @@
     },
     "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
     "due": {"type": "string", "format": "date"},
-    "project": {"type": "string", "minLength": 1, "maxLength": 120},
     "source": {"type": "string", "minLength": 1},
     "cycle_id": {"type": "string", "pattern": "^cyc_[A-Za-z0-9]+$"},
     "next_review_at": {"type": "string", "format": "date-time"},
@@ -173,7 +172,6 @@
     },
     "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
     "due": {"type": "string", "format": "date"},
-    "project": {"type": "string"},
     "source": {"type": "string"},
     "cycle_id": {"type": "string"},
     "next_review_at": {"type": "string", "format": "date-time"},
@@ -283,7 +281,6 @@
     "view": {"type": "string", "enum": ["today", "overdue", "this_week", "backlog", "blocked", "done"]},
     "status": {"type": "string", "enum": ["todo", "in_progress", "done", "cancelled"]},
     "priority": {"type": "string", "enum": ["P0", "P1", "P2", "P3"]},
-    "project": {"type": "string"},
     "cycle_id": {"type": "string", "pattern": "^cyc_[A-Za-z0-9]+$"},
     "blocked": {"type": "boolean"},
     "stale_days": {"type": "integer", "minimum": 1},
@@ -457,5 +454,5 @@
 ## 5. 已确认决策
 
 - `priority` 锁定为 `P0-P3`。
-- `project` 在 MVP 保持字符串类型。
+- Task 不包含 `project` 字段。
 - `search/list` 返回 `items` 在 MVP 保持宽类型（对象）。

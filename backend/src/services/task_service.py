@@ -24,7 +24,6 @@ class TaskService:
             status=payload.status,
             priority=payload.priority,
             due=payload.due,
-            project=payload.project,
             source=payload.source,
             cycle_id=payload.cycle_id,
             next_review_at=payload.next_review_at,
@@ -52,7 +51,6 @@ class TaskService:
         page_size: int,
         status: Optional[str] = None,
         priority: Optional[str] = None,
-        project: Optional[str] = None,
         cycle_id: Optional[str] = None,
         blocked: Optional[bool] = None,
         stale_days: Optional[int] = None,
@@ -72,9 +70,6 @@ class TaskService:
         if priority:
             stmt = stmt.where(Task.priority == priority)
             count_stmt = count_stmt.where(Task.priority == priority)
-        if project:
-            stmt = stmt.where(Task.project == project)
-            count_stmt = count_stmt.where(Task.project == project)
         if cycle_id:
             stmt = stmt.where(Task.cycle_id == cycle_id)
             count_stmt = count_stmt.where(Task.cycle_id == cycle_id)
@@ -159,6 +154,25 @@ class TaskService:
         self.db.commit()
         self.db.refresh(task)
         return task
+
+    def delete(self, task_id: str) -> bool:
+        task = self.db.get(Task, task_id)
+        if not task:
+            return False
+        source = task.source
+        self.db.delete(task)
+        self.db.commit()
+        log_audit_event(
+            self.db,
+            actor_type="user",
+            actor_id="local",
+            tool="api",
+            action="delete_task",
+            target_type="task",
+            target_id=task_id,
+            source_refs=[source] if source else [],
+        )
+        return True
 
     def views_summary(self) -> dict[str, int]:
         today = datetime.now(timezone.utc).date()
