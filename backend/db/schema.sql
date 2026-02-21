@@ -1,0 +1,103 @@
+CREATE TABLE IF NOT EXISTS inbox_items (
+  id VARCHAR(40) PRIMARY KEY,
+  content TEXT NOT NULL,
+  source VARCHAR(300) NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id VARCHAR(40) PRIMARY KEY,
+  title VARCHAR(200) NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  priority VARCHAR(2),
+  due DATE,
+  project VARCHAR(120),
+  source VARCHAR(300) NOT NULL,
+  cycle_id VARCHAR(40),
+  next_review_at TIMESTAMPTZ,
+  blocked_by_task_id VARCHAR(40),
+  archived_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cycles (
+  id VARCHAR(40) PRIMARY KEY,
+  name VARCHAR(120) NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS notes (
+  id VARCHAR(40) PRIMARY KEY,
+  title VARCHAR(200) NOT NULL,
+  body TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS note_sources (
+  id VARCHAR(40) PRIMARY KEY,
+  note_id VARCHAR(40) NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
+  source_type VARCHAR(20) NOT NULL,
+  source_value TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS links (
+  id VARCHAR(40) PRIMARY KEY,
+  from_type VARCHAR(20) NOT NULL,
+  from_id VARCHAR(40) NOT NULL,
+  to_type VARCHAR(20) NOT NULL,
+  to_id VARCHAR(40) NOT NULL,
+  relation VARCHAR(40) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS change_sets (
+  id VARCHAR(40) PRIMARY KEY,
+  actor_type VARCHAR(20) NOT NULL,
+  actor_id VARCHAR(80) NOT NULL,
+  tool VARCHAR(80) NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  summary_json JSONB NOT NULL,
+  diff_json JSONB NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  committed_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS change_actions (
+  id VARCHAR(40) PRIMARY KEY,
+  change_set_id VARCHAR(40) NOT NULL REFERENCES change_sets(id) ON DELETE CASCADE,
+  action_type VARCHAR(40) NOT NULL,
+  payload_json JSONB NOT NULL,
+  apply_result_json JSONB
+);
+
+CREATE TABLE IF NOT EXISTS commits (
+  id VARCHAR(40) PRIMARY KEY,
+  change_set_id VARCHAR(40) UNIQUE NOT NULL REFERENCES change_sets(id) ON DELETE CASCADE,
+  committed_by_type VARCHAR(20) NOT NULL,
+  committed_by_id VARCHAR(80) NOT NULL,
+  committed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  client_request_id VARCHAR(120)
+);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+  id VARCHAR(40) PRIMARY KEY,
+  occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  actor_type VARCHAR(20) NOT NULL,
+  actor_id VARCHAR(80) NOT NULL,
+  tool VARCHAR(80) NOT NULL,
+  action VARCHAR(80) NOT NULL,
+  target_type VARCHAR(40) NOT NULL,
+  target_id VARCHAR(40) NOT NULL,
+  source_refs_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+  before_hash VARCHAR(128),
+  after_hash VARCHAR(128),
+  metadata_json JSONB NOT NULL DEFAULT '{}'::jsonb
+);
