@@ -166,6 +166,34 @@ class TopicListOut(BaseModel):
     items: list[TopicOut]
 
 
+class JournalUpsertAppendIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    journal_date: date
+    append_text: str = Field(min_length=1)
+    source: str = Field(min_length=1)
+
+
+class JournalOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    journal_date: date
+    raw_content: str
+    digest: str
+    triage_status: str
+    source: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class JournalListOut(BaseModel):
+    items: list[JournalOut]
+    page: int
+    page_size: int
+    total: int
+
+
 SourceType = Literal["text", "url", "doc_id", "message_id"]
 
 
@@ -272,7 +300,14 @@ class ActorRef(BaseModel):
 
 class ChangeActionIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    type: Literal["create_task", "append_note", "update_task", "link_entities"]
+    type: Literal[
+        "create_task",
+        "append_note",
+        "update_task",
+        "patch_note",
+        "upsert_journal_append",
+        "link_entities",
+    ]
     payload: dict[str, Any]
 
 
@@ -302,6 +337,11 @@ class CommitOut(BaseModel):
     change_set_id: str
     status: Literal["committed"]
     committed_at: datetime
+
+
+class RejectOut(BaseModel):
+    change_set_id: str
+    status: Literal["rejected"]
 
 
 class UndoIn(BaseModel):
@@ -353,3 +393,13 @@ class ChangeSetDetailOut(BaseModel):
     created_at: datetime
     committed_at: Optional[datetime]
     actions: list[ChangeActionOut]
+
+
+class ContextBundleOut(BaseModel):
+    intent: str
+    window_days: int
+    filters: dict[str, Any]
+    summary: dict[str, int]
+    tasks: list[dict[str, Any]]
+    notes: list[dict[str, Any]]
+    journals: list[dict[str, Any]]

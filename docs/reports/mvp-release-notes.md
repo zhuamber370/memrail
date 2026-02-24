@@ -2,19 +2,20 @@
 
 ## 已实现
 - 后端：`topics/tasks/notes/links/changes/audit` API 全链路可用。
-- 治理：`dry-run -> commit -> undo-last` 从占位升级为真实执行与真实回滚。
+- 治理：`dry-run -> commit/reject -> undo-last` 可执行，提案可拒绝并删除。
 - 审计：写操作落审计，支持按 actor/tool/action/target/time 过滤查询。
 - 任务：固定分类、强字段编辑、批量取消（统一原因）、终态归档、归档只读。
 - 知识：Topic Board（分组浏览/未归类治理/详情审阅/归档只读）。
-- 变更：Changes 页改为“提案收件箱”，支持选中提案直接提交。
+- 变更：Changes 页改为“提案收件箱”，支持选中提案提交或拒绝。
+- OpenClaw Skill：新增 `reject_changes`，agent 可调用拒绝并删除提案。
 - 多语言：前端默认英文，可切换中文。
 
 ## 本次验证结果
 - Backend tests:
-  - `python3 -m pytest backend/tests/test_changes_api.py backend/tests/test_tasks_api.py backend/tests/test_inbox_notes_api.py backend/tests/test_links_api.py backend/tests/test_audit_api.py backend/tests/test_topics_api.py -q`
-  - `40 passed`
+  - `python3 -m pytest backend/tests/test_changes_api.py -q`
+  - `20 passed`
 - Frontend build:
-  - `npm run -s build`（`frontend/`）
+  - `npm run build`（`frontend/`）
   - success
 
 ## 当前边界

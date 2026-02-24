@@ -1,4 +1,4 @@
-# Agent-First KMS Final System Design (v0.4, Synced 2026-02-24)
+# Agent-First KMS Final System Design (v0.6, Synced 2026-02-24)
 
 ## 1. Product Positioning
 - Product sentence: Agent-First Personal OS.
@@ -6,13 +6,18 @@
 - Runtime split:
   - Agent: primary writer/reader through API/MCP.
   - Human: low-frequency reviewer via UI.
+- Interaction trigger:
+  - write is explicit-command only (no scheduled auto write).
 
 ## 2. Architecture (Current)
 - Frontend: Next.js App Router (`/tasks`, `/knowledge`, `/changes`, `/audit`).
 - Backend: FastAPI + SQLAlchemy service layer.
 - Database: PostgreSQL (single DB in MVP).
 - Runtime schema guard: backend boot executes `ensure_runtime_schema()` for compatibility upgrades.
-- Governance chain: `dry-run -> review diff -> commit -> undo-last -> audit trail`.
+- Governance chain: `dry-run -> review diff -> commit/reject -> undo-last -> audit trail`.
+- Data source strategy:
+  - KMS DB is the only source of truth for todo/journal/topic knowledge.
+  - Obsidian read/write is out of production flow.
 
 ## 3. Canonical Information Model
 
@@ -54,13 +59,23 @@
 - `commits`: committed result + idempotency key.
 - `audit_events`: immutable event log for all write traces.
 
-### 3.5 Journals (Reserved Domain)
-- `journals`, `journal_items`, `topic_entries` tables exist.
-- API/UI workflow for journals is intentionally deferred to next iteration.
+### 3.5 Journals
+- `journals` is active append-only daily log domain.
+- Same day uses one row (`journal_date` unique), and subsequent writes append `raw_content`.
+- Current APIs:
+  - `POST /api/v1/journals/upsert-append`
+  - `GET /api/v1/journals`
+  - `GET /api/v1/journals/{journal_date}`
+- `journal_items/topic_entries` remain reserved for triage-stage expansion.
+
+### 3.6 Agent Read Context
+- `GET /api/v1/context/bundle` aggregates latest tasks/notes/journals for agent retrieval.
+- Supports topic filter, done-task inclusion toggle, and configurable result limits.
 
 ## 4. Write Governance and Safety
 - Dry-run persists proposed action batch and diff summary.
 - Commit executes persisted actions in one transaction.
+- Reject deletes a proposed change set (proposal inbox cleanup).
 - Undo rolls back last committed non-undo change set in reverse action order.
 - Audit logs actor/time/tool/action/target/source plus chain metadata.
 - Idempotency:
@@ -82,7 +97,7 @@
 
 ### 5.3 Changes
 - Proposal inbox mode (no raw JSON entry for humans).
-- User selects proposal, reviews summary/diff, commits, or undo-last.
+- User selects proposal, reviews summary/diff, can commit, reject, or undo-last.
 
 ### 5.4 Audit
 - Current UI is minimal JSON list loader.
@@ -101,7 +116,7 @@
 - No audit delete endpoint (audit is treated as immutable record stream).
 
 ## 8. Next Iteration Focus
-1. Journal APIs and triage workflow (`upsert/triage/close`).
+1. Journal triage workflow (`journal_items` resolution + close lifecycle).
 2. Rich audit UI filters and structured event cards.
 3. Policy engine for low-risk auto-commit and high-risk manual gate.
 4. MCP server as standardized agent entry after REST + skill path is stable.

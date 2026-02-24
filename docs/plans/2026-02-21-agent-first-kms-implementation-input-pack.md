@@ -1,11 +1,13 @@
-# Agent-First KMS Implementation Input Pack (v0.4, Synced 2026-02-24)
+# Agent-First KMS Implementation Input Pack (v0.6, Synced 2026-02-24)
 
 ## 1. Current Build Target
 以“可执行治理 + 稳定分类 + 人类可审阅 UI”为交付目标，当前稳定域：
 - Topic（固定分类）
 - Task（强结构动作项）
 - Knowledge Note（可归类、可归档）
-- Change Governance（dry-run/commit/undo）
+- Journal（同日单条 append-only）
+- Change Governance（dry-run/commit/reject/undo）
+- Context Bundle（Agent 聚合读取）
 - Audit（可查询追溯）
 
 ## 2. Delivered in Current Baseline
@@ -23,20 +25,25 @@
 12. Undo 从占位升级为真实回滚（逆序撤销动作）。
 13. Commit/Undo 支持 `client_request_id` 幂等。
 14. Audit 查询支持 actor/tool/action/target/time 多条件过滤。
-15. Changes UI 改为提案收件箱（选择提案审阅并提交）。
-16. 清理脚本：`backend/scripts/cleanup_test_data.py`。
-17. 知识迁移脚本：`backend/scripts/migrate_notes_topic_status.py`。
+15. Changes UI 改为提案收件箱（选择提案审阅并提交或拒绝）。
+16. 新增 Journals API：`upsert-append/list/by-date`（同日追加写）。
+17. 新增 Context Bundle API：`/api/v1/context/bundle`（tasks+notes+journals）。
+18. Changes 新增动作：`patch_note`、`upsert_journal_append`，并支持 undo 回滚。
+19. OpenClaw 契约更新为“显式指令触发 + DB 真源 + 默认 dry-run”。
+20. 清理脚本：`backend/scripts/cleanup_test_data.py`。
+21. 知识迁移脚本：`backend/scripts/migrate_notes_topic_status.py`。
 
 ## 3. Data and Schema Baseline
 核心表：
 - `topics, topic_aliases`
 - `tasks, task_sources, cycles`
 - `notes, note_sources, links`
+- `journals, journal_items`
 - `change_sets, change_actions, commits`
 - `audit_events`
 
 预留域（已建表，API 待交付）：
-- `journals, journal_items, topic_entries`
+- `topic_entries`
 
 兼容说明：
 - `tasks.project` 列仍保留在 DB，用于历史兼容；当前 API/前端不再使用。
@@ -50,8 +57,8 @@
 ## 5. Verification Snapshot (2026-02-24)
 已执行：
 - Backend:
-  - `python3 -m pytest backend/tests/test_changes_api.py backend/tests/test_tasks_api.py backend/tests/test_inbox_notes_api.py backend/tests/test_links_api.py backend/tests/test_audit_api.py backend/tests/test_topics_api.py -q`
-  - result: `40 passed`
+  - `python3 -m pytest backend/tests/test_tasks_api.py backend/tests/test_inbox_notes_api.py backend/tests/test_links_api.py backend/tests/test_audit_api.py backend/tests/test_topics_api.py backend/tests/test_changes_api.py backend/tests/test_journals_api.py backend/tests/test_context_api.py -q`
+  - result: `47 passed`
 - Frontend:
   - `npm run -s build`（`frontend/`）
   - result: success
@@ -65,11 +72,15 @@
 6. Unclassified 支持批量归类到固定 Topic。
 7. Knowledge archived 视图只读。
 8. Changes 可直接审阅提案并提交，不依赖手填 JSON。
-9. Commit 可真实写入，Undo 可真实回滚最近一次提交。
-10. 审计能追踪 change_set/commit/action 级链路信息。
+9. Changes 可拒绝提案（删除 proposed 变更），避免提案堆积。
+10. Commit 可真实写入，Undo 可真实回滚最近一次提交。
+11. 审计能追踪 change_set/commit/action 级链路信息。
+12. Journals 同日追加写不创建重复日记行。
+13. Context Bundle 可为 Agent 返回任务+知识+日记聚合上下文。
+14. `patch_note` 与 `upsert_journal_append` 可在 changes 流程中 commit 与 undo。
 
 ## 7. Known Gaps / Next Slice
-1. Journal API 与 triage 流程未开放。
+1. Journal triage/close（`journal_items`）尚未开放。
 2. Audit UI 仍是最小 JSON 读取视图（后端筛选能力未完整前端化）。
 3. 风险分级自动提交策略（policy engine）未落地。
 4. 多租户鉴权（per-user token/OAuth）未落地。

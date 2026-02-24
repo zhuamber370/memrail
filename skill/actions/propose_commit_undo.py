@@ -5,18 +5,11 @@ from openclaw_skill import KmsClient
 
 def propose_commit_undo(base_url: str, api_key: str):
     client = KmsClient(base_url=base_url, api_key=api_key)
-    proposal = client.propose_changes(
-        actions=[
-            {
-                "type": "create_task",
-                "payload": {
-                    "title": "Ops review",
-                    "status": "todo",
-                    "priority": "P2",
-                    "source": "openclaw",
-                },
-            }
-        ],
+    proposal = client.propose_record_todo(
+        title="Ops review",
+        description="Manual explicit todo from user command",
+        priority="P2",
+        source="chat://openclaw/demo/propose-commit-undo",
         actor={"type": "agent", "id": "openclaw"},
     )
     committed = client.commit_changes(

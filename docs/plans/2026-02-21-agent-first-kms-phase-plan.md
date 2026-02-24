@@ -4,7 +4,7 @@
 
 **Goal:** 在 2-4 周内完成 Agent-First KMS MVP 的后端/API/Skill/验收闭环，并落地 Task 管理增强（视图/周期/阻塞/复盘）。
 
-**Architecture:** 以云端 REST API 为唯一写入中心，Web UI 与 OpenClaw Skill 共用同一服务能力。批量写入统一经过治理链路（dry-run/diff/commit/undo/audit），并以保守去重策略防止熵增。
+**Architecture:** 以云端 REST API 为唯一写入中心，Web UI 与 OpenClaw Skill 共用同一服务能力。批量写入统一经过治理链路（dry-run/diff/commit/reject/undo/audit），并以保守去重策略防止熵增。
 
 **Tech Stack:** Next.js + TypeScript + Tailwind + TanStack Query；FastAPI + Pydantic + SQLAlchemy + Alembic；PostgreSQL。
 
@@ -43,16 +43,17 @@
 
 **范围**
 
-- 完成 dry-run/commit/undo-last/audit 最小可用链路。
+- 完成 dry-run/commit/reject/undo-last/audit 最小可用链路。
 - 完成保守去重（仅提案，不自动合并）。
 
 **任务清单**
 
 1. 提供 `POST /changes/dry-run`。
 2. 提供 `POST /changes/{change_set_id}/commit`。
-3. 提供 `POST /commits/undo-last`（仅最近一次）。
-4. 提供 `GET /audit/events`。
-5. 在 diff 中展示 Task 增强字段变化（cycle/review/blocked）。
+3. 提供 `DELETE /changes/{change_set_id}`（拒绝并删除提案）。
+4. 提供 `POST /commits/undo-last`（仅最近一次）。
+5. 提供 `GET /audit/events`。
+6. 在 diff 中展示 Task 增强字段变化（cycle/review/blocked）。
 
 ## Phase 3：OpenClaw Skill 对齐与错误语义
 

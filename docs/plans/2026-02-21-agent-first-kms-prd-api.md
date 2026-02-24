@@ -1,10 +1,10 @@
-# Agent-First KMS API Contract (v0.4, Synced 2026-02-24)
+# Agent-First KMS API Contract (v0.6, Synced 2026-02-24)
 
 ## 1. Scope and Role Split
 - UI is for human review and correction.
 - Agent read/write should go through API/MCP tooling, not UI operations.
-- Current productionized domains: `topics`, `tasks`, `notes`, `links`, `changes`, `audit`.
-- Journal domain tables exist, but journal APIs are not delivered yet.
+- Current productionized domains: `topics`, `tasks`, `notes`, `journals`, `links`, `changes`, `context`, `audit`.
+- OpenClaw integration mode: explicit user command only, no scheduled automatic write.
 
 ## 2. Implemented API Surface
 
@@ -78,12 +78,20 @@ Compatibility note:
 Note status enums:
 - `active | archived`
 
-### 2.4 Links
+### 2.4 Journals
+- `POST /api/v1/journals/upsert-append`
+  - request: `{ journal_date, append_text, source }`
+  - behavior: create if date not exists; otherwise append to same-day `raw_content`
+- `GET /api/v1/journals`
+  - query: `page,page_size,date_from,date_to`
+- `GET /api/v1/journals/{journal_date}`
+
+### 2.5 Links
 - `POST /api/v1/links`
   - create relationship between `task/note`
 - `DELETE /api/v1/links/{link_id}`
 
-### 2.5 Change Governance
+### 2.6 Change Governance
 - `POST /api/v1/changes/dry-run`
   - persists `change_sets` + `change_actions(action_index)`
   - returns summary + diff items
@@ -94,6 +102,10 @@ Note status enums:
 - `POST /api/v1/changes/{change_set_id}/commit`
   - executes persisted actions in one transaction
   - idempotency by `client_request_id`
+- `DELETE /api/v1/changes/{change_set_id}`
+  - rejects and deletes a proposed change set
+  - returns `rejected` on success
+  - `404` if not found, `409` if status is not `proposed`
 - `POST /api/v1/commits/undo-last`
   - reverses latest non-undo committed change set (reverse action order)
 
@@ -101,9 +113,16 @@ Supported action types (current):
 - `create_task`
 - `update_task`
 - `append_note`
+- `patch_note`
+- `upsert_journal_append`
 - `link_entities`
 
-### 2.6 Audit
+### 2.7 Context (Agent Read Bundle)
+- `GET /api/v1/context/bundle`
+  - query: `intent,window_days,topic_id,include_done,tasks_limit,notes_limit,journals_limit`
+  - returns aggregated `tasks + notes + journals` for agent context retrieval
+
+### 2.8 Audit
 - `GET /api/v1/audit/events`
   - query: `page,page_size,actor_type,actor_id,tool,action,target_type,target_id,occurred_from,occurred_to`
   - returns event + chain metadata (`request_id`, `change_set_id`, `commit_id`, `action_index`, `action_type`)
@@ -127,7 +146,7 @@ Supported action types (current):
 - Proposal inbox mode (human does not input raw actions JSON).
 - Left list = proposed change sets.
 - Right detail = summary + diff + applied action ledger (after commit).
-- Supports commit selected + undo last.
+- Supports commit selected + reject selected + undo last.
 
 ### 3.4 Audit Page
 - Current UI is minimal: `Load Events` + JSON viewer.
@@ -144,10 +163,12 @@ Supported action types (current):
 - `TASK_CANCEL_REASON_REQUIRED`
 - `TASK_NOT_FOUND`
 - `NOTE_NOT_FOUND`
+- `CHANGE_SET_NOT_FOUND`
+- `CHANGE_SET_NOT_PROPOSED`
 - `UNAUTHORIZED`
 
 ## 5. Out of Scope / Not Implemented Yet
-- Journal APIs (`upsert/triage/close`)
+- Journal triage/close workflow UI and policy-level governance
 - Policy engine (low-risk auto-commit / high-risk human gate)
 - Multi-tenant OAuth and per-user permission isolation
 - MCP server delivery (REST + skill is the current entry path)

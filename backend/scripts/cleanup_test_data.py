@@ -20,6 +20,7 @@ def main():
     deleted_tasks = 0
     deleted_topics = 0
     deleted_inbox = 0
+    deleted_journals = 0
 
     with conn:
         with conn.cursor() as cur:
@@ -68,6 +69,9 @@ def main():
             )
             deleted_inbox = cur.rowcount or 0
 
+            cur.execute("DELETE FROM journals WHERE source LIKE 'test://%'")
+            deleted_journals = cur.rowcount or 0
+
             cur.execute(
                 """
                 DELETE FROM topics t
@@ -90,6 +94,7 @@ def main():
     print(f"deleted_notes={deleted_notes}")
     print(f"deleted_tasks={deleted_tasks}")
     print(f"deleted_inbox={deleted_inbox}")
+    print(f"deleted_journals={deleted_journals}")
     print(f"deleted_topics={deleted_topics}")
 
 

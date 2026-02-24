@@ -1,0 +1,8 @@
+{
+  "name": "openclaw-kms-skill",
+  "version": "1.0.0",
+  "description": "OpenClaw native skill for KMS task/journal/knowledge governance",
+  "main": "index.js",
+  "license": "MIT"
+}
+

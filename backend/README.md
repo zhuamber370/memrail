@@ -31,7 +31,9 @@ python3 -m uvicorn src.app:app --reload --port 8000
 - `topics`: fixed taxonomy (7 categories, POST locked)
 - `tasks`: structured action items with status governance + archive
 - `notes`: knowledge notes with topic/unclassified/archive states
-- `changes`: dry-run / commit / undo governance flow
+- `journals`: same-day append-only journal storage
+- `changes`: dry-run / commit / reject(delete proposal) / undo governance flow
+- `context`: aggregated read bundle for agent retrieval
 - `audit`: write trace query endpoint
 
 ## Test
@@ -45,6 +47,7 @@ Targeted smoke:
 
 ```bash
 python3 -m pytest backend/tests/test_changes_api.py backend/tests/test_tasks_api.py backend/tests/test_inbox_notes_api.py backend/tests/test_links_api.py backend/tests/test_audit_api.py backend/tests/test_topics_api.py -q
+python3 -m pytest backend/tests/test_journals_api.py backend/tests/test_context_api.py -q
 ```
 
 ## Utility Scripts
