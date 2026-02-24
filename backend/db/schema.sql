@@ -7,10 +7,46 @@ CREATE TABLE IF NOT EXISTS inbox_items (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS topics (
+  id VARCHAR(40) PRIMARY KEY,
+  name VARCHAR(120) NOT NULL UNIQUE,
+  name_en VARCHAR(120) NOT NULL,
+  name_zh VARCHAR(120) NOT NULL,
+  kind VARCHAR(20) NOT NULL,
+  status VARCHAR(20) NOT NULL,
+  summary TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS topic_aliases (
+  id VARCHAR(40) PRIMARY KEY,
+  topic_id VARCHAR(40) NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+  alias VARCHAR(120) NOT NULL UNIQUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+INSERT INTO topics (id, name, name_en, name_zh, kind, status, summary)
+VALUES
+  ('top_fx_product_strategy', 'Product & Strategy', 'Product & Strategy', '产品与战略', 'domain', 'active', 'Business direction, priorities, and decision framing.'),
+  ('top_fx_engineering_arch', 'Engineering & Architecture', 'Engineering & Architecture', '工程与架构', 'domain', 'active', 'System design, implementation, code quality, and technical debt.'),
+  ('top_fx_operations_delivery', 'Operations & Delivery', 'Operations & Delivery', '运营与交付', 'domain', 'active', 'Execution workflows, delivery coordination, and operational runbooks.'),
+  ('top_fx_growth_marketing', 'Growth & Marketing', 'Growth & Marketing', '增长与营销', 'domain', 'active', 'Acquisition, positioning, messaging, and user growth loops.'),
+  ('top_fx_finance_legal', 'Finance & Legal', 'Finance & Legal', '财务与法务', 'domain', 'active', 'Budgeting, contracts, compliance, and risk control.'),
+  ('top_fx_learning_research', 'Learning & Research', 'Learning & Research', '学习与研究', 'domain', 'active', 'Research findings, experiments, and knowledge exploration.'),
+  ('top_fx_other', 'Other', 'Other', '其他', 'domain', 'active', 'Fallback bucket for uncategorized items pending review.')
+ON CONFLICT (id) DO NOTHING;
+
 CREATE TABLE IF NOT EXISTS tasks (
   id VARCHAR(40) PRIMARY KEY,
-  title VARCHAR(200) NOT NULL,
+  title VARCHAR(120) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  acceptance_criteria TEXT NOT NULL DEFAULT '',
+  next_action TEXT NOT NULL DEFAULT '',
+  task_type VARCHAR(20) NOT NULL DEFAULT 'build',
+  topic_id VARCHAR(40) NOT NULL REFERENCES topics(id) ON DELETE RESTRICT,
   status VARCHAR(20) NOT NULL,
+  cancelled_reason TEXT,
   priority VARCHAR(2),
   due DATE,
   project VARCHAR(120),
@@ -33,10 +69,46 @@ CREATE TABLE IF NOT EXISTS cycles (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS journals (
+  id VARCHAR(40) PRIMARY KEY,
+  journal_date DATE NOT NULL UNIQUE,
+  raw_content TEXT NOT NULL DEFAULT '',
+  digest TEXT NOT NULL DEFAULT '',
+  triage_status VARCHAR(20) NOT NULL DEFAULT 'open',
+  source VARCHAR(300) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS journal_items (
+  id VARCHAR(40) PRIMARY KEY,
+  journal_id VARCHAR(40) NOT NULL REFERENCES journals(id) ON DELETE CASCADE,
+  kind VARCHAR(20) NOT NULL,
+  content TEXT NOT NULL,
+  resolution VARCHAR(20) NOT NULL DEFAULT 'pending',
+  task_id VARCHAR(40) REFERENCES tasks(id) ON DELETE SET NULL,
+  topic_id VARCHAR(40) REFERENCES topics(id) ON DELETE SET NULL,
+  ignore_reason TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS topic_entries (
+  id VARCHAR(40) PRIMARY KEY,
+  topic_id VARCHAR(40) NOT NULL REFERENCES topics(id) ON DELETE CASCADE,
+  entry_type VARCHAR(20) NOT NULL,
+  content TEXT NOT NULL,
+  source_ref TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS notes (
   id VARCHAR(40) PRIMARY KEY,
   title VARCHAR(200) NOT NULL,
   body TEXT NOT NULL,
+  tags_json JSON NOT NULL DEFAULT '[]',
+  topic_id VARCHAR(40) REFERENCES topics(id) ON DELETE SET NULL,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -58,6 +130,15 @@ CREATE TABLE IF NOT EXISTS links (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+CREATE TABLE IF NOT EXISTS task_sources (
+  id VARCHAR(40) PRIMARY KEY,
+  task_id VARCHAR(40) NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  source_kind VARCHAR(20) NOT NULL,
+  source_ref TEXT NOT NULL,
+  excerpt TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS change_sets (
   id VARCHAR(40) PRIMARY KEY,
   actor_type VARCHAR(20) NOT NULL,
@@ -73,6 +154,7 @@ CREATE TABLE IF NOT EXISTS change_sets (
 CREATE TABLE IF NOT EXISTS change_actions (
   id VARCHAR(40) PRIMARY KEY,
   change_set_id VARCHAR(40) NOT NULL REFERENCES change_sets(id) ON DELETE CASCADE,
+  action_index INTEGER NOT NULL DEFAULT 0,
   action_type VARCHAR(40) NOT NULL,
   payload_json JSONB NOT NULL,
   apply_result_json JSONB
@@ -86,6 +168,10 @@ CREATE TABLE IF NOT EXISTS commits (
   committed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   client_request_id VARCHAR(120)
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS ux_commits_client_request_id
+ON commits (client_request_id)
+WHERE client_request_id IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS audit_events (
   id VARCHAR(40) PRIMARY KEY,

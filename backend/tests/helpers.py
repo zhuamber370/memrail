@@ -21,5 +21,16 @@ def make_client(*, require_auth: bool = False, api_key: Optional[str] = None) ->
     return TestClient(app)
 
 
+def fixed_topic_id(client: TestClient, preferred_id: str = "top_fx_engineering_arch") -> str:
+    listed = client.get("/api/v1/topics")
+    assert listed.status_code == 200
+    items = listed.json()["items"]
+    for item in items:
+        if item["id"] == preferred_id:
+            return item["id"]
+    assert items, "expected at least one active fixed topic"
+    return items[0]["id"]
+
+
 def uniq(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"

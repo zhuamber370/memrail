@@ -16,6 +16,7 @@ from src.routes.inbox import build_router as build_inbox_router
 from src.routes.links import build_router as build_links_router
 from src.routes.notes import build_router as build_notes_router
 from src.routes.tasks import build_router as build_tasks_router
+from src.routes.topics import build_router as build_topics_router
 
 
 def _build_runtime(database_url: str):
@@ -51,6 +52,7 @@ def create_app(
         app.add_middleware(ApiKeyAuthMiddleware, api_key=api_key or "dev-api-key")
     install_error_handlers(app)
     app.include_router(build_tasks_router(get_db_dep))
+    app.include_router(build_topics_router(get_db_dep))
     app.include_router(build_cycles_router(get_db_dep))
     app.include_router(build_inbox_router(get_db_dep))
     app.include_router(build_notes_router(get_db_dep))

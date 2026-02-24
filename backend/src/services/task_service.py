@@ -4,12 +4,22 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 import uuid
 
-from sqlalchemy import and_, func, select
+from sqlalchemy import and_, case, func, select
 from sqlalchemy.orm import Session
 
-from src.models import Cycle, Task
-from src.schemas import TaskCreate, TaskPatch
+from src.models import Cycle, Task, TaskSource, Topic
+from src.schemas import TopicCreate, TaskCreate, TaskPatch
 from src.services.audit_service import log_audit_event
+
+FIXED_TOPIC_ORDER = [
+    "top_fx_product_strategy",
+    "top_fx_engineering_arch",
+    "top_fx_operations_delivery",
+    "top_fx_growth_marketing",
+    "top_fx_finance_legal",
+    "top_fx_learning_research",
+    "top_fx_other",
+]
 
 
 class TaskService:
@@ -17,11 +27,19 @@ class TaskService:
         self.db = db
 
     def create(self, payload: TaskCreate) -> Task:
+        self._validate_topic(payload.topic_id)
         self._validate_blocker(payload.blocked_by_task_id)
+        self._validate_cancel_reason_for_cancelled_status(payload.status, payload.cancelled_reason)
         task = Task(
             id=f"tsk_{uuid.uuid4().hex[:12]}",
             title=payload.title,
+            description=payload.description,
+            acceptance_criteria=payload.acceptance_criteria,
+            next_action=payload.next_action,
+            task_type=payload.task_type,
+            topic_id=payload.topic_id,
             status=payload.status,
+            cancelled_reason=payload.cancelled_reason.strip() if payload.cancelled_reason else None,
             priority=payload.priority,
             due=payload.due,
             source=payload.source,
@@ -32,6 +50,7 @@ class TaskService:
         self.db.add(task)
         self.db.commit()
         self.db.refresh(task)
+        self._append_task_source(task.id, source_kind="text", source_ref=payload.source)
         log_audit_event(
             self.db,
             actor_type="user",
@@ -51,6 +70,8 @@ class TaskService:
         page_size: int,
         status: Optional[str] = None,
         priority: Optional[str] = None,
+        archived: Optional[bool] = None,
+        topic_id: Optional[str] = None,
         cycle_id: Optional[str] = None,
         blocked: Optional[bool] = None,
         stale_days: Optional[int] = None,
@@ -59,8 +80,10 @@ class TaskService:
         view: Optional[str] = None,
         q: Optional[str] = None,
     ) -> tuple[list[Task], int]:
-        stmt = select(Task)
-        count_stmt = select(func.count()).select_from(Task)
+        show_archived = archived is True
+        archived_clause = Task.archived_at.is_not(None) if show_archived else Task.archived_at.is_(None)
+        stmt = select(Task).where(archived_clause)
+        count_stmt = select(func.count()).select_from(Task).where(archived_clause)
         now = datetime.now(timezone.utc)
         today = now.date()
 
@@ -70,6 +93,9 @@ class TaskService:
         if priority:
             stmt = stmt.where(Task.priority == priority)
             count_stmt = count_stmt.where(Task.priority == priority)
+        if topic_id:
+            stmt = stmt.where(Task.topic_id == topic_id)
+            count_stmt = count_stmt.where(Task.topic_id == topic_id)
         if cycle_id:
             stmt = stmt.where(Task.cycle_id == cycle_id)
             count_stmt = count_stmt.where(Task.cycle_id == cycle_id)
@@ -109,16 +135,24 @@ class TaskService:
         if not task:
             return None
         patch_data = payload.model_dump(exclude_unset=True)
+        if "cancelled_reason" in patch_data and patch_data["cancelled_reason"] is not None:
+            trimmed = patch_data["cancelled_reason"].strip()
+            patch_data["cancelled_reason"] = trimmed if trimmed else None
         if "blocked_by_task_id" in patch_data:
             self._validate_blocker(patch_data["blocked_by_task_id"], current_task_id=task.id)
+        if "topic_id" in patch_data and patch_data["topic_id"] is not None:
+            self._validate_topic(patch_data["topic_id"])
         if "status" in patch_data:
             self._validate_status_transition(task.status, patch_data["status"])
+        self._validate_cancel_reason_patch(task=task, patch_data=patch_data)
 
         for key, value in patch_data.items():
             setattr(task, key, value)
         self.db.add(task)
         self.db.commit()
         self.db.refresh(task)
+        if "source" in patch_data and patch_data["source"]:
+            self._append_task_source(task.id, source_kind="text", source_ref=patch_data["source"])
         log_audit_event(
             self.db,
             actor_type="user",
@@ -155,6 +189,55 @@ class TaskService:
         self.db.refresh(task)
         return task
 
+    def archive_cancelled(self) -> int:
+        now = datetime.now(timezone.utc)
+        stmt = select(Task).where(Task.status == "cancelled", Task.archived_at.is_(None))
+        items = list(self.db.scalars(stmt))
+        for task in items:
+            task.archived_at = now
+            self.db.add(task)
+        self.db.commit()
+        if items:
+            log_audit_event(
+                self.db,
+                actor_type="user",
+                actor_id="local",
+                tool="api",
+                action="archive_cancelled_tasks",
+                target_type="task_batch",
+                target_id=f"cancelled:{len(items)}",
+                source_refs=["ui://tasks/archive-cancelled"],
+            )
+        return len(items)
+
+    def archive_selected(self, task_ids: list[str]) -> int:
+        now = datetime.now(timezone.utc)
+        unique_ids = list(dict.fromkeys(task_ids))
+        if not unique_ids:
+            return 0
+        stmt = select(Task).where(
+            Task.id.in_(unique_ids),
+            Task.status.in_(["done", "cancelled"]),
+            Task.archived_at.is_(None),
+        )
+        items = list(self.db.scalars(stmt))
+        for task in items:
+            task.archived_at = now
+            self.db.add(task)
+        self.db.commit()
+        if items:
+            log_audit_event(
+                self.db,
+                actor_type="user",
+                actor_id="local",
+                tool="api",
+                action="archive_selected_tasks",
+                target_type="task_batch",
+                target_id=f"selected:{len(items)}",
+                source_refs=["ui://tasks/archive-selected"],
+            )
+        return len(items)
+
     def delete(self, task_id: str) -> bool:
         task = self.db.get(Task, task_id)
         if not task:
@@ -180,7 +263,7 @@ class TaskService:
         summary: dict[str, int] = {}
         for view in views:
             clause = self._build_view_clause(view, today=today)
-            count_stmt = select(func.count()).select_from(Task)
+            count_stmt = select(func.count()).select_from(Task).where(Task.archived_at.is_(None))
             if clause is not None:
                 count_stmt = count_stmt.where(clause)
             summary[view] = int(self.db.scalar(count_stmt) or 0)
@@ -195,9 +278,57 @@ class TaskService:
         if blocker is None:
             raise ValueError("TASK_BLOCKED_BY_NOT_FOUND")
 
+    def _validate_topic(self, topic_id: str) -> None:
+        if self.db.get(Topic, topic_id) is None:
+            raise ValueError("TOPIC_NOT_FOUND")
+
+    def _append_task_source(
+        self,
+        task_id: str,
+        *,
+        source_kind: str,
+        source_ref: str,
+        excerpt: Optional[str] = None,
+    ) -> None:
+        source = TaskSource(
+            id=f"tsrc_{uuid.uuid4().hex[:12]}",
+            task_id=task_id,
+            source_kind=source_kind,
+            source_ref=source_ref,
+            excerpt=excerpt,
+        )
+        self.db.add(source)
+        self.db.commit()
+
     def _validate_status_transition(self, old_status: str, new_status: str) -> None:
         if old_status in {"done", "cancelled"} and new_status == "in_progress":
             raise ValueError("TASK_INVALID_STATUS_TRANSITION")
+
+    def _validate_cancel_reason_for_cancelled_status(
+        self,
+        status: str,
+        cancelled_reason: Optional[str],
+    ) -> None:
+        if status != "cancelled":
+            return
+        if not cancelled_reason or not cancelled_reason.strip():
+            raise ValueError("TASK_CANCEL_REASON_REQUIRED")
+
+    def _validate_cancel_reason_patch(self, *, task: Task, patch_data: dict) -> None:
+        if "status" not in patch_data:
+            return
+        next_status = patch_data["status"]
+        if next_status != "cancelled":
+            return
+        old_status = task.status
+        if old_status == "cancelled":
+            reason = patch_data.get("cancelled_reason", task.cancelled_reason)
+            if reason and str(reason).strip():
+                return
+            raise ValueError("TASK_CANCEL_REASON_REQUIRED")
+        reason = patch_data.get("cancelled_reason")
+        if not reason or not str(reason).strip():
+            raise ValueError("TASK_CANCEL_REASON_REQUIRED")
 
     def _build_view_clause(self, view: str, *, today: date):
         active = Task.status.notin_(["done", "cancelled"])
@@ -236,4 +367,24 @@ class CycleService:
 
     def list(self) -> list[Cycle]:
         stmt = select(Cycle).order_by(Cycle.start_date.desc())
+        return list(self.db.scalars(stmt))
+
+
+class TopicService:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def create(self, payload: TopicCreate) -> Topic:
+        raise ValueError("TOPIC_TAXONOMY_LOCKED")
+
+    def list(self) -> list[Topic]:
+        ordering = case(
+            *[(Topic.id == topic_id, idx) for idx, topic_id in enumerate(FIXED_TOPIC_ORDER, start=1)],
+            else_=999,
+        )
+        stmt = (
+            select(Topic)
+            .where(Topic.status == "active")
+            .order_by(ordering, Topic.name_en.asc())
+        )
         return list(self.db.scalars(stmt))
