@@ -7,6 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from src.schemas import (
+    TaskArchiveIn,
+    TaskArchiveOut,
     TaskBatchUpdateIn,
     TaskBatchUpdateOut,
     TaskCreate,
@@ -39,6 +41,8 @@ def build_router(get_db_dep):
         page_size: int = Query(default=20, ge=1, le=100),
         status: Optional[str] = None,
         priority: Optional[str] = None,
+        archived: Optional[bool] = None,
+        topic_id: Optional[str] = None,
         cycle_id: Optional[str] = None,
         blocked: Optional[bool] = None,
         stale_days: Optional[int] = Query(default=None, ge=1),
@@ -53,6 +57,8 @@ def build_router(get_db_dep):
             page_size=page_size,
             status=status,
             priority=priority,
+            archived=archived,
+            topic_id=topic_id,
             cycle_id=cycle_id,
             blocked=blocked,
             stale_days=stale_days,
@@ -105,5 +111,15 @@ def build_router(get_db_dep):
         if not deleted:
             raise HTTPException(status_code=404, detail={"code": "TASK_NOT_FOUND", "message": "task not found"})
         return Response(status_code=204)
+
+    @router.post("/archive-cancelled", response_model=TaskArchiveOut)
+    def archive_cancelled_tasks(db: Session = Depends(get_db_dep)):
+        archived = TaskService(db).archive_cancelled()
+        return {"archived": archived}
+
+    @router.post("/archive-selected", response_model=TaskArchiveOut)
+    def archive_selected_tasks(payload: TaskArchiveIn, db: Session = Depends(get_db_dep)):
+        archived = TaskService(db).archive_selected(payload.task_ids)
+        return {"archived": archived}
 
     return router

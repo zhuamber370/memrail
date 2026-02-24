@@ -9,13 +9,23 @@ TaskStatus = Literal["todo", "in_progress", "done", "cancelled"]
 TaskPriority = Literal["P0", "P1", "P2", "P3"]
 TaskView = Literal["today", "overdue", "this_week", "backlog", "blocked", "done"]
 CycleStatus = Literal["planned", "active", "closed"]
+TaskType = Literal["build", "research", "ops", "writing", "decision"]
+TopicKind = Literal["domain", "project", "playbook", "decision", "issue"]
+TopicStatus = Literal["active", "watch", "archived"]
+NoteStatus = Literal["active", "archived"]
 
 
 class TaskCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    title: str = Field(min_length=1, max_length=200)
+    title: str = Field(min_length=1, max_length=120)
+    description: str = ""
+    acceptance_criteria: str = ""
+    next_action: str = ""
+    task_type: TaskType = "build"
+    topic_id: str = Field(min_length=1)
     status: TaskStatus
+    cancelled_reason: Optional[str] = None
     priority: Optional[TaskPriority] = None
     due: Optional[date] = None
     source: str = Field(min_length=1)
@@ -27,8 +37,14 @@ class TaskCreate(BaseModel):
 class TaskPatch(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    title: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    description: Optional[str] = None
+    acceptance_criteria: Optional[str] = None
+    next_action: Optional[str] = None
+    task_type: Optional[TaskType] = None
+    topic_id: Optional[str] = Field(default=None, min_length=1)
     status: Optional[TaskStatus] = None
+    cancelled_reason: Optional[str] = None
     priority: Optional[TaskPriority] = None
     due: Optional[date] = None
     source: Optional[str] = Field(default=None, min_length=1)
@@ -43,7 +59,13 @@ class TaskOut(BaseModel):
 
     id: str
     title: str
+    description: str
+    acceptance_criteria: str
+    next_action: str
+    task_type: TaskType
+    topic_id: str
     status: TaskStatus
+    cancelled_reason: Optional[str]
     priority: Optional[TaskPriority]
     due: Optional[date]
     source: str
@@ -72,6 +94,15 @@ class TaskBatchUpdateOut(BaseModel):
     updated: int
     failed: int
     failures: list[dict[str, str]]
+
+
+class TaskArchiveIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    task_ids: list[str] = Field(min_length=1)
+
+
+class TaskArchiveOut(BaseModel):
+    archived: int
 
 
 class TaskViewsSummaryOut(BaseModel):
@@ -106,6 +137,35 @@ class CycleListOut(BaseModel):
     items: list[CycleOut]
 
 
+class TopicCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(min_length=1, max_length=120)
+    name_en: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    name_zh: Optional[str] = Field(default=None, min_length=1, max_length=120)
+    kind: TopicKind
+    status: TopicStatus = "active"
+    summary: str = ""
+
+
+class TopicOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: str
+    name: str
+    name_en: str
+    name_zh: str
+    kind: TopicKind
+    status: TopicStatus
+    summary: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class TopicListOut(BaseModel):
+    items: list[TopicOut]
+
+
 SourceType = Literal["text", "url", "doc_id", "message_id"]
 
 
@@ -132,6 +192,7 @@ class NoteAppend(BaseModel):
     model_config = ConfigDict(extra="forbid")
     title: str = Field(min_length=1, max_length=200)
     body: str = Field(min_length=1)
+    topic_id: Optional[str] = Field(default=None, min_length=1)
     sources: list[SourceItem] = Field(min_length=1)
     tags: list[str] = Field(default_factory=list)
 
@@ -140,8 +201,19 @@ class NoteOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
     title: str
+    topic_id: Optional[str]
+    status: NoteStatus
     created_at: datetime
     updated_at: datetime
+
+
+class NotePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    body: Optional[str] = Field(default=None, min_length=1)
+    topic_id: Optional[str] = Field(default=None, min_length=1)
+    tags: Optional[list[str]] = None
+    status: Optional[NoteStatus] = None
 
 
 class NoteListOut(BaseModel):
@@ -149,6 +221,28 @@ class NoteListOut(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class NoteBatchClassifyIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note_ids: list[str] = Field(min_length=1)
+    topic_id: str = Field(min_length=1)
+
+
+class NoteBatchClassifyOut(BaseModel):
+    updated: int
+    failed: int
+    failures: list[dict[str, str]]
+
+
+class NoteTopicSummaryItem(BaseModel):
+    topic_id: Optional[str]
+    topic_name: str
+    count: int
+
+
+class NoteTopicSummaryOut(BaseModel):
+    items: list[NoteTopicSummaryItem]
 
 
 class LinkCreate(BaseModel):
@@ -221,3 +315,41 @@ class UndoOut(BaseModel):
     undone_commit_id: str
     revert_commit_id: str
     status: Literal["reverted"]
+
+
+class ChangeActionOut(BaseModel):
+    action_id: str
+    action_index: int
+    action_type: str
+    payload: dict[str, Any]
+    apply_result: Optional[dict[str, Any]] = None
+
+
+class ChangeSetListItemOut(BaseModel):
+    change_set_id: str
+    status: str
+    actor: dict[str, str]
+    tool: str
+    summary: dict[str, Any]
+    actions_count: int
+    created_at: datetime
+    committed_at: Optional[datetime]
+
+
+class ChangeSetListOut(BaseModel):
+    items: list[ChangeSetListItemOut]
+    page: int
+    page_size: int
+    total: int
+
+
+class ChangeSetDetailOut(BaseModel):
+    change_set_id: str
+    status: str
+    actor: dict[str, str]
+    tool: str
+    summary: dict[str, Any]
+    diff_items: list[dict[str, Any]]
+    created_at: datetime
+    committed_at: Optional[datetime]
+    actions: list[ChangeActionOut]

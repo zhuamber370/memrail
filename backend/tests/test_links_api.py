@@ -1,8 +1,9 @@
-from tests.helpers import make_client
+from tests.helpers import fixed_topic_id, make_client
 
 
 def test_create_and_delete_link():
     client = make_client()
+    topic_id = fixed_topic_id(client)
 
     task = client.post(
         "/api/v1/tasks",
@@ -10,7 +11,8 @@ def test_create_and_delete_link():
             "title": "Task A",
             "status": "todo",
             "priority": "P2",
-            "source": "manual",
+            "source": "test://links",
+            "topic_id": topic_id,
         },
     ).json()
 
@@ -19,7 +21,7 @@ def test_create_and_delete_link():
         json={
             "title": "N",
             "body": "B",
-            "sources": [{"type": "text", "value": "manual"}],
+            "sources": [{"type": "text", "value": "test://links"}],
         },
     ).json()
 

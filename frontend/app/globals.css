@@ -1,6 +1,7 @@
 :root {
   --bg: #f1efe8;
   --ink: #121212;
+  --ink-soft: #4f4b45;
   --muted: #58544f;
   --line: #1d1b19;
   --panel: #faf8f3;
@@ -252,9 +253,160 @@ a {
   gap: 10px;
 }
 
+.changesInboxLayout {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 12px;
+}
+
+.changesInboxList {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  max-height: 76vh;
+  overflow: auto;
+}
+
+.changesInboxItem {
+  width: 100%;
+  margin-top: 8px;
+  text-align: left;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 8px;
+}
+
+.changesInboxItemActive {
+  box-shadow: inset 0 0 0 2px #15734733;
+  border-color: #157347;
+}
+
+.changesInboxHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.changesInboxMeta {
+  margin-top: 8px;
+  display: grid;
+  gap: 4px;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.changesInboxDetail {
+  display: grid;
+  gap: 10px;
+}
+
+.auditFilterGrid {
+  margin-top: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.auditList {
+  margin-top: 12px;
+  display: grid;
+  gap: 8px;
+}
+
+.auditItem {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+}
+
+.auditItemHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.auditItemGrid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.auditMeta {
+  margin-top: 8px;
+}
+
+.auditMeta summary {
+  cursor: pointer;
+  font-size: 0.84rem;
+  color: var(--muted);
+}
+
+.auditMeta pre {
+  margin: 8px 0 0;
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  background: #fbfbfb;
+  padding: 8px;
+  overflow-x: auto;
+  font-size: 0.76rem;
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+}
+
 .taskBoard {
   display: grid;
   gap: 12px;
+}
+
+.taskBoardV2 {
+  background:
+    radial-gradient(1200px 280px at 12% -20%, #d8f0ff 0%, transparent 65%),
+    radial-gradient(900px 260px at 92% -12%, #ffe9d2 0%, transparent 70%);
+}
+
+.taskHero {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.taskHeroStat {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 10px;
+  background: #fff;
+}
+
+.taskFilterPanel {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.taskFilterGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.taskFilterItem {
+  display: grid;
+  gap: 6px;
+  color: var(--ink-soft);
+  font-size: 0.86rem;
 }
 
 .taskViewTabs {
@@ -274,10 +426,18 @@ a {
   gap: 12px;
 }
 
+.taskLayoutV2 {
+  align-items: start;
+}
+
 .taskCreateRow {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) repeat(3, minmax(110px, 140px)) auto auto;
   gap: 8px;
+}
+
+.taskCreateRowV2 {
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 220px) repeat(2, minmax(100px, 130px)) auto;
 }
 
 .taskInput {
@@ -299,6 +459,23 @@ a {
   margin-top: 12px;
   display: grid;
   gap: 8px;
+}
+
+.taskListV2 {
+  margin-top: 10px;
+}
+
+.taskTopicGroup {
+  display: grid;
+  gap: 8px;
+}
+
+.taskTopicHeader {
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #35507c;
+  text-transform: uppercase;
 }
 
 .taskRow {
@@ -326,6 +503,14 @@ a {
   line-height: 1.2;
 }
 
+.taskMetaLine {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
 .taskQuickActions {
   display: flex;
   gap: 6px;
@@ -339,6 +524,11 @@ a {
   background: #fffdf8;
   padding: 12px;
   height: fit-content;
+}
+
+.taskDetailV2 {
+  position: sticky;
+  top: 8px;
 }
 
 .taskDetailContent {
@@ -362,11 +552,242 @@ a {
   padding-top: 8px;
 }
 
+.taskDetailForm {
+  display: grid;
+  gap: 10px;
+}
+
+.taskEditSection {
+  display: grid;
+  gap: 8px;
+}
+
+.taskSectionTitle {
+  margin: 0;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #385572;
+}
+
+.taskField {
+  display: grid;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.taskFieldWide {
+  grid-column: 1 / -1;
+}
+
+.taskDetailFormGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.taskTextArea {
+  resize: vertical;
+  min-height: 76px;
+}
+
+.taskAdvancedBox {
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.taskAdvancedBox > summary {
+  cursor: pointer;
+  padding: 8px 10px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+}
+
+.taskAdvancedContent {
+  padding: 0 10px 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.taskDetailFormActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
 .taskDetailEditRow {
   display: grid;
   grid-template-columns: 1fr auto;
   gap: 8px;
   align-items: center;
+}
+
+.knowledgeBoard {
+  display: grid;
+  gap: 12px;
+  background:
+    radial-gradient(800px 200px at 5% -20%, #e2f5ff 0%, transparent 65%),
+    radial-gradient(900px 220px at 100% -25%, #ffe9d6 0%, transparent 70%),
+    var(--panel);
+}
+
+.knowledgeHero {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.knowledgeHeroFilters {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(150px, 180px) minmax(120px, 140px);
+  gap: 8px;
+}
+
+.knowledgeCreate {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(180px, 1.1fr) minmax(150px, 220px) minmax(150px, 220px) minmax(180px, 1fr) auto;
+  gap: 8px;
+}
+
+.knowledgeCreateBody {
+  grid-column: 1 / -2;
+}
+
+.knowledgeLayout {
+  display: grid;
+  grid-template-columns: 0.75fr 1.15fr 1.1fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.knowledgeTopics,
+.knowledgeListPanel,
+.knowledgeDetail {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+}
+
+.knowledgeTopics {
+  display: grid;
+  gap: 8px;
+}
+
+.knowledgeTopicBtn {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf7;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.knowledgeTopicBtnActive {
+  background: #eff5ff;
+  border-color: var(--focus);
+}
+
+.knowledgeBulkBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.knowledgeList {
+  display: grid;
+  gap: 8px;
+  max-height: 66vh;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.knowledgeRow {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 9px;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px;
+  cursor: pointer;
+  align-items: flex-start;
+}
+
+.knowledgeRowActive {
+  box-shadow: inset 0 0 0 2px #2457d650;
+}
+
+.knowledgeRowMain {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.knowledgeTitle {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.knowledgeMeta {
+  color: var(--muted);
+  font-size: 0.8rem;
+  display: grid;
+  gap: 2px;
+}
+
+.knowledgeDetail {
+  position: sticky;
+  top: 8px;
+}
+
+.knowledgeDetailContent {
+  display: grid;
+  gap: 8px;
+}
+
+.knowledgeDetailTitle {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.knowledgeBody {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 10px;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  max-height: 40vh;
+  overflow: auto;
+}
+
+.knowledgeSection {
+  border-top: 2px dashed var(--line);
+  padding-top: 8px;
+}
+
+.knowledgeEdit {
+  border-top: 2px dashed var(--line);
+  padding-top: 8px;
+  display: grid;
+  gap: 8px;
 }
 
 @media (max-width: 900px) {
@@ -387,11 +808,56 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .taskFilterGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .taskHero {
+    flex-direction: column;
+  }
+
   .taskDetailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .taskDetailFormGrid {
     grid-template-columns: 1fr;
   }
 
   .taskDetailEditRow {
     grid-template-columns: 1fr;
+  }
+
+  .knowledgeHero {
+    flex-direction: column;
+  }
+
+  .knowledgeHeroFilters {
+    grid-template-columns: 1fr;
+    width: 100%;
+  }
+
+  .knowledgeCreate {
+    grid-template-columns: 1fr;
+  }
+
+  .knowledgeCreateBody {
+    grid-column: auto;
+  }
+
+  .knowledgeLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .knowledgeDetail {
+    position: static;
+  }
+
+  .changesInboxLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .changesInboxList {
+    max-height: 320px;
   }
 }
