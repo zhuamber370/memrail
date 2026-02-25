@@ -10,6 +10,26 @@ on:
 jobs:
   backend:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: afkms
+          POSTGRES_USER: afkms
+          POSTGRES_PASSWORD: afkms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U afkms -d afkms"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      AFKMS_DB_HOST: 127.0.0.1
+      AFKMS_DB_PORT: "5432"
+      AFKMS_DB_NAME: afkms
+      AFKMS_DB_USER: afkms
+      AFKMS_DB_PASSWORD: afkms
     defaults:
       run:
         working-directory: backend
@@ -23,7 +43,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install backend dependencies
-        run: pip install -r requirements.txt
+        run: pip install -r requirements.txt pytest
 
       - name: Run backend tests
         run: python -m pytest -q
