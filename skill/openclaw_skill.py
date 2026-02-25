@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 import httpx
@@ -104,6 +105,96 @@ class KmsClient:
     def get_context_bundle(self, **params):
         return self._get("/api/v1/context/bundle", params=params)
 
+    def list_routes(self, **params):
+        return self._get("/api/v1/routes", params=params)
+
+    def get_route_graph(self, route_id: str):
+        return self._get(f"/api/v1/routes/{route_id}/graph")
+
+    def get_node_logs(self, route_id: str, node_id: str):
+        return self._get(f"/api/v1/routes/{route_id}/nodes/{node_id}/logs")
+
+    def get_task_execution_snapshot(
+        self,
+        *,
+        task_id: str,
+        include_all_routes: bool = True,
+        include_logs: bool = False,
+        page_size: int = 100,
+    ):
+        routes_payload = self.list_routes(task_id=task_id, page=1, page_size=page_size)
+        routes = routes_payload.get("items") or []
+        active_route = next((route for route in routes if route.get("status") == "active"), None)
+        selected_route = active_route or (routes[0] if routes else None)
+
+        if not selected_route:
+            return {
+                "task_id": task_id,
+                "fetched_at": datetime.now(timezone.utc).isoformat(),
+                "routes": [],
+                "selected_route_id": None,
+                "selected_route": None,
+                "selected_route_graph": None,
+                "selected_route_state": None,
+                "route_snapshots": [],
+            }
+
+        selected_graph = self.get_route_graph(selected_route["id"])
+        selected_state = self._summarize_route_graph(selected_graph)
+
+        selected_logs: Optional[dict[str, list[dict[str, Any]]]] = None
+        if include_logs:
+            selected_logs = {}
+            for node in selected_graph.get("nodes", []):
+                node_id = node.get("id")
+                if not node_id:
+                    continue
+                logs = self.get_node_logs(selected_route["id"], node_id)
+                selected_logs[node_id] = logs.get("items", [])
+
+        route_snapshots: list[dict[str, Any]] = [
+            {
+                "route": selected_route,
+                "graph": selected_graph,
+                "state": selected_state,
+            }
+        ]
+        if selected_logs is not None:
+            route_snapshots[0]["node_logs"] = selected_logs
+
+        if include_all_routes and len(routes) > 1:
+            for route in routes:
+                route_id = route.get("id")
+                if not route_id or route_id == selected_route.get("id"):
+                    continue
+                graph = self.get_route_graph(route_id)
+                snapshot: dict[str, Any] = {
+                    "route": route,
+                    "graph": graph,
+                    "state": self._summarize_route_graph(graph),
+                }
+                if include_logs:
+                    node_logs: dict[str, list[dict[str, Any]]] = {}
+                    for node in graph.get("nodes", []):
+                        node_id = node.get("id")
+                        if not node_id:
+                            continue
+                        logs = self.get_node_logs(route_id, node_id)
+                        node_logs[node_id] = logs.get("items", [])
+                    snapshot["node_logs"] = node_logs
+                route_snapshots.append(snapshot)
+
+        return {
+            "task_id": task_id,
+            "fetched_at": datetime.now(timezone.utc).isoformat(),
+            "routes": routes,
+            "selected_route_id": selected_route.get("id"),
+            "selected_route": selected_route,
+            "selected_route_graph": selected_graph,
+            "selected_route_state": selected_state,
+            "route_snapshots": route_snapshots,
+        }
+
     def propose_record_todo(
         self,
         *,
@@ -114,7 +205,6 @@ class KmsClient:
         priority: Optional[str] = None,
         due: Optional[str] = None,
         topic_id: Optional[str] = None,
-        task_type: str = "build",
         tool: str = "openclaw-skill",
     ):
         payload: dict[str, Any] = {
@@ -122,7 +212,6 @@ class KmsClient:
             "description": description,
             "status": "todo",
             "source": source,
-            "task_type": task_type,
         }
         if priority:
             payload["priority"] = priority
@@ -232,3 +321,81 @@ class KmsClient:
         lowered = value.lower().strip()
         lowered = re.sub(r"[^0-9a-zA-Z\\u4e00-\\u9fff]+", " ", lowered)
         return re.sub(r"\\s+", " ", lowered).strip()
+
+    def _normalize_node_status(self, status: Optional[str]) -> str:
+        if status == "todo":
+            return "waiting"
+        if status == "in_progress":
+            return "execute"
+        if status == "cancelled":
+            return "removed"
+        return status or "waiting"
+
+    def _compact_node(self, node: Optional[dict[str, Any]]) -> Optional[dict[str, Any]]:
+        if not node:
+            return None
+        return {
+            "id": node.get("id"),
+            "title": node.get("title"),
+            "node_type": node.get("node_type"),
+            "status": node.get("status"),
+            "normalized_status": self._normalize_node_status(node.get("status")),
+            "order_hint": node.get("order_hint"),
+            "assignee_type": node.get("assignee_type"),
+            "assignee_id": node.get("assignee_id"),
+        }
+
+    def _summarize_route_graph(self, graph: dict[str, Any]) -> dict[str, Any]:
+        nodes = sorted(
+            graph.get("nodes", []),
+            key=lambda node: (
+                int(node.get("order_hint") or 0),
+                str(node.get("created_at") or ""),
+                str(node.get("id") or ""),
+            ),
+        )
+        edges = graph.get("edges", [])
+        node_by_id = {str(node.get("id")): node for node in nodes if node.get("id")}
+
+        focus_nodes = [node for node in nodes if node.get("node_type") in {"start", "goal"}] or nodes
+        executing_node = next(
+            (node for node in focus_nodes if self._normalize_node_status(node.get("status")) == "execute"),
+            None,
+        )
+        done_nodes = [node for node in focus_nodes if self._normalize_node_status(node.get("status")) == "done"]
+        last_done_node = done_nodes[-1] if done_nodes else None
+        fallback_node = next((node for node in focus_nodes if node.get("node_type") != "start"), None)
+        if fallback_node is None and focus_nodes:
+            fallback_node = focus_nodes[0]
+        current_node = executing_node or last_done_node or fallback_node
+
+        previous_nodes: list[dict[str, Any]] = []
+        if current_node and current_node.get("id"):
+            for edge in edges:
+                if edge.get("to_node_id") != current_node["id"]:
+                    continue
+                from_node = node_by_id.get(str(edge.get("from_node_id")))
+                if from_node:
+                    previous_nodes.append(from_node)
+
+        return {
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "current_node": self._compact_node(current_node),
+            "previous_nodes": [self._compact_node(node) for node in previous_nodes if node],
+            "executing_nodes": [
+                self._compact_node(node)
+                for node in nodes
+                if self._normalize_node_status(node.get("status")) == "execute"
+            ],
+            "done_nodes": [
+                self._compact_node(node)
+                for node in nodes
+                if self._normalize_node_status(node.get("status")) == "done"
+            ],
+            "waiting_nodes": [
+                self._compact_node(node)
+                for node in nodes
+                if self._normalize_node_status(node.get("status")) == "waiting"
+            ],
+        }

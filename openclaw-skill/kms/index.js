@@ -51,6 +51,66 @@ const skill = {
         return client.listTasks(args || {});
       },
     },
+    list_task_routes: {
+      description: "List route flows under a task",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string" },
+          page: { type: "number", default: 1 },
+          page_size: { type: "number", default: 100 },
+          status: { type: "string" },
+          q: { type: "string" },
+        },
+        required: ["task_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listRoutes({
+          task_id: args.task_id,
+          page: args.page ?? 1,
+          page_size: args.page_size ?? 100,
+          status: args.status,
+          q: args.q,
+        });
+      },
+    },
+    get_route_graph: {
+      description: "Get full node-edge graph for a route",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+        },
+        required: ["route_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.getRouteGraph(args.route_id);
+      },
+    },
+    get_task_execution_snapshot: {
+      description: "Get latest task execution snapshot including current node and previous step",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string" },
+          include_all_routes: { type: "boolean", default: true },
+          include_logs: { type: "boolean", default: false },
+          page_size: { type: "number", default: 100 },
+        },
+        required: ["task_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.getTaskExecutionSnapshot({
+          task_id: args.task_id,
+          include_all_routes: args.include_all_routes,
+          include_logs: args.include_logs,
+          page_size: args.page_size,
+        });
+      },
+    },
     search_notes: {
       description: "Search notes in Memrail knowledge base",
       parameters: {
@@ -110,7 +170,6 @@ const skill = {
           due: { type: "string" },
           topic_id: { type: "string" },
           source: { type: "string" },
-          task_type: { type: "string" },
         },
         required: ["title", "source"],
       },

@@ -1,3 +1,6 @@
+> Documentation Status: Historical Snapshot
+> Last synced: 2026-02-25
+
 # Memrail Final System Design (v0.7, Synced 2026-02-25)
 
 ## 1. Product Positioning

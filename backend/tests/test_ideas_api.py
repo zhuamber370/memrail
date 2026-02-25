@@ -1,13 +1,15 @@
-from tests.helpers import fixed_topic_id, make_client, uniq
+from tests.helpers import create_test_task, fixed_topic_id, make_client, uniq
 
 
 def test_idea_lifecycle_and_promote_to_route_node():
     client = make_client()
     topic_id = fixed_topic_id(client)
+    task_id = create_test_task(client, prefix="idea_parent_task")
 
     create = client.post(
         "/api/v1/ideas",
         json={
+            "task_id": task_id,
             "title": f"idea_test_{uniq('title')}",
             "problem": "Need a better route planning model",
             "hypothesis": "A DAG route model improves strategic execution",
@@ -27,6 +29,7 @@ def test_idea_lifecycle_and_promote_to_route_node():
     route = client.post(
         "/api/v1/routes",
         json={
+            "task_id": task_id,
             "name": f"route_test_{uniq('name')}",
             "goal": "Ship route graph v1",
             "status": "candidate",
@@ -47,9 +50,11 @@ def test_idea_lifecycle_and_promote_to_route_node():
 
 def test_idea_invalid_transition_rejected():
     client = make_client()
+    task_id = create_test_task(client, prefix="idea_invalid_task")
     create = client.post(
         "/api/v1/ideas",
         json={
+            "task_id": task_id,
             "title": f"idea_test_{uniq('title')}",
             "status": "captured",
             "source": f"test://idea/{uniq('src')}",
@@ -65,10 +70,12 @@ def test_idea_invalid_transition_rejected():
 
 def test_promote_requires_ready_status():
     client = make_client()
+    task_id = create_test_task(client, prefix="idea_promote_task")
 
     create = client.post(
         "/api/v1/ideas",
         json={
+            "task_id": task_id,
             "title": f"idea_test_{uniq('title')}",
             "status": "captured",
             "source": f"test://idea/{uniq('src')}",
@@ -80,6 +87,7 @@ def test_promote_requires_ready_status():
     route = client.post(
         "/api/v1/routes",
         json={
+            "task_id": task_id,
             "name": f"route_test_{uniq('name')}",
             "goal": "Temp route",
             "status": "candidate",

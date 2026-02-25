@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from src.models import NodeLog, Route, RouteEdge, RouteNode
+from src.models import NodeLog, Route, RouteEdge, RouteNode, Task
 from src.schemas import (
     NodeLogCreate,
     RouteCreate,
@@ -32,10 +32,12 @@ class RouteService:
         self.db = db
 
     def create(self, payload: RouteCreate) -> Route:
+        self._validate_task(payload.task_id)
         if payload.status == "active":
-            self._ensure_single_active()
+            self._ensure_single_active(task_id=payload.task_id)
         route = Route(
             id=f"rte_{uuid.uuid4().hex[:12]}",
+            task_id=payload.task_id,
             name=payload.name,
             goal=payload.goal,
             status=payload.status,
@@ -57,10 +59,21 @@ class RouteService:
         )
         return route
 
-    def list(self, *, page: int, page_size: int, status: Optional[str] = None, q: Optional[str] = None):
+    def list(
+        self,
+        *,
+        page: int,
+        page_size: int,
+        task_id: Optional[str] = None,
+        status: Optional[str] = None,
+        q: Optional[str] = None,
+    ):
         stmt = select(Route)
         count_stmt = select(func.count()).select_from(Route)
 
+        if task_id:
+            stmt = stmt.where(Route.task_id == task_id)
+            count_stmt = count_stmt.where(Route.task_id == task_id)
         if status:
             stmt = stmt.where(Route.status == status)
             count_stmt = count_stmt.where(Route.status == status)
@@ -87,7 +100,7 @@ class RouteService:
         if next_status and next_status != route.status:
             self._validate_route_transition(route.status, next_status)
             if next_status == "active":
-                self._ensure_single_active(ignore_route_id=route.id)
+                self._ensure_single_active(task_id=route.task_id, ignore_route_id=route.id)
 
         for key, value in patch_data.items():
             setattr(route, key, value)
@@ -107,8 +120,10 @@ class RouteService:
         )
         return route
 
-    def _ensure_single_active(self, ignore_route_id: Optional[str] = None) -> None:
+    def _ensure_single_active(self, task_id: Optional[str], ignore_route_id: Optional[str] = None) -> None:
         stmt = select(Route).where(Route.status == "active")
+        if task_id:
+            stmt = stmt.where(Route.task_id == task_id)
         if ignore_route_id:
             stmt = stmt.where(Route.id != ignore_route_id)
         existing = self.db.scalar(stmt.limit(1))
@@ -119,6 +134,10 @@ class RouteService:
         allowed = ROUTE_TRANSITIONS.get(current_status, set())
         if next_status not in allowed:
             raise ValueError("ROUTE_INVALID_STATUS_TRANSITION")
+
+    def _validate_task(self, task_id: str) -> None:
+        if self.db.get(Task, task_id) is None:
+            raise ValueError("TASK_NOT_FOUND")
 
 
 class RouteGraphService:
@@ -189,6 +208,28 @@ class RouteGraphService:
             source_refs=[f"route://{route_id}"],
         )
         return node
+
+    def delete_node(self, route_id: str, node_id: str) -> bool:
+        self._ensure_route(route_id)
+        node = self.db.scalar(
+            select(RouteNode).where(RouteNode.id == node_id, RouteNode.route_id == route_id)
+        )
+        if node is None:
+            return False
+
+        self.db.delete(node)
+        self.db.commit()
+        log_audit_event(
+            self.db,
+            actor_type="user",
+            actor_id="local",
+            tool="api",
+            action="delete_route_node",
+            target_type="route_node",
+            target_id=node_id,
+            source_refs=[f"route://{route_id}"],
+        )
+        return True
 
     def create_edge(self, route_id: str, payload: RouteEdgeCreate) -> RouteEdge:
         self._ensure_route(route_id)

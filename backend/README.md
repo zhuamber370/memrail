@@ -1,29 +1,30 @@
 # Backend
 
-FastAPI backend for Memrail MVP.
+FastAPI backend for Memrail.
 
-## Env
+## Environment
 
-Backend reads env from process and `.env`.
+Backend reads env from process, `backend/.env`, and repo-root `.env`.
 
-Core (SQLite default):
-- `AFKMS_DB_BACKEND=sqlite` (default)
-- `AFKMS_SQLITE_PATH` (optional, default `data/afkms.sqlite3`)
+### Core (SQLite default)
+- `AFKMS_DB_BACKEND=sqlite`
+- `AFKMS_SQLITE_PATH` (default: `data/afkms.sqlite3`)
 
-PostgreSQL mode (`AFKMS_DB_BACKEND=postgres`):
+### PostgreSQL mode
+- `AFKMS_DB_BACKEND=postgres`
 - `AFKMS_DB_HOST`
 - `AFKMS_DB_PORT`
 - `AFKMS_DB_NAME`
 - `AFKMS_DB_USER`
 - `AFKMS_DB_PASSWORD`
 
-Optional:
+### Optional
 - `AFKMS_DATABASE_URL` (direct SQLAlchemy URL override)
-- `AFKMS_REQUIRE_AUTH` (`true` to enforce bearer auth on `/api/v1/*`)
+- `AFKMS_REQUIRE_AUTH=true|false`
 - `KMS_API_KEY`
-- `AFKMS_PG_ADMIN_*` (for bootstrap script when using PostgreSQL)
+- `AFKMS_PG_ADMIN_*` (bootstrap script admin connection)
 
-## Local Run
+## Run
 
 ```bash
 cd backend
@@ -33,7 +34,7 @@ pip install -r requirements.txt
 python3 -m uvicorn src.app:app --reload --port 8000
 ```
 
-Enable API key auth (recommended outside local dev):
+Enable API auth:
 
 ```bash
 export AFKMS_REQUIRE_AUTH=true
@@ -41,44 +42,36 @@ export KMS_API_KEY="<your_api_key>"
 python3 -m uvicorn src.app:app --reload --port 8000
 ```
 
-PostgreSQL bootstrap (optional enhancement):
+## Core Domains / APIs
 
-```bash
-cd backend
-source .venv/bin/activate
-python3 scripts/bootstrap_postgres.py
-```
+- `topics`: fixed taxonomy
+- `tasks`: task lifecycle + archive
+- `notes`: knowledge notes
+- `journals`: append-only daily records
+- `changes`: governed write flow (`dry-run/commit/reject/undo`)
+- `ideas`: task-scoped idea entities
+- `routes`: task-scoped route graph entities
+  - route node APIs include create/patch/**delete**
+  - edge APIs include create/delete
+- `context`: aggregated retrieval bundle
+- `audit`: event trace query
 
-Bootstrap behavior:
-- uses app DB env: `AFKMS_DB_*`
-- uses admin connection env: `AFKMS_PG_ADMIN_*` (optional)
-- default admin connection is `postgres` user to `postgres` database on `AFKMS_DB_HOST:AFKMS_DB_PORT`
+## Tests
 
-## Key Domains
-
-- `topics`: fixed taxonomy (7 categories, POST locked)
-- `tasks`: structured action items with status governance + archive
-- `notes`: knowledge notes with topic/unclassified/archive states
-- `journals`: same-day append-only journal storage
-- `changes`: dry-run / commit / reject(delete proposal) / undo governance flow
-- `context`: aggregated read bundle for agent retrieval
-- `audit`: write trace query endpoint
-
-## Test
+Full:
 
 ```bash
 cd backend
 python3 -m pytest -q
 ```
 
-Targeted smoke:
+Route graph targeted:
 
 ```bash
-python3 -m pytest backend/tests/test_changes_api.py backend/tests/test_tasks_api.py backend/tests/test_inbox_notes_api.py backend/tests/test_links_api.py backend/tests/test_audit_api.py backend/tests/test_topics_api.py -q
-python3 -m pytest backend/tests/test_journals_api.py backend/tests/test_context_api.py -q
+python3 -m pytest -q backend/tests/test_routes_api.py
 ```
 
-## Utility Scripts
+## Scripts
 
 ```bash
 python3 backend/scripts/bootstrap_postgres.py
@@ -86,6 +79,6 @@ python3 backend/scripts/cleanup_test_data.py
 python3 backend/scripts/migrate_notes_topic_status.py
 ```
 
-- `bootstrap_postgres.py`: for PostgreSQL role/database bootstrap.
-- `cleanup_test_data.py`: PostgreSQL-oriented cleanup utility for local/API tests.
-- `migrate_notes_topic_status.py`: PostgreSQL migration helper for historical data backfill.
+- `bootstrap_postgres.py`: initialize PostgreSQL role/database.
+- `cleanup_test_data.py`: cleanup test-marked data.
+- `migrate_notes_topic_status.py`: historical data backfill helper.

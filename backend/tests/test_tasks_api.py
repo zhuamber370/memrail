@@ -35,8 +35,6 @@ def test_create_and_list_tasks():
             "topic_id": topic_id,
             "description": "detail",
             "acceptance_criteria": "done when done",
-            "next_action": "start now",
-            "task_type": "build",
         },
     )
     assert create.status_code == 201
@@ -212,6 +210,26 @@ def test_create_task_rejects_project_field():
             "project": "Core",
             "source": "test://tasks",
             "topic_id": topic_id,
+        },
+    )
+    assert res.status_code == 422
+
+
+def test_create_task_rejects_legacy_execution_fields():
+    client = make_client()
+    topic_id = fixed_topic_id(client)
+    res = client.post(
+        "/api/v1/tasks",
+        json={
+            "title": "Task With Legacy Fields",
+            "status": "todo",
+            "priority": "P2",
+            "source": "test://tasks",
+            "topic_id": topic_id,
+            "next_action": "legacy",
+            "task_type": "build",
+            "blocked_by_task_id": "tsk_legacy",
+            "next_review_at": "2026-03-01T00:00:00Z",
         },
     )
     assert res.status_code == 422

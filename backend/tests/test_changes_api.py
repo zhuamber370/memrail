@@ -166,7 +166,7 @@ def test_dry_run_diff_contains_task_enhanced_fields():
                         "source": "test",
                         "topic_id": topic_id,
                         "cycle_id": "cyc_123",
-                        "blocked_by_task_id": "tsk_999",
+                        "due": "2099-04-01",
                     },
                 }
             ],
@@ -177,7 +177,7 @@ def test_dry_run_diff_contains_task_enhanced_fields():
     assert dry.status_code == 200
     diff = dry.json()["diff"]
     assert any("cycle_id" in line for line in diff)
-    assert any("blocked_by_task_id" in line for line in diff)
+    assert any("due" in line for line in diff)
 
 
 def test_dry_run_summary_has_entity_and_field_counts():
@@ -202,7 +202,7 @@ def test_dry_run_summary_has_entity_and_field_counts():
                     "payload": {
                         "task_id": "tsk_123",
                         "priority": "P1",
-                        "blocked_by_task_id": "tsk_999",
+                        "due": "2099-04-01",
                     },
                 },
             ],
@@ -215,7 +215,7 @@ def test_dry_run_summary_has_entity_and_field_counts():
     assert summary["task_create"] == 1
     assert summary["task_update"] == 1
     assert summary["field_cycle_id"] == 1
-    assert summary["field_blocked_by_task_id"] == 1
+    assert summary["field_due"] == 1
 
 
 def test_dry_run_includes_structured_diff_items():

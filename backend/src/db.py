@@ -137,21 +137,17 @@ def ensure_runtime_schema(engine) -> None:
         """,
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description TEXT",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS acceptance_criteria TEXT",
-        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS next_action TEXT",
-        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_type VARCHAR(20)",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40)",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS cancelled_reason TEXT",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS cycle_id VARCHAR(40)",
-        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS next_review_at TIMESTAMPTZ",
-        "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS blocked_by_task_id VARCHAR(40)",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ",
+        "ALTER TABLE ideas ADD COLUMN IF NOT EXISTS task_id VARCHAR(40)",
+        "ALTER TABLE routes ADD COLUMN IF NOT EXISTS task_id VARCHAR(40)",
         "ALTER TABLE notes ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40)",
         "ALTER TABLE notes ADD COLUMN IF NOT EXISTS status VARCHAR(20)",
         "UPDATE notes SET status = 'active' WHERE status IS NULL",
         "UPDATE tasks SET description = '' WHERE description IS NULL",
         "UPDATE tasks SET acceptance_criteria = '' WHERE acceptance_criteria IS NULL",
-        "UPDATE tasks SET next_action = '' WHERE next_action IS NULL",
-        "UPDATE tasks SET task_type = 'build' WHERE task_type IS NULL",
         """
         INSERT INTO topics (id, name, name_en, name_zh, kind, status, summary)
         VALUES (
@@ -275,13 +271,14 @@ def ensure_runtime_schema(engine) -> None:
         """,
         "ALTER TABLE tasks ALTER COLUMN description SET DEFAULT ''",
         "ALTER TABLE tasks ALTER COLUMN acceptance_criteria SET DEFAULT ''",
-        "ALTER TABLE tasks ALTER COLUMN next_action SET DEFAULT ''",
-        "ALTER TABLE tasks ALTER COLUMN task_type SET DEFAULT 'build'",
         "ALTER TABLE tasks ALTER COLUMN description SET NOT NULL",
         "ALTER TABLE tasks ALTER COLUMN acceptance_criteria SET NOT NULL",
-        "ALTER TABLE tasks ALTER COLUMN next_action SET NOT NULL",
-        "ALTER TABLE tasks ALTER COLUMN task_type SET NOT NULL",
         "ALTER TABLE tasks ALTER COLUMN topic_id SET NOT NULL",
+        "ALTER TABLE tasks DROP COLUMN IF EXISTS next_action",
+        "ALTER TABLE tasks DROP COLUMN IF EXISTS task_type",
+        "ALTER TABLE tasks DROP COLUMN IF EXISTS blocked_by_task_id",
+        "ALTER TABLE tasks DROP COLUMN IF EXISTS next_review_at",
+        "ALTER TABLE tasks DROP COLUMN IF EXISTS project",
         "ALTER TABLE notes ALTER COLUMN status SET DEFAULT 'active'",
         "ALTER TABLE notes ALTER COLUMN status SET NOT NULL",
         """
@@ -307,6 +304,32 @@ def ensure_runtime_schema(engine) -> None:
             ALTER TABLE notes
               ADD CONSTRAINT fk_notes_topic_id
               FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL;
+          END IF;
+        END $$;
+        """,
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'fk_ideas_task_id'
+          ) THEN
+            ALTER TABLE ideas
+              ADD CONSTRAINT fk_ideas_task_id
+              FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL;
+          END IF;
+        END $$;
+        """,
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'fk_routes_task_id'
+          ) THEN
+            ALTER TABLE routes
+              ADD CONSTRAINT fk_routes_task_id
+              FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE SET NULL;
           END IF;
         END $$;
         """,
@@ -405,5 +428,113 @@ def _ensure_runtime_schema_sqlite(engine) -> None:
         """,
     ]
     with engine.begin() as conn:
+        _sqlite_add_column_if_missing(conn, "ideas", "task_id VARCHAR(40)")
+        _sqlite_add_column_if_missing(conn, "routes", "task_id VARCHAR(40)")
+        _sqlite_rebuild_tasks_table_if_needed(conn)
         for stmt in statements:
             conn.execute(text(stmt))
+
+
+def _sqlite_add_column_if_missing(conn, table_name: str, column_ddl: str) -> None:
+    exists = conn.execute(
+        text("SELECT 1 FROM sqlite_master WHERE type='table' AND name = :table_name"),
+        {"table_name": table_name},
+    ).fetchone()
+    if exists is None:
+        return
+    column_name = column_ddl.split(" ", 1)[0].strip()
+    info = conn.execute(text(f"PRAGMA table_info({table_name})")).fetchall()
+    if any(row[1] == column_name for row in info):
+        return
+    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {column_ddl}"))
+
+
+def _sqlite_rebuild_tasks_table_if_needed(conn) -> None:
+    exists = conn.execute(
+        text("SELECT 1 FROM sqlite_master WHERE type='table' AND name = :table_name"),
+        {"table_name": "tasks"},
+    ).fetchone()
+    if exists is None:
+        return
+    info = conn.execute(text("PRAGMA table_info(tasks)")).fetchall()
+    current_columns = {str(row[1]) for row in info}
+    legacy_columns = {"next_action", "task_type", "blocked_by_task_id", "next_review_at", "project"}
+    if not (current_columns & legacy_columns):
+        return
+
+    target_columns = [
+        "id",
+        "title",
+        "description",
+        "acceptance_criteria",
+        "topic_id",
+        "status",
+        "cancelled_reason",
+        "priority",
+        "due",
+        "source",
+        "cycle_id",
+        "archived_at",
+        "created_at",
+        "updated_at",
+    ]
+
+    def _source_expr(column: str, fallback_sql: str) -> str:
+        if column in current_columns:
+            return f"COALESCE({column}, {fallback_sql})"
+        return fallback_sql
+
+    select_expr = {
+        "id": "id",
+        "title": "title",
+        "description": _source_expr("description", "''"),
+        "acceptance_criteria": _source_expr("acceptance_criteria", "''"),
+        "topic_id": _source_expr("topic_id", "'top_fx_other'"),
+        "status": _source_expr("status", "'todo'"),
+        "cancelled_reason": "cancelled_reason" if "cancelled_reason" in current_columns else "NULL",
+        "priority": "priority" if "priority" in current_columns else "NULL",
+        "due": "due" if "due" in current_columns else "NULL",
+        "source": _source_expr("source", "'migration://sqlite/tasks-rebuild'"),
+        "cycle_id": "cycle_id" if "cycle_id" in current_columns else "NULL",
+        "archived_at": "archived_at" if "archived_at" in current_columns else "NULL",
+        "created_at": _source_expr("created_at", "CURRENT_TIMESTAMP"),
+        "updated_at": _source_expr("updated_at", "CURRENT_TIMESTAMP"),
+    }
+
+    conn.execute(text("PRAGMA foreign_keys=OFF"))
+    try:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE tasks__memrail_new (
+                  id VARCHAR(40) PRIMARY KEY,
+                  title VARCHAR(120) NOT NULL,
+                  description TEXT NOT NULL DEFAULT '',
+                  acceptance_criteria TEXT NOT NULL DEFAULT '',
+                  topic_id VARCHAR(40) NOT NULL REFERENCES topics(id) ON DELETE RESTRICT,
+                  status VARCHAR(20) NOT NULL,
+                  cancelled_reason TEXT,
+                  priority VARCHAR(2),
+                  due DATE,
+                  source VARCHAR(300) NOT NULL,
+                  cycle_id VARCHAR(40) REFERENCES cycles(id) ON DELETE SET NULL,
+                  archived_at TIMESTAMPTZ,
+                  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                f"""
+                INSERT INTO tasks__memrail_new ({", ".join(target_columns)})
+                SELECT {", ".join(select_expr[column] for column in target_columns)}
+                FROM tasks
+                """
+            )
+        )
+        conn.execute(text("DROP TABLE tasks"))
+        conn.execute(text("ALTER TABLE tasks__memrail_new RENAME TO tasks"))
+    finally:
+        conn.execute(text("PRAGMA foreign_keys=ON"))

@@ -1,3 +1,6 @@
+> Documentation Status: Historical Snapshot
+> Last synced: 2026-02-25
+
 # Memrail Route-Graph Task Management Design (V1 List-First, V2 Graph-First)
 
 ## Goal

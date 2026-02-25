@@ -1,25 +1,48 @@
 # Frontend
 
-Next.js frontend for Memrail MVP.
+Next.js frontend for Memrail.
 
-## Env
+## Environment
 
-Frontend reads env from `.env.local`:
-
-- `NEXT_PUBLIC_API_BASE` (for example `http://localhost:8000`)
+Frontend reads from `frontend/.env.local`:
+- `NEXT_PUBLIC_API_BASE` (e.g. `http://127.0.0.1:8000`)
 - `NEXT_PUBLIC_API_KEY`
 
-Recommended (single source of truth from repo root):
+Recommended sync from root:
 
 ```bash
 cd frontend
 cp ../.env .env.local
 ```
 
-## Local Run
+## Run
 
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+
+Build check:
+
+```bash
+npm run build
+```
+
+## Main Pages (Current)
+
+- `/tasks`
+  - Task Command Center
+  - Search/filter/list/detail in one layout
+  - Execution canvas with node status / rename / delete operations
+- `/knowledge`
+  - topic-based knowledge board
+- `/changes`
+  - proposal review and commit/reject/undo
+
+## Task-scoped helper pages
+
+- `/ideas?task_id=<task_id>`
+- `/routes?task_id=<task_id>`
+
+These pages require task context and are not default top-level navigation.

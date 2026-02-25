@@ -9,7 +9,6 @@ TaskStatus = Literal["todo", "in_progress", "done", "cancelled"]
 TaskPriority = Literal["P0", "P1", "P2", "P3"]
 TaskView = Literal["today", "overdue", "this_week", "backlog", "blocked", "done"]
 CycleStatus = Literal["planned", "active", "closed"]
-TaskType = Literal["build", "research", "ops", "writing", "decision"]
 TopicKind = Literal["domain", "project", "playbook", "decision", "issue"]
 TopicStatus = Literal["active", "watch", "archived"]
 NoteStatus = Literal["active", "archived"]
@@ -21,8 +20,6 @@ class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=120)
     description: str = ""
     acceptance_criteria: str = ""
-    next_action: str = ""
-    task_type: TaskType = "build"
     topic_id: str = Field(min_length=1)
     status: TaskStatus
     cancelled_reason: Optional[str] = None
@@ -30,8 +27,6 @@ class TaskCreate(BaseModel):
     due: Optional[date] = None
     source: str = Field(min_length=1)
     cycle_id: Optional[str] = None
-    next_review_at: Optional[datetime] = None
-    blocked_by_task_id: Optional[str] = None
 
 
 class TaskPatch(BaseModel):
@@ -40,8 +35,6 @@ class TaskPatch(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1, max_length=120)
     description: Optional[str] = None
     acceptance_criteria: Optional[str] = None
-    next_action: Optional[str] = None
-    task_type: Optional[TaskType] = None
     topic_id: Optional[str] = Field(default=None, min_length=1)
     status: Optional[TaskStatus] = None
     cancelled_reason: Optional[str] = None
@@ -49,8 +42,6 @@ class TaskPatch(BaseModel):
     due: Optional[date] = None
     source: Optional[str] = Field(default=None, min_length=1)
     cycle_id: Optional[str] = None
-    next_review_at: Optional[datetime] = None
-    blocked_by_task_id: Optional[str] = None
     archived_at: Optional[datetime] = None
 
 
@@ -61,8 +52,6 @@ class TaskOut(BaseModel):
     title: str
     description: str
     acceptance_criteria: str
-    next_action: str
-    task_type: TaskType
     topic_id: str
     status: TaskStatus
     cancelled_reason: Optional[str]
@@ -70,8 +59,6 @@ class TaskOut(BaseModel):
     due: Optional[date]
     source: str
     cycle_id: Optional[str]
-    next_review_at: Optional[datetime]
-    blocked_by_task_id: Optional[str]
     archived_at: Optional[datetime]
     created_at: datetime
     updated_at: datetime
@@ -407,14 +394,15 @@ class ContextBundleOut(BaseModel):
 
 IdeaStatus = Literal["captured", "triage", "discovery", "ready", "rejected"]
 RouteStatus = Literal["candidate", "active", "parked", "completed", "cancelled"]
-RouteNodeType = Literal["decision", "milestone", "task"]
-RouteNodeStatus = Literal["todo", "in_progress", "done", "cancelled"]
+RouteNodeType = Literal["start", "goal", "idea", "decision", "milestone", "task"]
+RouteNodeStatus = Literal["waiting", "execute", "done", "removed", "todo", "in_progress", "cancelled"]
 RouteAssigneeType = Literal["human", "agent"]
 RouteEdgeRelation = Literal["depends_on", "blocks"]
 
 
 class IdeaCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    task_id: str = Field(min_length=1)
     title: str = Field(min_length=1, max_length=200)
     problem: str = ""
     hypothesis: str = ""
@@ -436,6 +424,7 @@ class IdeaPatch(BaseModel):
 class IdeaOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
+    task_id: Optional[str]
     title: str
     problem: str
     hypothesis: str
@@ -455,6 +444,7 @@ class IdeaListOut(BaseModel):
 
 class RouteCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
+    task_id: str = Field(min_length=1)
     name: str = Field(min_length=1, max_length=160)
     goal: str = ""
     status: RouteStatus = "candidate"
@@ -474,6 +464,7 @@ class RoutePatch(BaseModel):
 class RouteOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
+    task_id: Optional[str]
     name: str
     goal: str
     status: RouteStatus
@@ -574,6 +565,6 @@ class NodeLogListOut(BaseModel):
 class IdeaPromoteIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     route_id: str = Field(min_length=1)
-    node_type: RouteNodeType = "task"
+    node_type: RouteNodeType = "idea"
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     description: Optional[str] = None

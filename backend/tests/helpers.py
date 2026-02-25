@@ -34,3 +34,18 @@ def fixed_topic_id(client: TestClient, preferred_id: str = "top_fx_engineering_a
 
 def uniq(prefix: str) -> str:
     return f"{prefix}_{uuid.uuid4().hex[:10]}"
+
+
+def create_test_task(client: TestClient, *, prefix: str = "task") -> str:
+    topic_id = fixed_topic_id(client)
+    resp = client.post(
+        "/api/v1/tasks",
+        json={
+            "title": f"{prefix}_{uniq('title')}",
+            "topic_id": topic_id,
+            "status": "todo",
+            "source": f"test://task/{uniq('src')}",
+        },
+    )
+    assert resp.status_code == 201, resp.text
+    return resp.json()["id"]

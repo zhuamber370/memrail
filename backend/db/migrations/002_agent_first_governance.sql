@@ -78,8 +78,6 @@ CREATE TABLE IF NOT EXISTS topic_entries (
 
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS acceptance_criteria TEXT;
-ALTER TABLE tasks ADD COLUMN IF NOT EXISTS next_action TEXT;
-ALTER TABLE tasks ADD COLUMN IF NOT EXISTS task_type VARCHAR(20);
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40);
 ALTER TABLE tasks ADD COLUMN IF NOT EXISTS cancelled_reason TEXT;
 ALTER TABLE notes ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40);
@@ -88,8 +86,6 @@ UPDATE notes SET status = 'active' WHERE status IS NULL;
 
 UPDATE tasks SET description = '' WHERE description IS NULL;
 UPDATE tasks SET acceptance_criteria = '' WHERE acceptance_criteria IS NULL;
-UPDATE tasks SET next_action = '' WHERE next_action IS NULL;
-UPDATE tasks SET task_type = 'build' WHERE task_type IS NULL;
 
 INSERT INTO topics (id, name, name_en, name_zh, kind, status, summary)
 VALUES (
@@ -207,13 +203,14 @@ WHERE id NOT IN (
 
 ALTER TABLE tasks ALTER COLUMN description SET DEFAULT '';
 ALTER TABLE tasks ALTER COLUMN acceptance_criteria SET DEFAULT '';
-ALTER TABLE tasks ALTER COLUMN next_action SET DEFAULT '';
-ALTER TABLE tasks ALTER COLUMN task_type SET DEFAULT 'build';
 ALTER TABLE tasks ALTER COLUMN description SET NOT NULL;
 ALTER TABLE tasks ALTER COLUMN acceptance_criteria SET NOT NULL;
-ALTER TABLE tasks ALTER COLUMN next_action SET NOT NULL;
-ALTER TABLE tasks ALTER COLUMN task_type SET NOT NULL;
 ALTER TABLE tasks ALTER COLUMN topic_id SET NOT NULL;
+ALTER TABLE tasks DROP COLUMN IF EXISTS next_action;
+ALTER TABLE tasks DROP COLUMN IF EXISTS task_type;
+ALTER TABLE tasks DROP COLUMN IF EXISTS blocked_by_task_id;
+ALTER TABLE tasks DROP COLUMN IF EXISTS next_review_at;
+ALTER TABLE tasks DROP COLUMN IF EXISTS project;
 ALTER TABLE notes ALTER COLUMN status SET DEFAULT 'active';
 ALTER TABLE notes ALTER COLUMN status SET NOT NULL;
 

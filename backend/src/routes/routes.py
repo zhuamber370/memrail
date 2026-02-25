@@ -25,7 +25,7 @@ from src.services.route_service import RouteGraphService, RouteService
 
 def _raise_from_code(code: str) -> None:
     status_code = 422
-    if code in {"ROUTE_NOT_FOUND", "ROUTE_NODE_NOT_FOUND", "ROUTE_EDGE_NOT_FOUND"}:
+    if code in {"ROUTE_NOT_FOUND", "ROUTE_NODE_NOT_FOUND", "ROUTE_EDGE_NOT_FOUND", "TASK_NOT_FOUND"}:
         status_code = 404
     elif code in {"ROUTE_ACTIVE_CONFLICT", "ROUTE_INVALID_STATUS_TRANSITION", "ROUTE_EDGE_DUPLICATE"}:
         status_code = 409
@@ -46,11 +46,12 @@ def build_router(get_db_dep):
     def list_routes(
         page: int = Query(default=1, ge=1),
         page_size: int = Query(default=20, ge=1, le=100),
+        task_id: Optional[str] = None,
         status: Optional[str] = None,
         q: Optional[str] = None,
         db: Session = Depends(get_db_dep),
     ):
-        items, total = RouteService(db).list(page=page, page_size=page_size, status=status, q=q)
+        items, total = RouteService(db).list(page=page, page_size=page_size, task_id=task_id, status=status, q=q)
         return {"items": items, "page": page, "page_size": page_size, "total": total}
 
     @router.patch("/{route_id}", response_model=RouteOut)
@@ -82,6 +83,19 @@ def build_router(get_db_dep):
                 detail={"code": "ROUTE_NODE_NOT_FOUND", "message": "route node not found"},
             )
         return updated
+
+    @router.delete("/{route_id}/nodes/{node_id}", status_code=204)
+    def delete_route_node(route_id: str, node_id: str, db: Session = Depends(get_db_dep)):
+        try:
+            deleted = RouteGraphService(db).delete_node(route_id, node_id)
+        except ValueError as exc:
+            _raise_from_code(str(exc))
+        if not deleted:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "ROUTE_NODE_NOT_FOUND", "message": "route node not found"},
+            )
+        return Response(status_code=204)
 
     @router.post("/{route_id}/edges", response_model=RouteEdgeOut, status_code=201)
     def create_route_edge(route_id: str, payload: RouteEdgeCreate, db: Session = Depends(get_db_dep)):

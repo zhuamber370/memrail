@@ -4,9 +4,9 @@ import { useMemo } from "react";
 
 export type RouteGraphNode = {
   id: string;
-  node_type: "decision" | "milestone" | "task";
+  node_type: "start" | "goal" | "idea" | "decision" | "milestone" | "task";
   title: string;
-  status: "todo" | "in_progress" | "done" | "cancelled";
+  status: "waiting" | "execute" | "done" | "removed" | "todo" | "in_progress" | "cancelled";
   order_hint: number;
 };
 

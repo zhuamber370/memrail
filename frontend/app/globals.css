@@ -626,6 +626,640 @@ a {
   align-items: center;
 }
 
+.taskBoardV3 {
+  display: grid;
+  gap: 10px;
+  background:
+    radial-gradient(760px 220px at 5% -15%, #ddecff 0%, transparent 64%),
+    radial-gradient(920px 220px at 102% -20%, #ffe6cf 0%, transparent 66%),
+    var(--panel);
+}
+
+.taskCommandTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+}
+
+.taskCommandCreateBar {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(220px, 1.3fr) minmax(140px, 0.8fr) 100px 140px auto auto;
+  gap: 8px;
+}
+
+.taskCommandLayout {
+  display: grid;
+  grid-template-columns: 280px minmax(360px, 0.9fr) minmax(520px, 1.1fr);
+  gap: 10px;
+  align-items: start;
+}
+
+.taskFilterPanelCommand {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  position: sticky;
+  top: 8px;
+  min-width: 0;
+}
+
+.taskFilterSearch {
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  background: #fffdf7;
+  padding: 8px;
+}
+
+.taskFilterPanelCommand .taskFilterGrid {
+  grid-template-columns: 1fr;
+}
+
+.taskFilterPanelCommand .taskInput {
+  width: 100%;
+  max-width: 100%;
+}
+
+.taskCommandListPanel {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.taskCommandListHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.taskStatusGroupList {
+  display: grid;
+  gap: 8px;
+  max-height: 74vh;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.taskStatusGroup {
+  border: 2px dashed var(--line);
+  border-radius: 12px;
+  background: #fffdf8;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.taskStatusGroupHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
+.taskListV3 {
+  margin-top: 0;
+  max-height: none;
+  overflow: visible;
+}
+
+.taskCommandDetail {
+  position: sticky;
+  top: 8px;
+  max-height: 90vh;
+  overflow: auto;
+  min-width: 0;
+}
+
+.taskArchivedHint {
+  margin: 2px 0 0;
+}
+
+.taskErrorText {
+  color: var(--danger);
+  margin: 0;
+}
+
+.taskNoticeText {
+  color: var(--success);
+  margin: 0;
+}
+
+.taskExecPanel {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background:
+    radial-gradient(680px 140px at 0% -20%, #edf7ff 0%, transparent 65%),
+    #fff;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.taskExecPanelV3 {
+  background:
+    radial-gradient(880px 200px at 0% -28%, #e9f3ff 0%, transparent 66%),
+    #fff;
+}
+
+.taskExecStatusLine {
+  margin: 0;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf7;
+  padding: 8px 10px;
+  font-size: 0.88rem;
+}
+
+.taskExecNodeStatusBar {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+}
+
+.taskExecNodeStatusMain {
+  display: grid;
+  grid-template-columns: 1fr minmax(160px, 220px);
+  gap: 8px;
+  align-items: center;
+}
+
+.taskExecNodeStatusSelect {
+  width: 100%;
+  margin: 0;
+}
+
+.taskExecNodeActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.taskExecDagCard {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.taskDagLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.taskDagLegendItem {
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  line-height: 1;
+  padding: 3px 8px;
+  background: #fff;
+}
+
+.taskDagLegendExecute {
+  border-color: #2457d6;
+  box-shadow: inset 0 0 0 2px #2457d629;
+}
+
+.taskDagLegendWaiting {
+  border-color: #c58100;
+  box-shadow: inset 0 0 0 2px #c5810029;
+}
+
+.taskDagLegendDone {
+  border-color: #157347;
+  box-shadow: inset 0 0 0 2px #15734729;
+}
+
+.taskDagLegendRemoved {
+  border-color: #8d8d8d;
+  box-shadow: inset 0 0 0 2px #8d8d8d29;
+}
+
+.taskDagViewport {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background:
+    linear-gradient(transparent 95%, #00000012 95%) 0 0 / 100% 30px repeat-y,
+    linear-gradient(90deg, transparent 95%, #00000010 95%) 0 0 / 30px 100% repeat-x,
+    #fffdf8;
+  min-height: 440px;
+  max-height: 560px;
+  overflow: auto;
+}
+
+.taskDagCanvas {
+  position: relative;
+}
+
+.taskDagEdges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.taskDagEdge {
+  fill: none;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke: #b98a2b;
+  stroke-dasharray: 6 4;
+  opacity: 0.95;
+}
+
+.taskDagEdgeExecute {
+  stroke: #2457d6;
+  stroke-width: 2.8;
+  stroke-dasharray: none;
+}
+
+.taskDagEdgeDone {
+  stroke: #157347;
+  stroke-dasharray: none;
+}
+
+.taskDagEdgeRemoved {
+  stroke: #8d8d8d;
+  stroke-dasharray: 4 4;
+  opacity: 0.7;
+}
+
+.taskDagEdgeWaiting {
+  stroke: #c58100;
+}
+
+.taskDagNode {
+  position: absolute;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  text-align: left;
+  color: inherit;
+  padding: 8px;
+  cursor: pointer;
+  display: grid;
+  align-content: space-between;
+  gap: 8px;
+}
+
+.taskDagNodeStart {
+  background: #f4f8ff;
+}
+
+.taskDagNodeExecute {
+  border-color: #2457d6;
+  box-shadow: inset 0 0 0 2px #2457d636;
+}
+
+.taskDagNodeDone {
+  border-color: #157347;
+  box-shadow: inset 0 0 0 2px #1573472f;
+}
+
+.taskDagNodeWaiting {
+  border-color: #c58100;
+  box-shadow: inset 0 0 0 2px #c5810029;
+}
+
+.taskDagNodeRemoved {
+  border-color: #8d8d8d;
+  background: #f4f4f4;
+  opacity: 0.78;
+}
+
+.taskDagNodeSelected {
+  box-shadow:
+    inset 0 0 0 2px #2457d64f,
+    0 0 0 2px #2457d626;
+}
+
+.taskDagNodeTitle {
+  font-weight: 700;
+  font-size: 0.88rem;
+  line-height: 1.2;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.taskDagNodeMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.taskExecFlowBar {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.taskExecStartBox {
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.taskExecStartRow {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+}
+
+.taskStageBar {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.taskStagePoint {
+  border: 2px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 9px;
+  background: #fff;
+  font-size: 0.78rem;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+}
+
+.taskStageStart {
+  background: #f2f7ff;
+}
+
+.taskStagePointActive {
+  border-color: var(--focus);
+  box-shadow: inset 0 0 0 2px #2457d633;
+}
+
+.taskStagePointDone {
+  border-color: var(--success);
+  box-shadow: inset 0 0 0 2px #15734733;
+}
+
+.taskStagePointRemoved {
+  border-color: #8d8d8d;
+  background: #f3f3f3;
+  opacity: 0.75;
+}
+
+.taskBranchGraph {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 8px;
+}
+
+.taskBranchColumn {
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 8px;
+}
+
+.taskBranchColumnLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #35507c;
+  font-weight: 700;
+}
+
+.taskBranchColumnBody {
+  margin-top: 6px;
+  display: grid;
+  gap: 6px;
+}
+
+.taskBranchNode {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: inherit;
+  text-align: left;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.taskBranchNodeTitle {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.taskBranchNodeParent {
+  margin-top: 5px;
+  color: var(--muted);
+  font-size: 0.76rem;
+}
+
+.taskExecCurrentGoal {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.taskExecIdeas {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.taskExecIdeaList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.taskExecIdeaCard {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  text-align: left;
+  color: inherit;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.taskExecIdeaCardExecute {
+  border-color: #2457d6;
+  background: #eef4ff;
+}
+
+.taskExecIdeaCardDone {
+  border-color: #157347;
+  background: #edf8f1;
+}
+
+.taskExecIdeaCardRemoved {
+  border-color: #8b8b8b;
+  background: #f4f4f4;
+  opacity: 0.75;
+}
+
+.taskExecCreateStep {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.taskExecCreateGrid {
+  display: grid;
+  grid-template-columns: minmax(120px, 160px) minmax(180px, 1fr) minmax(180px, 1fr) minmax(130px, 160px) auto;
+  gap: 8px;
+}
+
+.taskExecCreateGridGoal {
+  grid-template-columns: minmax(180px, 1fr) minmax(140px, 180px) auto;
+}
+
+.taskExecLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.taskExecMap,
+.taskExecDetail {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 10px;
+}
+
+.taskExecColumns {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.taskExecColumn {
+  border: 2px dashed var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+}
+
+.taskExecColumnLabel {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #35507c;
+  font-weight: 700;
+}
+
+.taskExecColumnBody {
+  margin-top: 6px;
+  display: grid;
+  gap: 6px;
+}
+
+.taskExecStep {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  text-align: left;
+  color: inherit;
+  padding: 8px;
+  cursor: pointer;
+}
+
+.taskExecStepActive {
+  border-color: var(--focus);
+  box-shadow: inset 0 0 0 2px #2457d63d;
+}
+
+.taskExecStepCurrent {
+  background: #eaf8ee;
+}
+
+.taskExecStepTitle {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.taskExecStepDetailBody {
+  display: grid;
+  gap: 8px;
+}
+
+.taskExecLinksBlock {
+  display: grid;
+  gap: 4px;
+}
+
+.taskExecLinks {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.taskExecLogs {
+  border-top: 2px dashed var(--line);
+  padding-top: 8px;
+}
+
+.taskExecLogList {
+  margin-top: 8px;
+  display: grid;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.taskExecLogItem {
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+}
+
+.taskExecLogContent {
+  margin: 6px 0 0;
+  white-space: pre-wrap;
+}
+
 .knowledgeBoard {
   display: grid;
   gap: 12px;
@@ -1010,6 +1644,18 @@ a {
   flex-wrap: wrap;
 }
 
+@media (max-width: 1400px) {
+  .taskCommandLayout {
+    grid-template-columns: 260px 1fr;
+  }
+
+  .taskCommandDetail {
+    grid-column: 1 / -1;
+    position: static;
+    max-height: none;
+  }
+}
+
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: 1fr;
@@ -1022,6 +1668,25 @@ a {
 
   .taskLayout {
     grid-template-columns: 1fr;
+  }
+
+  .taskCommandTop {
+    flex-direction: column;
+  }
+
+  .taskCommandCreateBar,
+  .taskCommandLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .taskFilterPanelCommand,
+  .taskCommandDetail {
+    position: static;
+    max-height: none;
+  }
+
+  .taskStatusGroupList {
+    max-height: none;
   }
 
   .taskCreateRow {
@@ -1045,6 +1710,31 @@ a {
   }
 
   .taskDetailEditRow {
+    grid-template-columns: 1fr;
+  }
+
+  .taskExecFlowBar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .taskExecNodeStatusBar {
+    grid-template-columns: 1fr;
+  }
+
+  .taskExecNodeStatusMain {
+    grid-template-columns: 1fr;
+  }
+
+  .taskExecStartRow {
+    grid-template-columns: 1fr;
+  }
+
+  .taskExecCreateGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .taskExecLayout {
     grid-template-columns: 1fr;
   }
 

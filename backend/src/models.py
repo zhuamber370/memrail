@@ -16,8 +16,6 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String(120), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     acceptance_criteria: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    next_action: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    task_type: Mapped[str] = mapped_column(String(20), nullable=False, default="build")
     topic_id: Mapped[str] = mapped_column(
         String(40), ForeignKey("topics.id", ondelete="RESTRICT"), nullable=False
     )
@@ -25,14 +23,9 @@ class Task(Base):
     cancelled_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     priority: Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
     due: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    project: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
     source: Mapped[str] = mapped_column(String(300), nullable=False)
     cycle_id: Mapped[Optional[str]] = mapped_column(
         String(40), ForeignKey("cycles.id", ondelete="SET NULL"), nullable=True
-    )
-    next_review_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    blocked_by_task_id: Mapped[Optional[str]] = mapped_column(
-        String(40), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True
     )
     archived_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
     created_at: Mapped[datetime] = mapped_column(
@@ -309,6 +302,9 @@ class Idea(Base):
     __tablename__ = "ideas"
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[Optional[str]] = mapped_column(
+        String(40), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True
+    )
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     problem: Mapped[str] = mapped_column(Text, nullable=False, default="")
     hypothesis: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -332,6 +328,9 @@ class Route(Base):
     __tablename__ = "routes"
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    task_id: Mapped[Optional[str]] = mapped_column(
+        String(40), ForeignKey("tasks.id", ondelete="SET NULL"), nullable=True
+    )
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     goal: Mapped[str] = mapped_column(Text, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="candidate")

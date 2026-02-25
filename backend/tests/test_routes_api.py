@@ -1,10 +1,11 @@
-from tests.helpers import make_client, uniq
+from tests.helpers import create_test_task, make_client, uniq
 
 
 def test_single_active_route_enforced():
     client = make_client()
+    task_id = create_test_task(client, prefix="route_active_task")
 
-    active_list = client.get("/api/v1/routes?page=1&page_size=100&status=active")
+    active_list = client.get(f"/api/v1/routes?page=1&page_size=100&status=active&task_id={task_id}")
     assert active_list.status_code == 200
     active_items = active_list.json()["items"]
 
@@ -13,6 +14,7 @@ def test_single_active_route_enforced():
         seeded = client.post(
             "/api/v1/routes",
             json={
+                "task_id": task_id,
                 "name": f"route_test_{uniq('seed')}",
                 "goal": "seed active route for test",
                 "status": "active",
@@ -24,6 +26,7 @@ def test_single_active_route_enforced():
     candidate = client.post(
         "/api/v1/routes",
         json={
+            "task_id": task_id,
             "name": f"route_test_{uniq('cand')}",
             "goal": "candidate route",
             "status": "candidate",
@@ -43,10 +46,12 @@ def test_single_active_route_enforced():
 
 def test_route_nodes_edges_and_logs():
     client = make_client()
+    task_id = create_test_task(client, prefix="route_graph_task")
 
     route1 = client.post(
         "/api/v1/routes",
         json={
+            "task_id": task_id,
             "name": f"route_test_{uniq('r1')}",
             "goal": "route graph path 1",
             "status": "candidate",
@@ -58,6 +63,7 @@ def test_route_nodes_edges_and_logs():
     route2 = client.post(
         "/api/v1/routes",
         json={
+            "task_id": task_id,
             "name": f"route_test_{uniq('r2')}",
             "goal": "route graph path 2",
             "status": "candidate",
@@ -117,3 +123,27 @@ def test_route_nodes_edges_and_logs():
     logs = client.get(f"/api/v1/routes/{route1_id}/nodes/{n1_id}/logs")
     assert logs.status_code == 200
     assert logs.json()["items"]
+
+    rename = client.patch(
+        f"/api/v1/routes/{route1_id}/nodes/{n2_id}",
+        json={"title": "Build MVP v2"},
+    )
+    assert rename.status_code == 200
+    assert rename.json()["title"] == "Build MVP v2"
+
+    delete_node = client.delete(f"/api/v1/routes/{route1_id}/nodes/{n1_id}")
+    assert delete_node.status_code == 204
+
+    graph_after_delete = client.get(f"/api/v1/routes/{route1_id}/graph")
+    assert graph_after_delete.status_code == 200
+    body = graph_after_delete.json()
+    assert all(item["id"] != n1_id for item in body["nodes"])
+    assert all(item["from_node_id"] != n1_id and item["to_node_id"] != n1_id for item in body["edges"])
+
+    logs_after_delete = client.get(f"/api/v1/routes/{route1_id}/nodes/{n1_id}/logs")
+    assert logs_after_delete.status_code == 404
+    assert logs_after_delete.json()["error"]["code"] == "ROUTE_NODE_NOT_FOUND"
+
+    delete_again = client.delete(f"/api/v1/routes/{route1_id}/nodes/{n1_id}")
+    assert delete_again.status_code == 404
+    assert delete_again.json()["error"]["code"] == "ROUTE_NODE_NOT_FOUND"

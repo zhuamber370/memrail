@@ -1,3 +1,6 @@
+> Documentation Status: Historical Snapshot
+> Last synced: 2026-02-25
+
 # Knowledge Topic Board Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.

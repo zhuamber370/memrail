@@ -1,3 +1,6 @@
+> Documentation Status: Historical Snapshot
+> Last synced: 2026-02-25
+
 # Knowledge Topic Board Design (v1)
 
 Date: 2026-02-24

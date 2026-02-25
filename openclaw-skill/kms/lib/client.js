@@ -66,6 +66,85 @@ function inferTopicId(text) {
   return null;
 }
 
+function normalizeNodeStatus(status) {
+  if (status === "todo") return "waiting";
+  if (status === "in_progress") return "execute";
+  if (status === "cancelled") return "removed";
+  return status || "waiting";
+}
+
+function sortNodes(nodes) {
+  return [...(Array.isArray(nodes) ? nodes : [])].sort((a, b) => {
+    const orderA = Number(a && a.order_hint) || 0;
+    const orderB = Number(b && b.order_hint) || 0;
+    if (orderA !== orderB) return orderA - orderB;
+    const timeA = String((a && a.created_at) || "");
+    const timeB = String((b && b.created_at) || "");
+    if (timeA !== timeB) return timeA.localeCompare(timeB);
+    return String((a && a.id) || "").localeCompare(String((b && b.id) || ""));
+  });
+}
+
+function compactNode(node) {
+  if (!node) return null;
+  return {
+    id: node.id,
+    title: node.title,
+    node_type: node.node_type,
+    status: node.status,
+    normalized_status: normalizeNodeStatus(node.status),
+    order_hint: node.order_hint,
+    assignee_type: node.assignee_type || null,
+    assignee_id: node.assignee_id || null,
+  };
+}
+
+function summarizeRouteGraph(graph) {
+  const nodes = sortNodes(graph && graph.nodes);
+  const edges = Array.isArray(graph && graph.edges) ? graph.edges : [];
+  const nodeById = new Map(nodes.map((node) => [node.id, node]));
+
+  const normalizedNodes = nodes.map((node) => ({
+    node,
+    normalizedStatus: normalizeNodeStatus(node.status),
+  }));
+  const executing = normalizedNodes.filter((item) => item.normalizedStatus === "execute").map((item) => item.node);
+  const done = normalizedNodes.filter((item) => item.normalizedStatus === "done").map((item) => item.node);
+  const waiting = normalizedNodes.filter((item) => item.normalizedStatus === "waiting").map((item) => item.node);
+
+  const focusCandidates = nodes.filter((node) => node.node_type === "goal" || node.node_type === "start");
+  const executableNodes = focusCandidates.length ? focusCandidates : nodes;
+  const executingNode =
+    executableNodes.find((node) => normalizeNodeStatus(node.status) === "execute") ||
+    nodes.find((node) => normalizeNodeStatus(node.status) === "execute") ||
+    null;
+  const doneNodes = executableNodes.filter((node) => normalizeNodeStatus(node.status) === "done");
+  const lastDoneNode = doneNodes.length ? doneNodes[doneNodes.length - 1] : null;
+  const fallbackNode =
+    executableNodes.find((node) => node.node_type !== "start") ||
+    executableNodes[0] ||
+    nodes[0] ||
+    null;
+  const currentNode = executingNode || lastDoneNode || fallbackNode;
+
+  const previousNodes = currentNode
+    ? edges
+        .filter((edge) => edge.to_node_id === currentNode.id)
+        .map((edge) => nodeById.get(edge.from_node_id))
+        .filter(Boolean)
+    : [];
+
+  return {
+    node_count: nodes.length,
+    edge_count: edges.length,
+    current_node: compactNode(currentNode),
+    previous_nodes: previousNodes.map((node) => compactNode(node)),
+    executing_nodes: executing.map((node) => compactNode(node)),
+    done_nodes: done.map((node) => compactNode(node)),
+    waiting_nodes: waiting.map((node) => compactNode(node)),
+  };
+}
+
 function createKmsClient(context) {
   const config = (context && context.config && context.config.kms) || {};
   const baseUrl = process.env.KMS_BASE_URL || config.baseUrl || "";
@@ -166,6 +245,110 @@ function createKmsClient(context) {
     return get("/api/v1/context/bundle", params || {});
   }
 
+  async function listRoutes(params) {
+    return get("/api/v1/routes", params || {});
+  }
+
+  async function getRouteGraph(routeId) {
+    if (!routeId) throw new Error("route_id is required");
+    return get(`/api/v1/routes/${routeId}/graph`, {});
+  }
+
+  async function getNodeLogs(routeId, nodeId) {
+    if (!routeId) throw new Error("route_id is required");
+    if (!nodeId) throw new Error("node_id is required");
+    return get(`/api/v1/routes/${routeId}/nodes/${nodeId}/logs`, {});
+  }
+
+  async function getTaskExecutionSnapshot(params) {
+    const taskId = params && params.task_id;
+    if (!taskId) throw new Error("task_id is required");
+
+    const includeAllRoutes = params && Object.prototype.hasOwnProperty.call(params, "include_all_routes")
+      ? Boolean(params.include_all_routes)
+      : true;
+    const includeLogs = Boolean(params && params.include_logs);
+    const pageSize = Number(params && params.page_size) > 0 ? Number(params.page_size) : 100;
+
+    const routesPayload = await listRoutes({
+      page: 1,
+      page_size: pageSize,
+      task_id: taskId,
+    });
+    const routes = Array.isArray(routesPayload && routesPayload.items) ? routesPayload.items : [];
+    const activeRoute = routes.find((route) => route.status === "active") || null;
+    const selectedRoute = activeRoute || routes[0] || null;
+
+    if (!selectedRoute) {
+      return {
+        task_id: taskId,
+        fetched_at: new Date().toISOString(),
+        routes: [],
+        selected_route_id: null,
+        selected_route: null,
+        selected_route_graph: null,
+        selected_route_state: null,
+        route_snapshots: [],
+      };
+    }
+
+    const selectedRouteGraph = await getRouteGraph(selectedRoute.id);
+    const selectedRouteState = summarizeRouteGraph(selectedRouteGraph);
+
+    let selectedRouteLogs = null;
+    if (includeLogs) {
+      selectedRouteLogs = {};
+      const nodes = Array.isArray(selectedRouteGraph.nodes) ? selectedRouteGraph.nodes : [];
+      for (const node of nodes) {
+        const logs = await getNodeLogs(selectedRoute.id, node.id);
+        selectedRouteLogs[node.id] = logs && Array.isArray(logs.items) ? logs.items : [];
+      }
+    }
+
+    let routeSnapshots = [
+      {
+        route: selectedRoute,
+        graph: selectedRouteGraph,
+        state: selectedRouteState,
+      },
+    ];
+    if (selectedRouteLogs) {
+      routeSnapshots[0].node_logs = selectedRouteLogs;
+    }
+
+    if (includeAllRoutes && routes.length > 1) {
+      const additionalRoutes = routes.filter((route) => route.id !== selectedRoute.id);
+      const extraSnapshots = await Promise.all(
+        additionalRoutes.map(async (route) => {
+          const graph = await getRouteGraph(route.id);
+          const state = summarizeRouteGraph(graph);
+          const snapshot = { route, graph, state };
+          if (!includeLogs) return snapshot;
+          const nodeLogs = {};
+          const nodes = Array.isArray(graph.nodes) ? graph.nodes : [];
+          for (const node of nodes) {
+            const logs = await getNodeLogs(route.id, node.id);
+            nodeLogs[node.id] = logs && Array.isArray(logs.items) ? logs.items : [];
+          }
+          snapshot.node_logs = nodeLogs;
+          return snapshot;
+        })
+      );
+      routeSnapshots = routeSnapshots.concat(extraSnapshots);
+    }
+
+    return {
+      task_id: taskId,
+      fetched_at: new Date().toISOString(),
+      routes,
+      selected_route_id: selectedRoute.id,
+      selected_route: selectedRoute,
+      selected_route_graph: selectedRouteGraph,
+      selected_route_state: selectedRouteState,
+      route_snapshots: routeSnapshots,
+    };
+  }
+
   async function proposeChanges(actions, actor, tool) {
     return post("/api/v1/changes/dry-run", {
       actions,
@@ -257,14 +440,13 @@ function createKmsClient(context) {
       );
     }
 
-    const inferredTopicId = inferTopicId([args.title, args.description, args.task_type].filter(Boolean).join(" "));
+    const inferredTopicId = inferTopicId([args.title, args.description].filter(Boolean).join(" "));
     const topicId = args.topic_id || inferredTopicId || (await defaultTopicId());
     const payload = {
       title,
       description: args.description || "",
       status: "todo",
       source,
-      task_type: args.task_type || "build",
       topic_id: topicId,
     };
     if (args.priority) payload.priority = args.priority;
@@ -328,6 +510,9 @@ function createKmsClient(context) {
   return {
     actorId,
     listTasks,
+    listRoutes,
+    getRouteGraph,
+    getTaskExecutionSnapshot,
     searchNotes,
     listTopics,
     listJournals,

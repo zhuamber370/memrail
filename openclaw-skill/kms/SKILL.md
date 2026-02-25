@@ -51,6 +51,9 @@ Use this skill when you need to read or write Memrail data (tasks, journals, kno
 
 - `get_context_bundle`
 - `list_tasks`
+- `list_task_routes`
+- `get_route_graph`
+- `get_task_execution_snapshot` (includes current node + previous step)
 - `search_notes`
 - `list_journals`
 - `get_journal`

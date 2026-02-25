@@ -44,6 +44,7 @@ const NODE_TYPES: RouteNodeType[] = ["decision", "milestone", "task"];
 
 export default function IdeasPage() {
   const { t } = useI18n();
+  const [taskId, setTaskId] = useState("");
 
   const [title, setTitle] = useState("");
   const [problem, setProblem] = useState("");
@@ -70,9 +71,20 @@ export default function IdeasPage() {
   );
 
   useEffect(() => {
+    const queryTaskId = new URLSearchParams(window.location.search).get("task_id") ?? "";
+    setTaskId(queryTaskId.trim());
+  }, []);
+
+  useEffect(() => {
+    if (!taskId) {
+      setIdeas([]);
+      setRoutes([]);
+      setSelectedIdeaId(null);
+      return;
+    }
     void onRefresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterStatus]);
+  }, [filterStatus, taskId]);
 
   useEffect(() => {
     if (!selectedIdea) return;
@@ -84,16 +96,17 @@ export default function IdeasPage() {
   }
 
   async function onRefresh() {
+    if (!taskId) return;
     setLoading(true);
     setError("");
     setNotice("");
     try {
-      const ideaParams = new URLSearchParams({ page: "1", page_size: "100" });
+      const ideaParams = new URLSearchParams({ page: "1", page_size: "100", task_id: taskId });
       if (filterStatus !== "all") ideaParams.set("status", filterStatus);
 
       const [ideaRes, routeRes] = await Promise.all([
         apiGet<IdeaListOut>(`/api/v1/ideas?${ideaParams.toString()}`),
-        apiGet<RouteListOut>("/api/v1/routes?page=1&page_size=200")
+        apiGet<RouteListOut>(`/api/v1/routes?page=1&page_size=100&task_id=${encodeURIComponent(taskId)}`)
       ]);
       setIdeas(ideaRes.items);
       setRoutes(routeRes.items);
@@ -113,12 +126,13 @@ export default function IdeasPage() {
   }
 
   async function onCreateIdea() {
-    if (!title.trim() || !source.trim()) return;
+    if (!taskId || !title.trim() || !source.trim()) return;
     setLoading(true);
     setError("");
     setNotice("");
     try {
       await apiPost<Idea>("/api/v1/ideas", {
+        task_id: taskId,
         title: title.trim(),
         problem: problem.trim(),
         hypothesis: hypothesis.trim(),
@@ -179,10 +193,17 @@ export default function IdeasPage() {
     <div className="card ideasBoard">
       <h1 className="h1">{t("ideas.title")}</h1>
       <p className="meta">{t("ideas.subtitle")}</p>
+      {!taskId ? <p className="meta">{t("ideas.contextRequired")}</p> : null}
+      {taskId ? (
+        <p className="meta">
+          {t("ideas.contextTask")}: {taskId}
+        </p>
+      ) : null}
 
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       {notice ? <p style={{ color: "var(--success)" }}>{notice}</p> : null}
 
+      {taskId ? (
       <section className="ideasCreate">
         <input
           className="taskInput"
@@ -226,7 +247,9 @@ export default function IdeasPage() {
           placeholder={t("ideas.placeholderHypothesis")}
         />
       </section>
+      ) : null}
 
+      {taskId ? (
       <div className="ideasLayout">
         <section className="ideasListPanel">
           <div className="taskField">
@@ -357,6 +380,7 @@ export default function IdeasPage() {
           )}
         </section>
       </div>
+      ) : null}
     </div>
   );
 }

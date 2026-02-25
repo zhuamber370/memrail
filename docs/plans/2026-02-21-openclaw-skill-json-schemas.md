@@ -1,3 +1,6 @@
+> Documentation Status: Historical Snapshot
+> Last synced: 2026-02-25
+
 # OpenClaw Skill JSON Schemas (v0.4, Synced 2026-02-24)
 
 Schema dialect: `https://json-schema.org/draft/2020-12/schema`

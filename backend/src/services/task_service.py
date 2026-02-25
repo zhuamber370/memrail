@@ -4,7 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import Optional
 import uuid
 
-from sqlalchemy import and_, case, func, select
+from sqlalchemy import and_, case, false, func, select
 from sqlalchemy.orm import Session
 
 from src.models import Cycle, Task, TaskSource, Topic
@@ -28,15 +28,12 @@ class TaskService:
 
     def create(self, payload: TaskCreate) -> Task:
         self._validate_topic(payload.topic_id)
-        self._validate_blocker(payload.blocked_by_task_id)
         self._validate_cancel_reason_for_cancelled_status(payload.status, payload.cancelled_reason)
         task = Task(
             id=f"tsk_{uuid.uuid4().hex[:12]}",
             title=payload.title,
             description=payload.description,
             acceptance_criteria=payload.acceptance_criteria,
-            next_action=payload.next_action,
-            task_type=payload.task_type,
             topic_id=payload.topic_id,
             status=payload.status,
             cancelled_reason=payload.cancelled_reason.strip() if payload.cancelled_reason else None,
@@ -44,8 +41,6 @@ class TaskService:
             due=payload.due,
             source=payload.source,
             cycle_id=payload.cycle_id,
-            next_review_at=payload.next_review_at,
-            blocked_by_task_id=payload.blocked_by_task_id,
         )
         self.db.add(task)
         self.db.commit()
@@ -73,7 +68,6 @@ class TaskService:
         archived: Optional[bool] = None,
         topic_id: Optional[str] = None,
         cycle_id: Optional[str] = None,
-        blocked: Optional[bool] = None,
         stale_days: Optional[int] = None,
         due_before: Optional[date] = None,
         updated_before: Optional[datetime] = None,
@@ -99,12 +93,6 @@ class TaskService:
         if cycle_id:
             stmt = stmt.where(Task.cycle_id == cycle_id)
             count_stmt = count_stmt.where(Task.cycle_id == cycle_id)
-        if blocked is True:
-            stmt = stmt.where(Task.blocked_by_task_id.is_not(None))
-            count_stmt = count_stmt.where(Task.blocked_by_task_id.is_not(None))
-        if blocked is False:
-            stmt = stmt.where(Task.blocked_by_task_id.is_(None))
-            count_stmt = count_stmt.where(Task.blocked_by_task_id.is_(None))
         if stale_days:
             stale_before = now - timedelta(days=stale_days)
             stmt = stmt.where(Task.updated_at <= stale_before)
@@ -138,8 +126,6 @@ class TaskService:
         if "cancelled_reason" in patch_data and patch_data["cancelled_reason"] is not None:
             trimmed = patch_data["cancelled_reason"].strip()
             patch_data["cancelled_reason"] = trimmed if trimmed else None
-        if "blocked_by_task_id" in patch_data:
-            self._validate_blocker(patch_data["blocked_by_task_id"], current_task_id=task.id)
         if "topic_id" in patch_data and patch_data["topic_id"] is not None:
             self._validate_topic(patch_data["topic_id"])
         if "status" in patch_data:
@@ -269,15 +255,6 @@ class TaskService:
             summary[view] = int(self.db.scalar(count_stmt) or 0)
         return summary
 
-    def _validate_blocker(self, blocked_by_task_id: Optional[str], current_task_id: Optional[str] = None) -> None:
-        if blocked_by_task_id is None:
-            return
-        if current_task_id and blocked_by_task_id == current_task_id:
-            raise ValueError("TASK_BLOCKED_BY_SELF")
-        blocker = self.db.get(Task, blocked_by_task_id)
-        if blocker is None:
-            raise ValueError("TASK_BLOCKED_BY_NOT_FOUND")
-
     def _validate_topic(self, topic_id: str) -> None:
         if self.db.get(Topic, topic_id) is None:
             raise ValueError("TOPIC_NOT_FOUND")
@@ -342,7 +319,7 @@ class TaskService:
         if view == "backlog":
             return and_(Task.status == "todo", Task.due.is_(None))
         if view == "blocked":
-            return and_(Task.blocked_by_task_id.is_not(None), active)
+            return false()
         if view == "done":
             return Task.status == "done"
         return None

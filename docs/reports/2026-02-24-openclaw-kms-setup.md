@@ -1,3 +1,6 @@
+> Documentation Status: Historical Snapshot
+> Last synced: 2026-02-25
+
 # OpenClaw x Memrail Setup Guide (v3, workspace skill flow)
 
 ## Goal

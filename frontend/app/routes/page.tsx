@@ -41,6 +41,7 @@ const ROUTE_PRIORITIES: RoutePriority[] = ["", "P0", "P1", "P2", "P3"];
 
 export default function RoutesPage() {
   const { t } = useI18n();
+  const [taskId, setTaskId] = useState("");
 
   const [name, setName] = useState("");
   const [goal, setGoal] = useState("");
@@ -70,9 +71,21 @@ export default function RoutesPage() {
   );
 
   useEffect(() => {
+    const queryTaskId = new URLSearchParams(window.location.search).get("task_id") ?? "";
+    setTaskId(queryTaskId.trim());
+  }, []);
+
+  useEffect(() => {
+    if (!taskId) {
+      setRoutes([]);
+      setSelectedRouteId(null);
+      setNodes([]);
+      setEdges([]);
+      return;
+    }
     void onRefreshRoutes();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filterStatus]);
+  }, [filterStatus, taskId]);
 
   useEffect(() => {
     if (!selectedRoute) {
@@ -90,11 +103,12 @@ export default function RoutesPage() {
   }
 
   async function onRefreshRoutes() {
+    if (!taskId) return;
     setLoading(true);
     setError("");
     setNotice("");
     try {
-      const params = new URLSearchParams({ page: "1", page_size: "100" });
+      const params = new URLSearchParams({ page: "1", page_size: "100", task_id: taskId });
       if (filterStatus !== "all") params.set("status", filterStatus);
       const listed = await apiGet<RouteListOut>(`/api/v1/routes?${params.toString()}`);
       setRoutes(listed.items);
@@ -120,12 +134,13 @@ export default function RoutesPage() {
   }
 
   async function onCreateRoute() {
-    if (!name.trim()) return;
+    if (!taskId || !name.trim()) return;
     setLoading(true);
     setError("");
     setNotice("");
     try {
       await apiPost<Route>("/api/v1/routes", {
+        task_id: taskId,
         name: name.trim(),
         goal: goal.trim(),
         status,
@@ -189,10 +204,17 @@ export default function RoutesPage() {
     <div className="card routesBoard">
       <h1 className="h1">{t("routes.title")}</h1>
       <p className="meta">{t("routes.subtitle")}</p>
+      {!taskId ? <p className="meta">{t("routes.contextRequired")}</p> : null}
+      {taskId ? (
+        <p className="meta">
+          {t("routes.contextTask")}: {taskId}
+        </p>
+      ) : null}
 
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
       {notice ? <p style={{ color: "var(--success)" }}>{notice}</p> : null}
 
+      {taskId ? (
       <section className="routesCreate">
         <input
           className="taskInput"
@@ -237,7 +259,9 @@ export default function RoutesPage() {
           {t("routes.refresh")}
         </button>
       </section>
+      ) : null}
 
+      {taskId ? (
       <div className="routesLayout">
         <section className="routesListPanel">
           <div className="taskField">
@@ -362,6 +386,7 @@ export default function RoutesPage() {
           )}
         </section>
       </div>
+      ) : null}
     </div>
   );
 }

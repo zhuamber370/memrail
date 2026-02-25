@@ -25,7 +25,7 @@ from src.services.audit_service import log_audit_event
 from src.services.task_service import TaskService
 
 TASK_DATE_FIELDS = {"due"}
-TASK_DATETIME_FIELDS = {"next_review_at", "archived_at"}
+TASK_DATETIME_FIELDS = {"archived_at"}
 
 
 class ChangeService:
@@ -380,7 +380,7 @@ class ChangeService:
     def _build_diff_line(self, action_type: str, payload: dict) -> str:
         if action_type == "create_task":
             parts = []
-            for key in ["title", "status", "priority", "cycle_id", "next_review_at", "blocked_by_task_id"]:
+            for key in ["title", "status", "priority", "cycle_id", "due"]:
                 if key in payload and payload.get(key) is not None:
                     parts.append(f"{key}={payload.get(key)}")
             if not parts:
@@ -450,15 +450,12 @@ class ChangeService:
         validator = TaskService(self.db)
         validator._validate_topic(model.topic_id)
         validator._validate_cancel_reason_for_cancelled_status(model.status, model.cancelled_reason)
-        validator._validate_blocker(model.blocked_by_task_id)
 
         task = Task(
             id=f"tsk_{uuid.uuid4().hex[:12]}",
             title=model.title,
             description=model.description,
             acceptance_criteria=model.acceptance_criteria,
-            next_action=model.next_action,
-            task_type=model.task_type,
             topic_id=model.topic_id,
             status=model.status,
             cancelled_reason=model.cancelled_reason,
@@ -466,8 +463,6 @@ class ChangeService:
             due=model.due,
             source=model.source,
             cycle_id=model.cycle_id,
-            next_review_at=model.next_review_at,
-            blocked_by_task_id=model.blocked_by_task_id,
         )
         self.db.add(task)
         self.db.flush()
@@ -509,8 +504,6 @@ class ChangeService:
         if "status" in patch_data:
             validator._validate_status_transition(task.status, patch_data["status"])
         validator._validate_cancel_reason_patch(task=task, patch_data=patch_data)
-        if "blocked_by_task_id" in patch_data:
-            validator._validate_blocker(patch_data["blocked_by_task_id"], current_task_id=task.id)
 
         before = {key: self._json_safe(getattr(task, key)) for key in patch_data.keys()}
         for key, value in patch_data.items():

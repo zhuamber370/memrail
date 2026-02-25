@@ -1,3 +1,6 @@
+> Documentation Status: Current
+> Last synced: 2026-02-25
+
 # MVP E2E Checklist (Synced 2026-02-25)
 
 ## Environment
@@ -26,11 +29,26 @@
 - Call `POST /api/v1/commits/undo-last`
 - Expect `200`, status `reverted`
 
-6. Frontend changes flow
-- In `/changes`: review proposal -> commit or reject -> undo last
-- Expect stable UI and correct state transitions
+6. Task Command Center (UI)
+- Open `/tasks`
+- Verify:
+  - left filter/search works
+  - middle list grouped by status
+  - right detail loads selected task
+  - execution canvas renders nodes and edges
 
-7. Frontend routes
+7. Canvas node operations
+- On selected task graph:
+  - change node status (`waiting/execute/done`)
+  - rename a node
+  - delete a non-start node
+- Expect graph refresh and no crash
+
+8. Task-scoped helper pages
+- Open `/ideas?task_id=<valid_task_id>` and `/routes?task_id=<valid_task_id>`
+- Expect pages load with task context
+
+9. Frontend routes
 - Visit `/tasks`, `/knowledge`, `/changes`
 - Expect accessible and interactive pages
 - `/audit` should redirect to `/tasks`

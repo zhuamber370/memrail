@@ -11,9 +11,9 @@ from src.services.idea_service import IdeaService
 
 def _raise_from_code(code: str) -> None:
     status_code = 422
-    if code in {"IDEA_NOT_FOUND", "ROUTE_NOT_FOUND"}:
+    if code in {"IDEA_NOT_FOUND", "ROUTE_NOT_FOUND", "TASK_NOT_FOUND"}:
         status_code = 404
-    elif code in {"IDEA_INVALID_STATUS_TRANSITION", "IDEA_NOT_READY"}:
+    elif code in {"IDEA_INVALID_STATUS_TRANSITION", "IDEA_NOT_READY", "IDEA_ROUTE_TASK_MISMATCH"}:
         status_code = 409
     raise HTTPException(status_code=status_code, detail={"code": code, "message": code.lower()})
 
@@ -32,11 +32,12 @@ def build_router(get_db_dep):
     def list_ideas(
         page: int = Query(default=1, ge=1),
         page_size: int = Query(default=20, ge=1, le=100),
+        task_id: Optional[str] = None,
         status: Optional[str] = None,
         q: Optional[str] = None,
         db: Session = Depends(get_db_dep),
     ):
-        items, total = IdeaService(db).list(page=page, page_size=page_size, status=status, q=q)
+        items, total = IdeaService(db).list(page=page, page_size=page_size, task_id=task_id, status=status, q=q)
         return {"items": items, "page": page, "page_size": page_size, "total": total}
 
     @router.patch("/{idea_id}", response_model=IdeaOut)

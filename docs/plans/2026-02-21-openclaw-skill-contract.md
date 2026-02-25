@@ -1,3 +1,6 @@
+> Documentation Status: Historical Snapshot
+> Last synced: 2026-02-25
+
 # OpenClaw Skill Interface Contract (v0.4, Synced 2026-02-24)
 
 ## 1. Goal

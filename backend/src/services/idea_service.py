@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from src.models import Idea, Route, RouteNode, Topic
+from src.models import Idea, Route, RouteNode, Task, Topic
 from src.schemas import IdeaCreate, IdeaPatch, IdeaPromoteIn
 from src.services.audit_service import log_audit_event
 
@@ -25,11 +25,13 @@ class IdeaService:
         self.db = db
 
     def create(self, payload: IdeaCreate) -> Idea:
+        self._validate_task(payload.task_id)
         if payload.topic_id:
             self._validate_topic(payload.topic_id)
 
         idea = Idea(
             id=f"ida_{uuid.uuid4().hex[:12]}",
+            task_id=payload.task_id,
             title=payload.title,
             problem=payload.problem,
             hypothesis=payload.hypothesis,
@@ -52,10 +54,21 @@ class IdeaService:
         )
         return idea
 
-    def list(self, *, page: int, page_size: int, status: Optional[str] = None, q: Optional[str] = None):
+    def list(
+        self,
+        *,
+        page: int,
+        page_size: int,
+        task_id: Optional[str] = None,
+        status: Optional[str] = None,
+        q: Optional[str] = None,
+    ):
         stmt = select(Idea)
         count_stmt = select(func.count()).select_from(Idea)
 
+        if task_id:
+            stmt = stmt.where(Idea.task_id == task_id)
+            count_stmt = count_stmt.where(Idea.task_id == task_id)
         if status:
             stmt = stmt.where(Idea.status == status)
             count_stmt = count_stmt.where(Idea.status == status)
@@ -115,6 +128,8 @@ class IdeaService:
         route = self.db.get(Route, payload.route_id)
         if route is None:
             raise ValueError("ROUTE_NOT_FOUND")
+        if route.task_id and idea.task_id and route.task_id != idea.task_id:
+            raise ValueError("IDEA_ROUTE_TASK_MISMATCH")
 
         max_hint = self.db.scalar(select(func.max(RouteNode.order_hint)).where(RouteNode.route_id == route.id))
         order_hint = int(max_hint or 0) + 1
@@ -128,7 +143,7 @@ class IdeaService:
             node_type=payload.node_type,
             title=(payload.title or idea.title).strip(),
             description=(payload.description if payload.description is not None else default_description),
-            status="todo",
+            status="waiting",
             order_hint=order_hint,
             assignee_type="human",
             assignee_id=None,
@@ -157,3 +172,7 @@ class IdeaService:
     def _validate_topic(self, topic_id: str) -> None:
         if self.db.get(Topic, topic_id) is None:
             raise ValueError("TOPIC_NOT_FOUND")
+
+    def _validate_task(self, task_id: str) -> None:
+        if self.db.get(Task, task_id) is None:
+            raise ValueError("TASK_NOT_FOUND")

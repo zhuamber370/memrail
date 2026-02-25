@@ -1,55 +1,46 @@
 # Memrail
 
-Governed memory and task system for OpenClaw agents.
+Memrail is a governed memory + task system for OpenClaw workflows.
 
-`Memrail` adds a governance layer on top of OpenClaw memory workflows:
-- Agent proposes writes.
-- Human reviews and approves/rejects.
-- System preserves traceability and rollback.
+It focuses on one core principle:
+- **Agent can propose writes, human keeps final control.**
 
-## Why this project
+## Current Version (MVP)
 
-Most agent memory setups struggle with:
-- context loss across long sessions and tool switching,
-- noisy autonomous writes with no clear approval gate,
-- weak rollback and source traceability,
-- no practical human review surface for day-to-day correction.
+### 1. Governed write pipeline
+- `dry-run -> commit/reject -> undo-last`
+- Full audit trace for write operations.
 
-Memrail addresses this with a governed write pipeline and a human-facing review UI.
+### 2. Task Command Center (desktop-first)
+- `Tasks` page is the main execution workspace.
+- Supports search, filters, grouped list, and detail editing in one screen.
+- Includes execution canvas (DAG-like graph) for task goal nodes.
+- Node operations in UI:
+  - status update (`waiting / execute / done`)
+  - rename
+  - delete (non-start node)
 
-## What it provides (current MVP)
+### 3. Knowledge board
+- Topic-based knowledge management.
+- Supports classify/edit/archive with source-aware notes.
 
-1. Governed write pipeline:
-- Dry-run -> Commit or Reject -> Undo last commit
+### 4. Change review inbox
+- Human review surface for proposed writes.
+- Commit/reject proposals and undo last commit.
 
-2. Structured domains:
-- Tasks: action-focused, strongly structured
-- Knowledge: reusable notes with sources and links
+### 5. Task-scoped idea/route pages
+- `/ideas` and `/routes` are task-scoped tools.
+- They require `task_id` context (opened from task workflow), not top-level nav by default.
 
-3. Human review UI:
-- `/tasks`: maintain task state and structure
-- `/knowledge`: review, classify, and maintain knowledge
-- `/changes`: review proposals, commit/reject, undo
-
-4. Agent integration:
-- OpenClaw workspace skill (`openclaw-skill/kms`)
-- REST API as the unified write/read entry
-
-5. Traceability:
-- source-aware writes and audit events in backend APIs
-
-## Product positioning
-
-Memrail is **OpenClaw-first**:
-- It does not replace OpenClaw memory/compaction.
-- It adds governed persistence and human approval for higher-quality long-term memory.
+## Tech Stack
+- Backend: FastAPI + SQLAlchemy
+- Frontend: Next.js 14
+- Default DB: SQLite
+- Optional DB: PostgreSQL
 
 ## Prerequisites
-
 - Python 3.10+
 - Node.js 18+
-- SQLite (bundled with Python) for default local mode
-- Optional enhancement: PostgreSQL 14+
 
 ## Quickstart
 
@@ -60,28 +51,21 @@ git clone https://github.com/zhuamber370/memrail.git
 cd memrail
 ```
 
-### 2) Configure environment
+### 2) Configure env
 
 ```bash
 cp .env.example .env
-```
-
-Edit `.env` only.
-
-Then sync frontend env:
-
-```bash
 cp .env frontend/.env.local
 ```
 
 Notes:
 - Backend reads `backend/.env` and root `.env`.
-- Frontend (Next.js) reads `frontend/.env.local`; the copy command above keeps a single source of truth.
-- Default backend DB mode is SQLite (`AFKMS_DB_BACKEND=sqlite`).
-- API key auth is disabled by default (`AFKMS_REQUIRE_AUTH=false`).
-- To enforce API auth, set `AFKMS_REQUIRE_AUTH=true` and set `KMS_API_KEY`.
+- Frontend reads `frontend/.env.local`.
+- Default local mode:
+  - `AFKMS_DB_BACKEND=sqlite`
+  - `AFKMS_REQUIRE_AUTH=false`
 
-### 3) Run backend (SQLite default)
+### 3) Run backend
 
 ```bash
 cd backend
@@ -100,17 +84,20 @@ npm run dev
 ```
 
 ### 5) Verify
+- Backend: [http://127.0.0.1:8000/health](http://127.0.0.1:8000/health)
+- Frontend: [http://127.0.0.1:3000](http://127.0.0.1:3000)
 
-- Backend health: `http://localhost:8000/health`
-- Frontend: `http://localhost:3000`
+## Optional: PostgreSQL
 
-## Optional: Switch to PostgreSQL
-
-1. In `.env`, set:
+Set in `.env`:
 - `AFKMS_DB_BACKEND=postgres`
-- `AFKMS_DB_HOST`, `AFKMS_DB_PORT`, `AFKMS_DB_NAME`, `AFKMS_DB_USER`, `AFKMS_DB_PASSWORD`
+- `AFKMS_DB_HOST`
+- `AFKMS_DB_PORT`
+- `AFKMS_DB_NAME`
+- `AFKMS_DB_USER`
+- `AFKMS_DB_PASSWORD`
 
-2. Bootstrap role/database:
+Bootstrap:
 
 ```bash
 cd backend
@@ -118,64 +105,38 @@ source .venv/bin/activate
 python3 scripts/bootstrap_postgres.py
 ```
 
-Bootstrap defaults:
-- admin user: `postgres`
-- admin db: `postgres`
-- admin host/port: from `AFKMS_DB_HOST` / `AFKMS_DB_PORT`
+## OpenClaw Skill
 
-If needed, override with:
-- `AFKMS_PG_ADMIN_HOST`
-- `AFKMS_PG_ADMIN_PORT`
-- `AFKMS_PG_ADMIN_DB`
-- `AFKMS_PG_ADMIN_USER`
-- `AFKMS_PG_ADMIN_PASSWORD`
-
-## Core governance flow
-
-1. `POST /api/v1/changes/dry-run`
-2. User decision:
-- approve: `POST /api/v1/changes/{change_set_id}/commit`
-- reject: `DELETE /api/v1/changes/{change_set_id}`
-3. rollback if needed: `POST /api/v1/commits/undo-last`
-
-## OpenClaw skill install
-
-Set runtime env for OpenClaw:
+Install workspace skill:
 
 ```bash
-export KMS_BASE_URL="http://127.0.0.1:8000"
-export KMS_API_KEY="<your_api_key>"
-```
-
-Install skill to workspace:
-
-```bash
-cd <repo_root>
 bash scripts/install_openclaw_kms_skill.sh
 ```
 
-Verify:
+Check:
 
 ```bash
 openclaw skills info kms --json
 openclaw skills check --json
 ```
 
-## Current scope and boundaries
+## Documentation Map
 
-- Local/self-hosted MVP focus
-- No multi-tenant OAuth/billing/SaaS ops yet
-- Audit APIs are available; audit page is hidden from end-user navigation
+- **Authoritative current docs**:
+  - `README.md`
+  - `backend/README.md`
+  - `frontend/README.md`
+  - `docs/reports/mvp-release-notes.md`
+  - `docs/reports/mvp-e2e-checklist.md`
+- **Historical snapshots**:
+  - `docs/plans/*`
+  - dated design/plan reports under `docs/reports/*`
 
-## Discovery keywords
+If historical docs conflict with current runtime behavior, follow the authoritative docs above.
 
-`openclaw memory`, `agent memory`, `persistent agent memory`, `agent context loss`, `governed ai writes`, `dry-run commit undo`, `agent rollback`, `traceable ai actions`, `agent knowledge base`, `openclaw task management`
+## Security
 
-## Feedback
-
-- Bug report: use the `Bug report` issue template
-- Feature request: use the `Feature request` issue template
-- Security issue: follow `SECURITY.md` (do not disclose publicly)
+For security disclosures, follow `SECURITY.md`.
 
 ## License
 
