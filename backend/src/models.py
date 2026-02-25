@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Optional
 
-from sqlalchemy import JSON, Date, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import JSON, Date, DateTime, ForeignKey, Integer, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column
 
 from src.db import Base
@@ -300,6 +300,108 @@ class TopicEntry(Base):
     entry_type: Mapped[str] = mapped_column(String(20), nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     source_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class Idea(Base):
+    __tablename__ = "ideas"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    problem: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    hypothesis: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="captured")
+    topic_id: Mapped[Optional[str]] = mapped_column(
+        String(40), ForeignKey("topics.id", ondelete="SET NULL"), nullable=True
+    )
+    source: Mapped[str] = mapped_column(String(300), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class Route(Base):
+    __tablename__ = "routes"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(String(160), nullable=False)
+    goal: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="candidate")
+    priority: Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
+    owner: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class RouteNode(Base):
+    __tablename__ = "route_nodes"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    route_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("routes.id", ondelete="CASCADE"), nullable=False
+    )
+    node_type: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="todo")
+    order_hint: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    assignee_type: Mapped[str] = mapped_column(String(20), nullable=False, default="human")
+    assignee_id: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class RouteEdge(Base):
+    __tablename__ = "route_edges"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    route_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("routes.id", ondelete="CASCADE"), nullable=False
+    )
+    from_node_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("route_nodes.id", ondelete="CASCADE"), nullable=False
+    )
+    to_node_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("route_nodes.id", ondelete="CASCADE"), nullable=False
+    )
+    relation: Mapped[str] = mapped_column(String(20), nullable=False, default="depends_on")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class NodeLog(Base):
+    __tablename__ = "node_logs"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    node_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("route_nodes.id", ondelete="CASCADE"), nullable=False
+    )
+    actor_type: Mapped[str] = mapped_column(String(20), nullable=False, default="human")
+    actor_id: Mapped[str] = mapped_column(String(80), nullable=False, default="local")
+    content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

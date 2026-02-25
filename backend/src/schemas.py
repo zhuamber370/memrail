@@ -403,3 +403,177 @@ class ContextBundleOut(BaseModel):
     tasks: list[dict[str, Any]]
     notes: list[dict[str, Any]]
     journals: list[dict[str, Any]]
+
+
+IdeaStatus = Literal["captured", "triage", "discovery", "ready", "rejected"]
+RouteStatus = Literal["candidate", "active", "parked", "completed", "cancelled"]
+RouteNodeType = Literal["decision", "milestone", "task"]
+RouteNodeStatus = Literal["todo", "in_progress", "done", "cancelled"]
+RouteAssigneeType = Literal["human", "agent"]
+RouteEdgeRelation = Literal["depends_on", "blocks"]
+
+
+class IdeaCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(min_length=1, max_length=200)
+    problem: str = ""
+    hypothesis: str = ""
+    status: IdeaStatus = "captured"
+    topic_id: Optional[str] = Field(default=None, min_length=1)
+    source: str = Field(min_length=1)
+
+
+class IdeaPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    problem: Optional[str] = None
+    hypothesis: Optional[str] = None
+    status: Optional[IdeaStatus] = None
+    topic_id: Optional[str] = Field(default=None, min_length=1)
+    source: Optional[str] = Field(default=None, min_length=1)
+
+
+class IdeaOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    title: str
+    problem: str
+    hypothesis: str
+    status: IdeaStatus
+    topic_id: Optional[str]
+    source: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class IdeaListOut(BaseModel):
+    items: list[IdeaOut]
+    page: int
+    page_size: int
+    total: int
+
+
+class RouteCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str = Field(min_length=1, max_length=160)
+    goal: str = ""
+    status: RouteStatus = "candidate"
+    priority: Optional[TaskPriority] = None
+    owner: Optional[str] = None
+
+
+class RoutePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: Optional[str] = Field(default=None, min_length=1, max_length=160)
+    goal: Optional[str] = None
+    status: Optional[RouteStatus] = None
+    priority: Optional[TaskPriority] = None
+    owner: Optional[str] = None
+
+
+class RouteOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    name: str
+    goal: str
+    status: RouteStatus
+    priority: Optional[TaskPriority]
+    owner: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class RouteListOut(BaseModel):
+    items: list[RouteOut]
+    page: int
+    page_size: int
+    total: int
+
+
+class RouteNodeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    node_type: RouteNodeType
+    title: str = Field(min_length=1, max_length=200)
+    description: str = ""
+    status: RouteNodeStatus = "todo"
+    order_hint: int = 0
+    assignee_type: RouteAssigneeType = "human"
+    assignee_id: Optional[str] = None
+
+
+class RouteNodePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    node_type: Optional[RouteNodeType] = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = None
+    status: Optional[RouteNodeStatus] = None
+    order_hint: Optional[int] = None
+    assignee_type: Optional[RouteAssigneeType] = None
+    assignee_id: Optional[str] = None
+
+
+class RouteNodeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    route_id: str
+    node_type: RouteNodeType
+    title: str
+    description: str
+    status: RouteNodeStatus
+    order_hint: int
+    assignee_type: RouteAssigneeType
+    assignee_id: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class RouteEdgeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    from_node_id: str = Field(min_length=1)
+    to_node_id: str = Field(min_length=1)
+    relation: RouteEdgeRelation = "depends_on"
+
+
+class RouteEdgeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    route_id: str
+    from_node_id: str
+    to_node_id: str
+    relation: RouteEdgeRelation
+    created_at: datetime
+
+
+class RouteGraphOut(BaseModel):
+    route_id: str
+    nodes: list[RouteNodeOut]
+    edges: list[RouteEdgeOut]
+
+
+class NodeLogCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content: str = Field(min_length=1)
+    actor_type: RouteAssigneeType = "human"
+    actor_id: str = Field(default="local", min_length=1)
+
+
+class NodeLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    node_id: str
+    actor_type: RouteAssigneeType
+    actor_id: str
+    content: str
+    created_at: datetime
+
+
+class NodeLogListOut(BaseModel):
+    items: list[NodeLogOut]
+
+
+class IdeaPromoteIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    route_id: str = Field(min_length=1)
+    node_type: RouteNodeType = "task"
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    description: Optional[str] = None

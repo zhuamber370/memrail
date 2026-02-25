@@ -790,6 +790,226 @@ a {
   gap: 8px;
 }
 
+.ideasBoard {
+  display: grid;
+  gap: 12px;
+  background:
+    radial-gradient(760px 220px at 4% -16%, #e3f8eb 0%, transparent 64%),
+    radial-gradient(880px 220px at 98% -20%, #e8ebff 0%, transparent 68%),
+    var(--panel);
+}
+
+.ideasCreate {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(190px, 1fr) minmax(120px, 160px) minmax(160px, 220px) auto auto;
+  gap: 8px;
+}
+
+.ideasCreateWide {
+  grid-column: 1 / -1;
+}
+
+.ideasLayout {
+  display: grid;
+  grid-template-columns: 0.75fr 1.25fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.ideasListPanel,
+.ideasDetail,
+.routesListPanel,
+.routesDetail {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+}
+
+.ideasList,
+.routesList {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+  max-height: 62vh;
+  overflow: auto;
+}
+
+.ideasRow,
+.routesRow {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf7;
+  color: inherit;
+  text-align: left;
+  padding: 9px;
+  cursor: pointer;
+}
+
+.ideasRowActive,
+.routesRowActive {
+  border-color: var(--focus);
+  box-shadow: inset 0 0 0 2px #2457d645;
+}
+
+.ideasRowTitle,
+.routesRowTitle {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.ideasDetail {
+  position: sticky;
+  top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.ideasDetailTitle {
+  margin: 0;
+  font-size: 1.04rem;
+}
+
+.ideasField {
+  display: grid;
+  gap: 4px;
+  font-size: 0.84rem;
+  color: var(--ink-soft);
+}
+
+.ideasTextBlock {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 8px;
+  min-height: 40px;
+  white-space: pre-wrap;
+}
+
+.ideasActionRow {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ideasPromote {
+  border-top: 2px dashed var(--line);
+  padding-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.ideasPromoteGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.routesBoard {
+  display: grid;
+  gap: 12px;
+  background:
+    radial-gradient(860px 220px at 5% -18%, #f0efe2 0%, transparent 66%),
+    radial-gradient(900px 220px at 100% -20%, #dcefff 0%, transparent 70%),
+    var(--panel);
+}
+
+.routesCreate {
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(120px, 150px) minmax(90px, 120px) minmax(160px, 220px) auto auto;
+  gap: 8px;
+}
+
+.routesLayout {
+  display: grid;
+  grid-template-columns: 0.7fr 1.3fr;
+  gap: 10px;
+  align-items: start;
+}
+
+.routesDetail {
+  position: sticky;
+  top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.routesMetaGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.routesNodeCreate {
+  border-top: 2px dashed var(--line);
+  padding-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.routesNodeCreateGrid {
+  display: grid;
+  grid-template-columns: minmax(100px, 140px) minmax(180px, 1fr) minmax(180px, 1fr) auto;
+  gap: 8px;
+}
+
+.routesGraphBlock {
+  border-top: 2px dashed var(--line);
+  padding-top: 8px;
+}
+
+.routeGraphList {
+  display: grid;
+  gap: 8px;
+}
+
+.routeGraphNode {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 10px;
+  display: grid;
+  gap: 8px;
+}
+
+.routeGraphNodeHead {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.routeGraphTitle {
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.routeGraphSection {
+  display: grid;
+  gap: 6px;
+}
+
+.routeGraphLabel {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #35507c;
+}
+
+.routeGraphChips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 @media (max-width: 900px) {
   .shell {
     grid-template-columns: 1fr;
@@ -859,5 +1079,30 @@ a {
 
   .changesInboxList {
     max-height: 320px;
+  }
+
+  .ideasCreate,
+  .routesCreate {
+    grid-template-columns: 1fr;
+  }
+
+  .ideasCreateWide {
+    grid-column: auto;
+  }
+
+  .ideasLayout,
+  .routesLayout {
+    grid-template-columns: 1fr;
+  }
+
+  .ideasDetail,
+  .routesDetail {
+    position: static;
+  }
+
+  .ideasPromoteGrid,
+  .routesMetaGrid,
+  .routesNodeCreateGrid {
+    grid-template-columns: 1fr;
   }
 }
