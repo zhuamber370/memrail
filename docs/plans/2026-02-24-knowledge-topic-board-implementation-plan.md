@@ -226,8 +226,15 @@ Expected: printed counters for mapped/unclassified/archived_noise
 Run:
 ```bash
 python3 - <<'PY'
+import os
 import psycopg
-conn=psycopg.connect(host='192.168.50.245',port=5432,user='afkms',password='afkms',dbname='afkms')
+conn=psycopg.connect(
+    host=os.getenv("AFKMS_DB_HOST", "127.0.0.1"),
+    port=int(os.getenv("AFKMS_DB_PORT", "5432")),
+    user=os.getenv("AFKMS_DB_USER", "afkms"),
+    password=os.getenv("AFKMS_DB_PASSWORD", ""),
+    dbname=os.getenv("AFKMS_DB_NAME", "afkms"),
+)
 cur=conn.cursor()
 cur.execute("select status,count(*) from notes group by status order by status")
 print(cur.fetchall())

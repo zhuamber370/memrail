@@ -5,7 +5,7 @@ import psycopg
 
 def connect():
     return psycopg.connect(
-        host=os.getenv("AFKMS_DB_HOST", "192.168.50.245"),
+        host=os.getenv("AFKMS_DB_HOST", "127.0.0.1"),
         port=int(os.getenv("AFKMS_DB_PORT", "5432")),
         dbname=os.getenv("AFKMS_DB_NAME", "afkms"),
         user=os.getenv("AFKMS_DB_USER", "afkms"),

@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import os
 from pathlib import Path
 
@@ -26,11 +26,11 @@ _load_env_file(_project_root / ".env")
 
 @dataclass
 class Settings:
-    db_host: str = os.getenv("AFKMS_DB_HOST", "192.168.50.245")
-    db_port: str = os.getenv("AFKMS_DB_PORT", "5432")
-    db_name: str = os.getenv("AFKMS_DB_NAME", "afkms")
-    db_user: str = os.getenv("AFKMS_DB_USER", "afkms")
-    db_password: str = os.getenv("AFKMS_DB_PASSWORD", "afkms")
+    db_host: str = field(default_factory=lambda: os.getenv("AFKMS_DB_HOST", "127.0.0.1"))
+    db_port: str = field(default_factory=lambda: os.getenv("AFKMS_DB_PORT", "5432"))
+    db_name: str = field(default_factory=lambda: os.getenv("AFKMS_DB_NAME", "afkms"))
+    db_user: str = field(default_factory=lambda: os.getenv("AFKMS_DB_USER", "afkms"))
+    db_password: str = field(default_factory=lambda: os.getenv("AFKMS_DB_PASSWORD", "afkms"))
 
     @property
     def database_url(self) -> str:

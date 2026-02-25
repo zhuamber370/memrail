@@ -13,10 +13,10 @@
 ### Task 1: Add Native OpenClaw Skill Bundle
 
 **Files:**
-- Create: `/Users/celastin/Desktop/projects/kms-for-agent/openclaw-skill/kms/SKILL.md`
-- Create: `/Users/celastin/Desktop/projects/kms-for-agent/openclaw-skill/kms/index.js`
-- Create: `/Users/celastin/Desktop/projects/kms-for-agent/openclaw-skill/kms/lib/client.js`
-- Create: `/Users/celastin/Desktop/projects/kms-for-agent/openclaw-skill/kms/package.json`
+- Create: `<repo_root>/openclaw-skill/kms/SKILL.md`
+- Create: `<repo_root>/openclaw-skill/kms/index.js`
+- Create: `<repo_root>/openclaw-skill/kms/lib/client.js`
+- Create: `<repo_root>/openclaw-skill/kms/package.json`
 
 **Step 1: Write failing check (skill is not discoverable yet)**
 
@@ -34,22 +34,22 @@ Use `KMS_BASE_URL` + `KMS_API_KEY`, with optional `KMS_ACTOR_ID`.
 
 **Step 3: Verify bundle syntax**
 
-Run: `node --check /Users/celastin/Desktop/projects/kms-for-agent/openclaw-skill/kms/index.js`
+Run: `node --check <repo_root>/openclaw-skill/kms/index.js`
 Expected: no syntax errors.
 
 **Step 4: Commit checkpoint**
 
 Run:
 ```bash
-git add /Users/celastin/Desktop/projects/kms-for-agent/openclaw-skill/kms
+git add <repo_root>/openclaw-skill/kms
 git commit -m "feat(skill): add native openclaw kms skill bundle"
 ```
 
 ### Task 2: Add Workspace Install/Uninstall Scripts
 
 **Files:**
-- Create: `/Users/celastin/Desktop/projects/kms-for-agent/scripts/install_openclaw_kms_skill.sh`
-- Create: `/Users/celastin/Desktop/projects/kms-for-agent/scripts/uninstall_openclaw_kms_skill.sh`
+- Create: `<repo_root>/scripts/install_openclaw_kms_skill.sh`
+- Create: `<repo_root>/scripts/uninstall_openclaw_kms_skill.sh`
 
 **Step 1: Write failing check**
 
@@ -71,9 +71,9 @@ Expected: usually `missing` before install.
 
 Run:
 ```bash
-bash /Users/celastin/Desktop/projects/kms-for-agent/scripts/install_openclaw_kms_skill.sh
+bash <repo_root>/scripts/install_openclaw_kms_skill.sh
 openclaw skills info kms --json
-bash /Users/celastin/Desktop/projects/kms-for-agent/scripts/uninstall_openclaw_kms_skill.sh
+bash <repo_root>/scripts/uninstall_openclaw_kms_skill.sh
 ```
 Expected: install discoverable; uninstall removed.
 
@@ -81,16 +81,16 @@ Expected: install discoverable; uninstall removed.
 
 Run:
 ```bash
-git add /Users/celastin/Desktop/projects/kms-for-agent/scripts/install_openclaw_kms_skill.sh /Users/celastin/Desktop/projects/kms-for-agent/scripts/uninstall_openclaw_kms_skill.sh
+git add <repo_root>/scripts/install_openclaw_kms_skill.sh <repo_root>/scripts/uninstall_openclaw_kms_skill.sh
 git commit -m "feat(skill): add workspace install and uninstall scripts for kms skill"
 ```
 
 ### Task 3: Update Documentation to Generic Flow
 
 **Files:**
-- Modify: `/Users/celastin/Desktop/projects/kms-for-agent/docs/reports/2026-02-24-openclaw-kms-setup.md`
-- Modify: `/Users/celastin/Desktop/projects/kms-for-agent/skill/README.md`
-- Modify: `/Users/celastin/Desktop/projects/kms-for-agent/README.md`
+- Modify: `<repo_root>/docs/reports/2026-02-24-openclaw-kms-setup.md`
+- Modify: `<repo_root>/skill/README.md`
+- Modify: `<repo_root>/README.md`
 
 **Step 1: Replace manual process with generic process**
 
@@ -108,7 +108,7 @@ Remove:
 
 Run:
 ```bash
-rg -n "系统提示词|openclaw_system_prompt|actions/.*\\.py|手动" /Users/celastin/Desktop/projects/kms-for-agent/docs/reports/2026-02-24-openclaw-kms-setup.md /Users/celastin/Desktop/projects/kms-for-agent/skill/README.md /Users/celastin/Desktop/projects/kms-for-agent/README.md -S
+rg -n "系统提示词|openclaw_system_prompt|actions/.*\\.py|手动" <repo_root>/docs/reports/2026-02-24-openclaw-kms-setup.md <repo_root>/skill/README.md <repo_root>/README.md -S
 ```
 Expected: no outdated instructions for mandatory manual prompt/action wiring.
 
@@ -116,7 +116,7 @@ Expected: no outdated instructions for mandatory manual prompt/action wiring.
 
 Run:
 ```bash
-git add /Users/celastin/Desktop/projects/kms-for-agent/docs/reports/2026-02-24-openclaw-kms-setup.md /Users/celastin/Desktop/projects/kms-for-agent/skill/README.md /Users/celastin/Desktop/projects/kms-for-agent/README.md
+git add <repo_root>/docs/reports/2026-02-24-openclaw-kms-setup.md <repo_root>/skill/README.md <repo_root>/README.md
 git commit -m "docs: switch openclaw kms setup to generic workspace skill flow"
 ```
 
@@ -129,12 +129,12 @@ git commit -m "docs: switch openclaw kms setup to generic workspace skill flow"
 
 Run:
 ```bash
-node --check /Users/celastin/Desktop/projects/kms-for-agent/openclaw-skill/kms/index.js
-node --check /Users/celastin/Desktop/projects/kms-for-agent/openclaw-skill/kms/lib/client.js
-bash /Users/celastin/Desktop/projects/kms-for-agent/scripts/install_openclaw_kms_skill.sh
+node --check <repo_root>/openclaw-skill/kms/index.js
+node --check <repo_root>/openclaw-skill/kms/lib/client.js
+bash <repo_root>/scripts/install_openclaw_kms_skill.sh
 openclaw skills info kms --json
 openclaw skills check --json
-bash /Users/celastin/Desktop/projects/kms-for-agent/scripts/uninstall_openclaw_kms_skill.sh
+bash <repo_root>/scripts/uninstall_openclaw_kms_skill.sh
 ```
 Expected: syntax clean, skill discoverable after install, removed after uninstall.
 

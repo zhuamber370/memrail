@@ -53,7 +53,7 @@ export KMS_API_KEY="<your_api_key>"
 Install skill to OpenClaw workspace directory `<workspace>/skills/kms`:
 
 ```bash
-cd /Users/celastin/Desktop/projects/kms-for-agent
+cd <repo_root>
 bash scripts/install_openclaw_kms_skill.sh
 ```
 
@@ -81,3 +81,9 @@ Frontend `/changes` page supports:
 - commit selected proposal
 - reject selected proposal
 - undo last commit
+
+## 8) Feedback
+
+- Bug report: open a GitHub issue with the `Bug report` template.
+- Feature request: open a GitHub issue with the `Feature request` template.
+- Security issue: follow `SECURITY.md` and avoid public disclosure.

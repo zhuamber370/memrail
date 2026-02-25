@@ -2,7 +2,7 @@
 
 ## 环境
 - API Base: `http://localhost:8000`
-- DB: `postgresql://afkms:***@192.168.50.245:5432/afkms`
+- DB: `postgresql://afkms:***@127.0.0.1:5432/afkms`
 
 ## 流程验证
 1. Propose Changes

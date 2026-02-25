@@ -15,6 +15,7 @@ __pycache__/
 # Node
 node_modules/
 .next/
+.next.bak.*/
 npm-debug.log*
 
 # Local db/artifacts

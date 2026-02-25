@@ -12,7 +12,7 @@
 
 1. 启动 KMS 后端
 ```bash
-cd /Users/celastin/Desktop/projects/kms-for-agent/backend
+cd <repo_root>/backend
 python3 -m uvicorn src.app:app --reload --port 8000
 ```
 
@@ -27,7 +27,7 @@ export KMS_API_KEY="<your_api_key>"
 在项目根目录执行：
 
 ```bash
-cd /Users/celastin/Desktop/projects/kms-for-agent
+cd <repo_root>
 bash scripts/install_openclaw_kms_skill.sh
 ```
 
@@ -87,7 +87,7 @@ openclaw skills check --json
 ## 5. 卸载 Skill
 
 ```bash
-cd /Users/celastin/Desktop/projects/kms-for-agent
+cd <repo_root>
 bash scripts/uninstall_openclaw_kms_skill.sh
 ```
 
