@@ -17,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <aside className="rail">
-        <div className="brand">AFKMS / AGENT-FIRST</div>
+        <div className="brand">MEMRAIL / AGENT-FIRST</div>
         <div className="badges" style={{ marginTop: 6, marginBottom: 10 }}>
           <button
             className="badge"

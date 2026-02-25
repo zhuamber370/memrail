@@ -1,8 +1,7 @@
 {
-  "name": "openclaw-kms-skill",
+  "name": "openclaw-memrail-skill",
   "version": "1.0.0",
-  "description": "OpenClaw native skill for KMS task/journal/knowledge governance",
+  "description": "OpenClaw native skill for Memrail task/journal/knowledge governance",
   "main": "index.js",
-  "license": "MIT"
+  "license": "Apache-2.0"
 }
-

@@ -1,4 +1,4 @@
-# Agent-First KMS Implementation Input Pack (v0.7, Synced 2026-02-25)
+# Memrail Implementation Input Pack (v0.7, Synced 2026-02-25)
 
 ## 1. Build target
 

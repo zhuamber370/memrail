@@ -1,4 +1,4 @@
-# Agent-First KMS MVP Lightweight Implementation Plan
+# Memrail MVP Lightweight Implementation Plan
 
 > Based on: `docs/plans/2026-02-21-agent-first-kms-final-system-design.md`
 > Goal: implement a minimal but complete governed MVP.

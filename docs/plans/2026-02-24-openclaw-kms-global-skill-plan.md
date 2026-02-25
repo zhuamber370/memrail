@@ -1,12 +1,12 @@
-# OpenClaw KMS Workspace Skill Implementation Plan
+# Memrail Workspace Skill Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Deliver a generic OpenClaw integration for KMS that installs as a workspace skill and does not require manual system-prompt paste or manual Python action wiring.
+**Goal:** Deliver a generic OpenClaw integration for Memrail that installs as a workspace skill and does not require manual system-prompt paste or manual Python action wiring.
 
-**Architecture:** Package KMS integration as a native OpenClaw skill bundle (`SKILL.md` + `index.js` + REST client), install it into `<workspace>/skills/kms` via scripts, and keep auth via environment variables only. Existing backend APIs remain unchanged.
+**Architecture:** Package Memrail integration as a native OpenClaw skill bundle (`SKILL.md` + `index.js` + REST client), install it into `<workspace>/skills/kms` via scripts, and keep auth via environment variables only. Existing backend APIs remain unchanged.
 
-**Tech Stack:** JavaScript (Node runtime in OpenClaw), shell scripts (`bash`), existing KMS REST API.
+**Tech Stack:** JavaScript (Node runtime in OpenClaw), shell scripts (`bash`), existing Memrail REST API.
 
 ---
 

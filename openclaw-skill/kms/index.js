@@ -5,7 +5,7 @@ const { createKmsClient } = require("./lib/client");
 const skill = {
   name: "kms",
   version: "1.0.0",
-  description: "KMS read/write governance skill for tasks, journals and knowledge",
+  description: "Memrail read/write governance skill for tasks, journals and knowledge",
   actions: {
     get_context_bundle: {
       description: "Read compact context bundle for planning/analysis",
@@ -34,7 +34,7 @@ const skill = {
       },
     },
     list_tasks: {
-      description: "List tasks from KMS task system",
+      description: "List tasks from Memrail task system",
       parameters: {
         type: "object",
         properties: {
@@ -52,7 +52,7 @@ const skill = {
       },
     },
     search_notes: {
-      description: "Search notes in KMS knowledge base",
+      description: "Search notes in Memrail knowledge base",
       parameters: {
         type: "object",
         properties: {
@@ -70,7 +70,7 @@ const skill = {
       },
     },
     list_journals: {
-      description: "List journals from KMS",
+      description: "List journals from Memrail",
       parameters: {
         type: "object",
         properties: {

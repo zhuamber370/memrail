@@ -1,7 +1,7 @@
 ---
 name: kms
 version: 1.0.0
-description: KMS integration for tasks, journals, and knowledge with dry-run governance by default.
+description: Memrail integration for tasks, journals, and knowledge with dry-run governance by default.
 metadata:
   openclaw:
     emoji: "🗂️"
@@ -11,14 +11,14 @@ metadata:
         - KMS_API_KEY
 ---
 
-# KMS Skill
+# Memrail Skill
 
-Use this skill when you need to read or write KMS data (tasks, journals, knowledge).
+Use this skill when you need to read or write Memrail data (tasks, journals, knowledge).
 
 ## Governance Rules
 
 1. Single source of truth:
-- Tasks, journals, and knowledge are read/written in KMS only.
+- Tasks, journals, and knowledge are read/written in Memrail only.
 
 2. Explicit write trigger:
 - Write only when the user gives an explicit write command.

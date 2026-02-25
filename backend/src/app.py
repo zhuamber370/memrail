@@ -38,7 +38,7 @@ def create_app(
     def get_db_dep():
         yield from get_db(session_local)
 
-    app = FastAPI(title="AFKMS Backend")
+    app = FastAPI(title="Memrail Backend")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -51,7 +51,10 @@ def create_app(
     )
     app.add_middleware(RequestIdMiddleware)
     if require_auth:
-        app.add_middleware(ApiKeyAuthMiddleware, api_key=api_key or "dev-api-key")
+        resolved_api_key = (api_key or "").strip()
+        if not resolved_api_key:
+            raise RuntimeError("KMS_API_KEY must be set when AFKMS_REQUIRE_AUTH=true")
+        app.add_middleware(ApiKeyAuthMiddleware, api_key=resolved_api_key)
     install_error_handlers(app)
     app.include_router(build_tasks_router(get_db_dep))
     app.include_router(build_topics_router(get_db_dep))
@@ -71,4 +74,4 @@ def create_app(
     return app
 
 
-app = create_app()
+app = create_app(require_auth=settings.require_auth, api_key=settings.kms_api_key)

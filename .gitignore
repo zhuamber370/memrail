@@ -11,6 +11,8 @@ __pycache__/
 *.py[cod]
 .pytest_cache/
 .mypy_cache/
+.venv/
+backend/.venv/
 
 # Node
 node_modules/
@@ -20,4 +22,5 @@ npm-debug.log*
 
 # Local db/artifacts
 *.db
+data/
 coverage/

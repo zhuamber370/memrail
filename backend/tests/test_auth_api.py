@@ -1,3 +1,6 @@
+import pytest
+
+from src.app import create_app
 from tests.helpers import make_client
 
 
@@ -24,3 +27,8 @@ def test_options_preflight_not_blocked_by_auth():
         },
     )
     assert res.status_code in (200, 204)
+
+
+def test_auth_enabled_requires_api_key():
+    with pytest.raises(RuntimeError, match="KMS_API_KEY"):
+        create_app(database_url="sqlite+pysqlite:////tmp/memrail-auth-test.db", require_auth=True, api_key="")

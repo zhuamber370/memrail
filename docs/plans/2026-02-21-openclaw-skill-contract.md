@@ -2,8 +2,8 @@
 
 ## 1. Goal
 
-Define a single entry contract between OpenClaw and KMS so that:
-- all personal knowledge/task/journal data lives in KMS DB (single source of truth),
+Define a single entry contract between OpenClaw and Memrail so that:
+- all personal knowledge/task/journal data lives in Memrail DB (single source of truth),
 - all writes are governed (`dry-run -> user decision(commit/reject)`),
 - agent can both write and read accumulated context.
 
@@ -15,7 +15,7 @@ Define a single entry contract between OpenClaw and KMS so that:
 
 2. Storage boundary.
 - Stop all Obsidian read/write for production flow.
-- KMS DB is the only source for todo/journal/topic knowledge.
+- Memrail DB is the only source for todo/journal/topic knowledge.
 
 3. Governance boundary.
 - Write actions must use `propose_changes` first.

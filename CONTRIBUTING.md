@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for contributing to `kms-for-agent`.
+Thanks for contributing to `memrail`.
 
 ## Before opening a PR
 

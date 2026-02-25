@@ -1,4 +1,4 @@
-# OpenClaw KMS Final System Design (v0.7, Synced 2026-02-25)
+# Memrail Final System Design (v0.7, Synced 2026-02-25)
 
 ## 1. Product Positioning
 - Product sentence: Agent-First Personal OS.
@@ -17,7 +17,7 @@
 - Runtime schema guard: backend boot executes `ensure_runtime_schema()` for compatibility upgrades.
 - Governance chain: `dry-run -> review diff -> commit/reject -> undo-last -> audit trail`.
 - Data source strategy:
-  - KMS DB is the only source of truth for todo/journal/topic knowledge.
+  - Memrail DB is the only source of truth for todo/journal/topic knowledge.
   - Local notes tools are out of production write flow.
 
 ## 3. Canonical Information Model

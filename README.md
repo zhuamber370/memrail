@@ -1,8 +1,8 @@
-# OpenClaw KMS
+# Memrail
 
 Governed memory and task system for OpenClaw agents.
 
-`OpenClaw KMS` adds a governance layer on top of OpenClaw memory workflows:
+`Memrail` adds a governance layer on top of OpenClaw memory workflows:
 - Agent proposes writes.
 - Human reviews and approves/rejects.
 - System preserves traceability and rollback.
@@ -15,7 +15,7 @@ Most agent memory setups struggle with:
 - weak rollback and source traceability,
 - no practical human review surface for day-to-day correction.
 
-OpenClaw KMS addresses this with a governed write pipeline and a human-facing review UI.
+Memrail addresses this with a governed write pipeline and a human-facing review UI.
 
 ## What it provides (current MVP)
 
@@ -40,17 +40,24 @@ OpenClaw KMS addresses this with a governed write pipeline and a human-facing re
 
 ## Product positioning
 
-OpenClaw KMS is **OpenClaw-first**:
+Memrail is **OpenClaw-first**:
 - It does not replace OpenClaw memory/compaction.
 - It adds governed persistence and human approval for higher-quality long-term memory.
+
+## Prerequisites
+
+- Python 3.10+
+- Node.js 18+
+- SQLite (bundled with Python) for default local mode
+- Optional enhancement: PostgreSQL 14+
 
 ## Quickstart
 
 ### 1) Clone
 
 ```bash
-git clone <YOUR_GITHUB_REPO_URL>
-cd kms-for-agent
+git clone https://github.com/zhuamber370/memrail.git
+cd memrail
 ```
 
 ### 2) Configure environment
@@ -61,7 +68,20 @@ cp .env.example .env
 
 Edit `.env` only.
 
-### 3) Run backend
+Then sync frontend env:
+
+```bash
+cp .env frontend/.env.local
+```
+
+Notes:
+- Backend reads `backend/.env` and root `.env`.
+- Frontend (Next.js) reads `frontend/.env.local`; the copy command above keeps a single source of truth.
+- Default backend DB mode is SQLite (`AFKMS_DB_BACKEND=sqlite`).
+- API key auth is disabled by default (`AFKMS_REQUIRE_AUTH=false`).
+- To enforce API auth, set `AFKMS_REQUIRE_AUTH=true` and set `KMS_API_KEY`.
+
+### 3) Run backend (SQLite default)
 
 ```bash
 cd backend
@@ -83,6 +103,32 @@ npm run dev
 
 - Backend health: `http://localhost:8000/health`
 - Frontend: `http://localhost:3000`
+
+## Optional: Switch to PostgreSQL
+
+1. In `.env`, set:
+- `AFKMS_DB_BACKEND=postgres`
+- `AFKMS_DB_HOST`, `AFKMS_DB_PORT`, `AFKMS_DB_NAME`, `AFKMS_DB_USER`, `AFKMS_DB_PASSWORD`
+
+2. Bootstrap role/database:
+
+```bash
+cd backend
+source .venv/bin/activate
+python3 scripts/bootstrap_postgres.py
+```
+
+Bootstrap defaults:
+- admin user: `postgres`
+- admin db: `postgres`
+- admin host/port: from `AFKMS_DB_HOST` / `AFKMS_DB_PORT`
+
+If needed, override with:
+- `AFKMS_PG_ADMIN_HOST`
+- `AFKMS_PG_ADMIN_PORT`
+- `AFKMS_PG_ADMIN_DB`
+- `AFKMS_PG_ADMIN_USER`
+- `AFKMS_PG_ADMIN_PASSWORD`
 
 ## Core governance flow
 

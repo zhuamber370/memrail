@@ -1,9 +1,9 @@
-# OpenClaw x KMS Setup Guide (v3, workspace skill flow)
+# OpenClaw x Memrail Setup Guide (v3, workspace skill flow)
 
 ## Goal
 
-Use KMS as the governed persistence layer for OpenClaw:
-- write/read tasks, journals, and knowledge through KMS
+Use Memrail as the governed persistence layer for OpenClaw:
+- write/read tasks, journals, and knowledge through Memrail
 - avoid manual system-prompt paste and manual action wiring
 - enforce proposal-first governance (`dry-run -> commit/reject`)
 
