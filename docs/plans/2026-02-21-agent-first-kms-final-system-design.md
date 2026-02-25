@@ -1,8 +1,9 @@
-# Agent-First KMS Final System Design (v0.6, Synced 2026-02-24)
+# OpenClaw KMS Final System Design (v0.7, Synced 2026-02-25)
 
 ## 1. Product Positioning
 - Product sentence: Agent-First Personal OS.
-- Core value: default information architecture + governed writes, so users do not design their own long-term system.
+- Core value: governed long-term memory and task persistence for OpenClaw-driven workflows.
+- Positioning: OpenClaw-first governance layer, not a replacement for OpenClaw memory/compaction.
 - Runtime split:
   - Agent: primary writer/reader through API/MCP.
   - Human: low-frequency reviewer via UI.
@@ -10,14 +11,14 @@
   - write is explicit-command only (no scheduled auto write).
 
 ## 2. Architecture (Current)
-- Frontend: Next.js App Router (`/tasks`, `/knowledge`, `/changes`, `/audit`).
+- Frontend: Next.js App Router (`/tasks`, `/knowledge`, `/changes`).
 - Backend: FastAPI + SQLAlchemy service layer.
 - Database: PostgreSQL (single DB in MVP).
 - Runtime schema guard: backend boot executes `ensure_runtime_schema()` for compatibility upgrades.
 - Governance chain: `dry-run -> review diff -> commit/reject -> undo-last -> audit trail`.
 - Data source strategy:
   - KMS DB is the only source of truth for todo/journal/topic knowledge.
-  - Obsidian read/write is out of production flow.
+  - Local notes tools are out of production write flow.
 
 ## 3. Canonical Information Model
 
@@ -84,7 +85,7 @@
 ## 5. Frontend Interaction Design (Current)
 
 ### 5.1 Tasks
-- Default view: `todo`.
+- Default view: `in_progress`.
 - Filters: priority, status, topic.
 - Batch write: bulk cancel only (shared reason mandatory).
 - Archive actions only available in done/cancelled views.
@@ -100,8 +101,8 @@
 - User selects proposal, reviews summary/diff, can commit, reject, or undo-last.
 
 ### 5.4 Audit
-- Current UI is minimal JSON list loader.
-- Backend supports richer filter dimensions than current UI exposes.
+- Audit APIs are available for agent/tooling access.
+- End-user audit page is hidden from navigation and `/audit` redirects to `/tasks`.
 
 ## 6. Security and Permission Boundary (MVP)
 - API key loaded from env; no key in `AGENTS.md` or skill source.
@@ -117,6 +118,6 @@
 
 ## 8. Next Iteration Focus
 1. Journal triage workflow (`journal_items` resolution + close lifecycle).
-2. Rich audit UI filters and structured event cards.
+2. Optional admin-level audit UI with structured filters.
 3. Policy engine for low-risk auto-commit and high-risk manual gate.
 4. MCP server as standardized agent entry after REST + skill path is stable.

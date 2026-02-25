@@ -1,4 +1,4 @@
-# Agent-First KMS API Contract (v0.6, Synced 2026-02-24)
+# OpenClaw KMS API Contract (v0.7, Synced 2026-02-25)
 
 ## 1. Scope and Role Split
 - UI is for human review and correction.
@@ -130,7 +130,7 @@ Supported action types (current):
 ## 3. Current Frontend Behavior (Synced to Code)
 
 ### 3.1 Tasks Page
-- Default status filter is `todo`.
+- Default status filter is `in_progress`.
 - Three filter dimensions: `priority`, `status`, `topic`.
 - Bulk operation: only `bulk cancel` (single shared reason).
 - In `done/cancelled` view, selected tasks can be archived.
@@ -149,9 +149,9 @@ Supported action types (current):
 - Supports commit selected + reject selected + undo last.
 
 ### 3.4 Audit Page
-- Current UI is minimal: `Load Events` + JSON viewer.
-- No UI action for deleting/clearing audit records.
-- Backend filter APIs are available, but advanced audit UI filters are not implemented yet.
+- End-user audit page is hidden from navigation.
+- `/audit` route redirects to `/tasks`.
+- Audit APIs remain available for programmatic access.
 
 ## 4. Validation and Error Codes
 - `VALIDATION_ERROR`

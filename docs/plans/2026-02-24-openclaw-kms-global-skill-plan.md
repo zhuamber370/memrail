@@ -108,7 +108,7 @@ Remove:
 
 Run:
 ```bash
-rg -n "系统提示词|openclaw_system_prompt|actions/.*\\.py|手动" <repo_root>/docs/reports/2026-02-24-openclaw-kms-setup.md <repo_root>/skill/README.md <repo_root>/README.md -S
+rg -n "system prompt|openclaw_system_prompt|actions/.*\\.py|manual" <repo_root>/docs/reports/2026-02-24-openclaw-kms-setup.md <repo_root>/skill/README.md <repo_root>/README.md -S
 ```
 Expected: no outdated instructions for mandatory manual prompt/action wiring.
 

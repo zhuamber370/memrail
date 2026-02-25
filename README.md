@@ -1,23 +1,67 @@
-# kms-for-agent
+# OpenClaw KMS
 
-Agent-First Knowledge/Task Management MVP.
+Governed memory and task system for OpenClaw agents.
 
-## 1) Clone
+`OpenClaw KMS` adds a governance layer on top of OpenClaw memory workflows:
+- Agent proposes writes.
+- Human reviews and approves/rejects.
+- System preserves traceability and rollback.
+
+## Why this project
+
+Most agent memory setups struggle with:
+- context loss across long sessions and tool switching,
+- noisy autonomous writes with no clear approval gate,
+- weak rollback and source traceability,
+- no practical human review surface for day-to-day correction.
+
+OpenClaw KMS addresses this with a governed write pipeline and a human-facing review UI.
+
+## What it provides (current MVP)
+
+1. Governed write pipeline:
+- Dry-run -> Commit or Reject -> Undo last commit
+
+2. Structured domains:
+- Tasks: action-focused, strongly structured
+- Knowledge: reusable notes with sources and links
+
+3. Human review UI:
+- `/tasks`: maintain task state and structure
+- `/knowledge`: review, classify, and maintain knowledge
+- `/changes`: review proposals, commit/reject, undo
+
+4. Agent integration:
+- OpenClaw workspace skill (`openclaw-skill/kms`)
+- REST API as the unified write/read entry
+
+5. Traceability:
+- source-aware writes and audit events in backend APIs
+
+## Product positioning
+
+OpenClaw KMS is **OpenClaw-first**:
+- It does not replace OpenClaw memory/compaction.
+- It adds governed persistence and human approval for higher-quality long-term memory.
+
+## Quickstart
+
+### 1) Clone
 
 ```bash
 git clone <YOUR_GITHUB_REPO_URL>
 cd kms-for-agent
 ```
 
-## 2) Configure env
+### 2) Configure environment
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` only (DB host/user/password/api key/api base).
+Edit `.env` only.
 
-## 3) Run backend
+### 3) Run backend
 
 ```bash
 cd backend
@@ -27,7 +71,7 @@ pip install -r requirements.txt
 python3 -m uvicorn src.app:app --reload --port 8000
 ```
 
-## 4) Run frontend
+### 4) Run frontend
 
 ```bash
 cd frontend
@@ -35,13 +79,20 @@ npm install
 npm run dev
 ```
 
-## 5) Verify
+### 5) Verify
 
 - Backend health: `http://localhost:8000/health`
 - Frontend: `http://localhost:3000`
-- Language switch in sidebar: default EN, switch to 中文.
 
-## 6) OpenClaw Global Skill (Generic Flow)
+## Core governance flow
+
+1. `POST /api/v1/changes/dry-run`
+2. User decision:
+- approve: `POST /api/v1/changes/{change_set_id}/commit`
+- reject: `DELETE /api/v1/changes/{change_set_id}`
+3. rollback if needed: `POST /api/v1/commits/undo-last`
+
+## OpenClaw skill install
 
 Set runtime env for OpenClaw:
 
@@ -50,40 +101,36 @@ export KMS_BASE_URL="http://127.0.0.1:8000"
 export KMS_API_KEY="<your_api_key>"
 ```
 
-Install skill to OpenClaw workspace directory `<workspace>/skills/kms`:
+Install skill to workspace:
 
 ```bash
 cd <repo_root>
 bash scripts/install_openclaw_kms_skill.sh
 ```
 
-The script auto-detects workspace from `~/.openclaw/openclaw.json` (`agents.defaults.workspace`).
-
-Verify discovery:
+Verify:
 
 ```bash
 openclaw skills info kms --json
 openclaw skills check --json
 ```
 
-## 7) Governance flow (current)
+## Current scope and boundaries
 
-All write proposals use the same flow:
+- Local/self-hosted MVP focus
+- No multi-tenant OAuth/billing/SaaS ops yet
+- Audit APIs are available; audit page is hidden from end-user navigation
 
-1. `POST /api/v1/changes/dry-run`
-2. user decision:
-   - approve: `POST /api/v1/changes/{change_set_id}/commit`
-   - reject and delete proposal: `DELETE /api/v1/changes/{change_set_id}`
-3. if needed, rollback latest commit: `POST /api/v1/commits/undo-last`
+## Discovery keywords
 
-Frontend `/changes` page supports:
-- review proposal summary/diff
-- commit selected proposal
-- reject selected proposal
-- undo last commit
+`openclaw memory`, `agent memory`, `persistent agent memory`, `agent context loss`, `governed ai writes`, `dry-run commit undo`, `agent rollback`, `traceable ai actions`, `agent knowledge base`, `openclaw task management`
 
-## 8) Feedback
+## Feedback
 
-- Bug report: open a GitHub issue with the `Bug report` template.
-- Feature request: open a GitHub issue with the `Feature request` template.
-- Security issue: follow `SECURITY.md` and avoid public disclosure.
+- Bug report: use the `Bug report` issue template
+- Feature request: use the `Feature request` issue template
+- Security issue: follow `SECURITY.md` (do not disclose publicly)
+
+## License
+
+Apache-2.0. See `LICENSE`.

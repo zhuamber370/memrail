@@ -8,8 +8,7 @@ import { useI18n } from "../i18n";
 const links = [
   { href: "/tasks", key: "nav.tasks" },
   { href: "/knowledge", key: "nav.knowledge" },
-  { href: "/changes", key: "nav.changes" },
-  { href: "/audit", key: "nav.audit" }
+  { href: "/changes", key: "nav.changes" }
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
