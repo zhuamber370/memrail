@@ -1,76 +1,91 @@
-# Agent-First KMS Implementation Input Pack (v0.4, Synced 2026-02-24)
+# Memrail Implementation Input Pack (v0.7, Synced 2026-02-25)
 
-## 1. Current Build Target
-以“可执行治理 + 稳定分类 + 人类可审阅 UI”为交付目标，当前稳定域：
-- Topic（固定分类）
-- Task（强结构动作项）
-- Knowledge Note（可归类、可归档）
-- Change Governance（dry-run/commit/undo）
-- Audit（可查询追溯）
+## 1. Build target
 
-## 2. Delivered in Current Baseline
-1. 固定 Topic 分类（7 类）落库并由后端统一返回中英文名。
-2. `POST /topics` 锁定，防止分类体系在 MVP 被写乱。
-3. Task 强结构字段与状态治理落地（含取消原因强约束）。
-4. Task 强制 `topic_id`，并记录 `task_sources`。
-5. Task 支持批量取消、选中归档、归档只读视图。
-6. Task 支持删除接口与前端删除交互。
-7. Knowledge 支持 `topic_id/status`，默认按 Topic 分组展示。
-8. Knowledge 支持未归类视图与批量归类。
-9. Knowledge 支持编辑 topic/tags、归档、删除。
-10. Change governance 的 `change_actions` 持久化并带 `action_index`。
-11. Commit 从登记升级为真实执行（task/note/link）。
-12. Undo 从占位升级为真实回滚（逆序撤销动作）。
-13. Commit/Undo 支持 `client_request_id` 幂等。
-14. Audit 查询支持 actor/tool/action/target/time 多条件过滤。
-15. Changes UI 改为提案收件箱（选择提案审阅并提交）。
-16. 清理脚本：`backend/scripts/cleanup_test_data.py`。
-17. 知识迁移脚本：`backend/scripts/migrate_notes_topic_status.py`。
+Deliver a governed, reviewable, OpenClaw-first memory/task baseline with stable taxonomy and practical human review UI.
 
-## 3. Data and Schema Baseline
-核心表：
-- `topics, topic_aliases`
-- `tasks, task_sources, cycles`
-- `notes, note_sources, links`
-- `change_sets, change_actions, commits`
+Stable domains:
+- Topics (fixed taxonomy)
+- Tasks (strongly-typed action items)
+- Knowledge notes (classifiable/archivable)
+- Journals (append-only per day)
+- Change governance (`dry-run/commit/reject/undo`)
+- Context bundle (agent read aggregation)
+- Audit events (queryable trace)
+
+## 2. Delivered baseline
+
+1. Fixed 7-category topic taxonomy stored in DB with EN/ZH names
+2. `POST /topics` locked in MVP mode
+3. Task status governance with mandatory cancel reason on `cancelled`
+4. Required `topic_id` on tasks + source tracking
+5. Bulk task cancel, archive-selected, archive read-only view
+6. Task delete endpoint + UI delete action
+7. Knowledge topic/status support with Topic Board UI
+8. Unclassified knowledge workflow + batch classify
+9. Knowledge edit/archive/delete operations
+10. Persisted `change_actions` with `action_index`
+11. Real commit execution (task/note/link)
+12. Real undo rollback (reverse order)
+13. Commit/undo idempotency via `client_request_id`
+14. Audit API filters by actor/tool/action/target/time
+15. Changes inbox UI with commit/reject actions
+16. Journals APIs (`upsert-append/list/by-date`)
+17. Context bundle API (`/api/v1/context/bundle`)
+18. Additional change actions: `patch_note`, `upsert_journal_append`
+19. OpenClaw contract aligned to explicit-command + DB as source of truth
+20. Test-data cleanup script
+21. Note migration utility for topic/status backfill
+
+## 3. Data baseline
+
+Core tables:
+- `topics`, `topic_aliases`
+- `tasks`, `task_sources`, `cycles`
+- `notes`, `note_sources`, `links`
+- `journals`, `journal_items`
+- `change_sets`, `change_actions`, `commits`
 - `audit_events`
 
-预留域（已建表，API 待交付）：
-- `journals, journal_items, topic_entries`
+Reserved:
+- `topic_entries`
 
-兼容说明：
-- `tasks.project` 列仍保留在 DB，用于历史兼容；当前 API/前端不再使用。
+Compatibility note:
+- `tasks.project` remains in DB for legacy compatibility but is not used by API/UI.
 
-## 4. Runtime and Environment
-- Backend: FastAPI + SQLAlchemy。
-- Frontend: Next.js。
-- DB: PostgreSQL（MVP 单库）。
-- 启动时执行 runtime schema guard（`ensure_runtime_schema`）保障兼容升级。
+## 4. Runtime baseline
 
-## 5. Verification Snapshot (2026-02-24)
-已执行：
-- Backend:
-  - `python3 -m pytest backend/tests/test_changes_api.py backend/tests/test_tasks_api.py backend/tests/test_inbox_notes_api.py backend/tests/test_links_api.py backend/tests/test_audit_api.py backend/tests/test_topics_api.py -q`
-  - result: `40 passed`
-- Frontend:
-  - `npm run -s build`（`frontend/`）
-  - result: success
+- Backend: FastAPI + SQLAlchemy
+- Frontend: Next.js
+- DB: PostgreSQL
+- Runtime schema guard: `ensure_runtime_schema`
 
-## 6. Acceptance Checklist (Current)
-1. Task 创建若 `topic_id` 无效，返回 `TOPIC_NOT_FOUND`。
-2. Task 设为 `cancelled` 时必须提供 `cancelled_reason`。
-3. 仅 `done/cancelled` 可归档；归档后默认不出现在执行列表。
-4. Task 页面默认 `todo`，并支持优先级/状态/分类筛选。
-5. Knowledge 可在无 topic 情况下创建（进入 unclassified）。
-6. Unclassified 支持批量归类到固定 Topic。
-7. Knowledge archived 视图只读。
-8. Changes 可直接审阅提案并提交，不依赖手填 JSON。
-9. Commit 可真实写入，Undo 可真实回滚最近一次提交。
-10. 审计能追踪 change_set/commit/action 级链路信息。
+## 5. Verification snapshot
 
-## 7. Known Gaps / Next Slice
-1. Journal API 与 triage 流程未开放。
-2. Audit UI 仍是最小 JSON 读取视图（后端筛选能力未完整前端化）。
-3. 风险分级自动提交策略（policy engine）未落地。
-4. 多租户鉴权（per-user token/OAuth）未落地。
-5. MCP server 尚未实现（当前统一入口为 REST + skill）。
+Executed:
+- Backend: `python3 -m pytest backend/tests/test_changes_api.py -q`
+- Frontend: `cd frontend && npm run build`
+
+## 6. Acceptance checklist
+
+1. Invalid `topic_id` on task create returns `TOPIC_NOT_FOUND`
+2. `cancelled` task requires `cancelled_reason`
+3. Only `done/cancelled` tasks can be archived
+4. Task list defaults to `in_progress` and supports priority/status/topic filters
+5. Knowledge can be created without topic (`unclassified`)
+6. Unclassified notes support batch classify
+7. Archived knowledge is read-only
+8. Changes can be reviewed and committed in UI
+9. Changes can be rejected (proposal deleted)
+10. Commit and undo perform real data mutations
+11. Audit can trace change/commit/action chain metadata
+12. Journals append to same day without duplication
+13. Context bundle returns tasks+notes+journals for agent retrieval
+
+## 7. Known gaps
+
+1. Journal triage/close workflow not delivered
+2. Advanced audit UI filters not delivered
+3. Policy-based auto-approval not delivered
+4. Multi-tenant OAuth/token isolation not delivered
+5. MCP server not delivered (REST + skill is current path)

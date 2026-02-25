@@ -1,12 +1,27 @@
 from collections.abc import Generator
 
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 Base = declarative_base()
 
 
 def build_engine(database_url: str):
+    if database_url.startswith("sqlite"):
+        engine = create_engine(
+            database_url,
+            future=True,
+            connect_args={"check_same_thread": False},
+        )
+
+        @event.listens_for(engine, "connect")
+        def _set_sqlite_pragma(dbapi_connection, _connection_record):
+            cursor = dbapi_connection.cursor()
+            cursor.execute("PRAGMA foreign_keys=ON")
+            cursor.close()
+
+        return engine
+
     return create_engine(database_url, future=True)
 
 
@@ -23,6 +38,10 @@ def get_db(session_local) -> Generator:
 
 
 def ensure_runtime_schema(engine) -> None:
+    if engine.dialect.name == "sqlite":
+        _ensure_runtime_schema_sqlite(engine)
+        return
+
     statements = [
         """
         CREATE TABLE IF NOT EXISTS topics (
@@ -357,6 +376,32 @@ def ensure_runtime_schema(engine) -> None:
               FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL;
           END IF;
         END $$;
+        """,
+    ]
+    with engine.begin() as conn:
+        for stmt in statements:
+            conn.execute(text(stmt))
+
+
+def _ensure_runtime_schema_sqlite(engine) -> None:
+    statements = [
+        """
+        INSERT INTO topics (id, name, name_en, name_zh, kind, status, summary)
+        VALUES
+          ('top_fx_product_strategy', 'Product & Strategy', 'Product & Strategy', '产品与战略', 'domain', 'active', 'Business direction, priorities, and decision framing.'),
+          ('top_fx_engineering_arch', 'Engineering & Architecture', 'Engineering & Architecture', '工程与架构', 'domain', 'active', 'System design, implementation, code quality, and technical debt.'),
+          ('top_fx_operations_delivery', 'Operations & Delivery', 'Operations & Delivery', '运营与交付', 'domain', 'active', 'Execution workflows, delivery coordination, and operational runbooks.'),
+          ('top_fx_growth_marketing', 'Growth & Marketing', 'Growth & Marketing', '增长与营销', 'domain', 'active', 'Acquisition, positioning, messaging, and user growth loops.'),
+          ('top_fx_finance_legal', 'Finance & Legal', 'Finance & Legal', '财务与法务', 'domain', 'active', 'Budgeting, contracts, compliance, and risk control.'),
+          ('top_fx_learning_research', 'Learning & Research', 'Learning & Research', '学习与研究', 'domain', 'active', 'Research findings, experiments, and knowledge exploration.'),
+          ('top_fx_other', 'Other', 'Other', '其他', 'domain', 'active', 'Fallback bucket for uncategorized items pending review.')
+        ON CONFLICT(id) DO UPDATE SET
+            name = excluded.name,
+            name_en = excluded.name_en,
+            name_zh = excluded.name_zh,
+            kind = excluded.kind,
+            status = 'active',
+            summary = excluded.summary
         """,
     ]
     with engine.begin() as conn:

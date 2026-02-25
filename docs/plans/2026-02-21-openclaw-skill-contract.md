@@ -1,63 +1,100 @@
-# OpenClaw Skill 接口定义草案（MVP）
+# OpenClaw Skill Interface Contract (v0.4, Synced 2026-02-24)
 
-> 日期：2026-02-21  
-> 依赖文档：`/Users/celastin/Desktop/projects/kms-for-agent/docs/plans/2026-02-21-agent-first-kms-prd-api.md`  
-> 状态：Draft v0.2（Task 管理增强）
+## 1. Goal
 
-## 1. 目标
+Define a single entry contract between OpenClaw and Memrail so that:
+- all personal knowledge/task/journal data lives in Memrail DB (single source of truth),
+- all writes are governed (`dry-run -> user decision(commit/reject)`),
+- agent can both write and read accumulated context.
 
-定义 OpenClaw 与 Agent-First KMS 的统一交互契约，确保：
+## 2. Mandatory Runtime Rules
 
-- 所有任务/知识写入通过统一入口完成。
-- 写入过程可治理、可审计、可回滚。
-- Skill 层只暴露高层动作，不暴露低级数据库语义。
+1. Trigger mode is explicit-command only.
+- No scheduled/automatic writing.
+- Write only when user clearly asks to record/update.
 
-## 2. 运行前置条件
+2. Storage boundary.
+- Stop all Obsidian read/write for production flow.
+- Memrail DB is the only source for todo/journal/topic knowledge.
 
-- `KMS_BASE_URL`
-- `KMS_API_KEY`
-- 请求头：`Authorization: Bearer ${KMS_API_KEY}`
+3. Governance boundary.
+- Write actions must use `propose_changes` first.
+- `commit_changes` only after user confirmation.
+- If user rejects proposal, call `reject_changes` (delete proposal).
 
-禁止：在 AGENTS.md、skill 文件、代码中硬编码密钥。
+4. Secret boundary.
+- Keep `KMS_BASE_URL` and `KMS_API_KEY` in env/secret manager only.
+- Never put secrets in AGENTS.md or skill code.
 
-## 3. 动作总览（MVP）
+## 3. Skill Action Set
 
-1. `capture_inbox(text, source)`
-2. `create_task(title, status, priority, due, source, cycle_id, next_review_at, blocked_by_task_id)`
-3. `append_note(title, body, sources, tags)`
-4. `search_notes(query, tag, linked_task_id, page, page_size)`
-5. `list_tasks(view, status, priority, cycle_id, blocked, stale_days, due_before, updated_before, query, page, page_size)`
-6. `propose_changes(actions, actor, tool)`
-7. `commit_changes(change_set_id, approved_by)`
-8. `undo_last_commit(requested_by, reason)`
+### 3.1 Write Actions (proposal-first)
 
-## 4. 动作映射
+1. `record_todo(...)`
+- user-provided todo payload only (no auto extraction from other sources)
+- maps to change actions: `create_task` or `update_task`
 
-- `capture_inbox` -> `POST /api/v1/inbox/captures`（`source` 必须匹配 `chat://...`）
-- `create_task` -> `POST /api/v1/tasks`
-- `append_note` -> `POST /api/v1/notes/append`
-- `search_notes` -> `GET /api/v1/notes/search`
-- `list_tasks` -> `GET /api/v1/tasks`
-- `propose_changes` -> `POST /api/v1/changes/dry-run`
-- `commit_changes` -> `POST /api/v1/changes/{change_set_id}/commit`
-- `undo_last_commit` -> `POST /api/v1/commits/undo-last`
+2. `append_journal(...)`
+- appends content to same-day journal (single row per day)
+- maps to change action: `upsert_journal_append`
 
-## 5. 执行约束
+3. `upsert_knowledge(...)`
+- same-title knowledge updates by patching existing note
+- maps to change actions: `append_note` (new) or `patch_note` (existing)
 
-1. 批量写入默认流程：`propose_changes -> 用户审阅 diff -> commit_changes`。
-2. 允许直接写入：`capture_inbox/create_task/append_note`（仍需审计）。
-3. Skill 不做自动 merge，仅回传 `duplicate_candidate` 与 `merge_proposal`。
-4. `commit_changes/undo_last_commit` 建议传 `client_request_id` 做幂等。
+4. `propose_changes(actions, actor, tool)` -> `POST /api/v1/changes/dry-run`
+5. `commit_changes(change_set_id, approved_by, client_request_id?)` -> `POST /api/v1/changes/{id}/commit`
+6. `reject_changes(change_set_id)` -> `DELETE /api/v1/changes/{id}`
+7. `undo_last_commit(requested_by, reason, client_request_id?)` -> `POST /api/v1/commits/undo-last`
 
-## 6. 错误语义与重试策略
+### 3.2 Read Actions (agent context)
 
-- `400/401/403/404/422`：不重试
-- `409`：读取冲突信息后最多重试 1 次
-- `429`：指数退避，最多 3 次
-- `500`：指数退避，最多 2 次
+1. `list_tasks(...)` -> `GET /api/v1/tasks`
+2. `search_notes(...)` -> `GET /api/v1/notes/search`
+3. `list_journals(...)` -> `GET /api/v1/journals`
+4. `get_journal(date)` -> `GET /api/v1/journals/{journal_date}`
+5. `list_topics()` -> `GET /api/v1/topics`
+6. `get_context_bundle(...)` -> `GET /api/v1/context/bundle`
 
-## 7. 契约验收
+## 4. API Mapping Summary
 
-- 动作和后端接口一一映射。
-- 参数定义与 Task 增强字段一致（cycle/review/blocked）。
-- 与 PRD 一致：Task 固定字段、Undo 最近一次、保守去重。
+- `POST /api/v1/changes/dry-run`
+- `POST /api/v1/changes/{change_set_id}/commit`
+- `DELETE /api/v1/changes/{change_set_id}`
+- `POST /api/v1/commits/undo-last`
+- `GET /api/v1/tasks`
+- `GET /api/v1/notes/search`
+- `GET /api/v1/topics`
+- `POST /api/v1/journals/upsert-append`
+- `GET /api/v1/journals`
+- `GET /api/v1/journals/{journal_date}`
+- `GET /api/v1/context/bundle`
+
+## 5. Dedupe / Upsert Policy
+
+1. Todo dedupe candidate:
+- active tasks where normalized title matches -> propose `update_task`.
+
+2. Knowledge dedupe candidate:
+- notes where normalized title matches -> propose `patch_note` with `body_append`.
+
+3. Journal uniqueness:
+- one row per `journal_date`; append to `raw_content` only.
+
+## 6. Source and Audit Requirements
+
+1. Every write payload must include a source ref:
+- format recommendation: `chat://openclaw/{thread_id}/{message_range}`
+
+2. Commit/undo should send `client_request_id` for idempotency.
+
+3. Audit must remain queryable by:
+- actor/tool/action/target/time
+- chain metadata (`change_set_id`, `commit_id`, `action_index`).
+
+## 7. Error and Retry Strategy
+
+- `400/401/403/404/422`: no retry
+- `409`: one retry after re-read
+- `429`: exponential backoff, max 3 retries
+- `500`: exponential backoff, max 2 retries

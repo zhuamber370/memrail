@@ -73,7 +73,7 @@ export default function TasksPage() {
   const [createTopicId, setCreateTopicId] = useState("");
 
   const [filterPriority, setFilterPriority] = useState<FilterPriority>("all");
-  const [filterStatus, setFilterStatus] = useState<FilterStatus>("todo");
+  const [filterStatus, setFilterStatus] = useState<FilterStatus>("in_progress");
   const [filterTopicId, setFilterTopicId] = useState<string>("all");
 
   const [tasks, setTasks] = useState<Task[]>([]);

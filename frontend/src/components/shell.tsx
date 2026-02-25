@@ -8,8 +8,7 @@ import { useI18n } from "../i18n";
 const links = [
   { href: "/tasks", key: "nav.tasks" },
   { href: "/knowledge", key: "nav.knowledge" },
-  { href: "/changes", key: "nav.changes" },
-  { href: "/audit", key: "nav.audit" }
+  { href: "/changes", key: "nav.changes" }
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -18,7 +17,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <aside className="rail">
-        <div className="brand">AFKMS / AGENT-FIRST</div>
+        <div className="brand">MEMRAIL / AGENT-FIRST</div>
         <div className="badges" style={{ marginTop: 6, marginBottom: 10 }}>
           <button
             className="badge"

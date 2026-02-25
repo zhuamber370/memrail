@@ -8,7 +8,7 @@ from src.app import create_app
 
 
 def database_url() -> str:
-    host = os.getenv("AFKMS_DB_HOST", "192.168.50.245")
+    host = os.getenv("AFKMS_DB_HOST", "127.0.0.1")
     port = os.getenv("AFKMS_DB_PORT", "5432")
     name = os.getenv("AFKMS_DB_NAME", "afkms")
     user = os.getenv("AFKMS_DB_USER", "afkms")

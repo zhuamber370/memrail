@@ -1,38 +1,40 @@
-# MVP E2E Checklist
+# MVP E2E Checklist (Synced 2026-02-25)
 
-## 环境
+## Environment
 - API Base: `http://localhost:8000`
-- DB: `postgresql://afkms:***@192.168.50.245:5432/afkms`
+- DB: configured via `.env`
 
-## 流程验证
-1. Internal Capture Inbox
-- 调用 `POST /api/v1/inbox/captures`
-- 预期：`201`，返回 `inb_*`；`source` 必须为 `chat://...`
+## Flow validation
+1. Propose changes
+- Call `POST /api/v1/changes/dry-run`
+- Expect `200`, with `change_set_id` and `diff_items`
 
-2. Propose Changes
-- 调用 `POST /api/v1/changes/dry-run`
-- 预期：`200`，返回 `change_set_id` 与 `diff`
+2. Reject proposal
+- Call `DELETE /api/v1/changes/{id}`
+- Expect `200`, status `rejected`
+- Re-query `GET /api/v1/changes/{id}`, expect `404`
 
-3. Commit Changes
-- 调用 `POST /api/v1/changes/{id}/commit`
-- 预期：`200`，状态 `committed`
+3. Commit changes
+- Dry-run again, then call `POST /api/v1/changes/{id}/commit`
+- Expect `200`, status `committed`
 
-4. Audit Query
-- 调用 `GET /api/v1/audit/events`
-- 预期：可见写入事件（actor/tool/action/target）
+4. Audit query
+- Call `GET /api/v1/audit/events`
+- Expect write events with actor/tool/action/target metadata
 
-5. Undo Last
-- 调用 `POST /api/v1/commits/undo-last`
-- 预期：`200`，状态 `reverted`
+5. Undo last
+- Call `POST /api/v1/commits/undo-last`
+- Expect `200`, status `reverted`
 
-6. Frontend Changes Flow
-- 在 `/changes` 页面执行 Dry-run -> Commit -> Undo
-- 预期：页面展示每步 JSON 结果，无崩溃
+6. Frontend changes flow
+- In `/changes`: review proposal -> commit or reject -> undo last
+- Expect stable UI and correct state transitions
 
-7. Frontend Visible Routes
-- 访问 `/tasks` `/knowledge` `/changes` `/audit`
-- 预期：可访问且可交互；无 Inbox 用户入口
+7. Frontend routes
+- Visit `/tasks`, `/knowledge`, `/changes`
+- Expect accessible and interactive pages
+- `/audit` should redirect to `/tasks`
 
-## 判定
-- 全部通过：MVP 可演示
-- 任一失败：阻断发布，先修复
+## Pass criteria
+- All checks pass: MVP is demo-ready
+- Any failure: block release until fixed

@@ -9,8 +9,18 @@ from sqlalchemy import and_, delete, desc, func, or_, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from src.models import ChangeAction, ChangeSet, Commit, Link, Note, NoteSource, Task, TaskSource
-from src.schemas import CommitIn, DryRunIn, LinkCreate, NoteAppend, TaskCreate, TaskPatch, UndoIn
+from src.models import ChangeAction, ChangeSet, Commit, Journal, Link, Note, NoteSource, Task, TaskSource
+from src.schemas import (
+    CommitIn,
+    DryRunIn,
+    JournalUpsertAppendIn,
+    LinkCreate,
+    NoteAppend,
+    NotePatch,
+    TaskCreate,
+    TaskPatch,
+    UndoIn,
+)
 from src.services.audit_service import log_audit_event
 from src.services.task_service import TaskService
 
@@ -91,9 +101,22 @@ class ChangeService:
             ],
         }
 
+    def reject(self, change_set_id: str) -> Optional[str]:
+        row = self.db.get(ChangeSet, change_set_id)
+        if not row:
+            return None
+        if row.status != "proposed":
+            raise ValueError("CHANGE_SET_NOT_PROPOSED")
+        self.db.delete(row)
+        self.db.commit()
+        return change_set_id
+
     def dry_run(self, payload: DryRunIn) -> ChangeSet:
+        for action in payload.actions:
+            self._prevalidate_dry_run_action(action.type, action.payload)
+
         creates = sum(1 for a in payload.actions if a.type in ("create_task", "append_note"))
-        updates = sum(1 for a in payload.actions if a.type == "update_task")
+        updates = sum(1 for a in payload.actions if a.type in ("update_task", "patch_note", "upsert_journal_append"))
         diff_items = [self._build_diff_item(a.type, a.payload) for a in payload.actions]
         if not diff_items:
             diff_items = [
@@ -111,6 +134,8 @@ class ChangeService:
             "task_create": 0,
             "task_update": 0,
             "note_append": 0,
+            "note_patch": 0,
+            "journal_upsert": 0,
         }
         for action in payload.actions:
             if action.type == "create_task":
@@ -119,8 +144,12 @@ class ChangeService:
                 summary["task_update"] += 1
             elif action.type == "append_note":
                 summary["note_append"] += 1
+            elif action.type == "patch_note":
+                summary["note_patch"] += 1
+            elif action.type == "upsert_journal_append":
+                summary["journal_upsert"] += 1
             for key in action.payload.keys():
-                if key in {"task_id", "id"}:
+                if key in {"task_id", "note_id", "id"}:
                     continue
                 field_key = f"field_{key}"
                 summary[field_key] = summary.get(field_key, 0) + 1
@@ -150,6 +179,13 @@ class ChangeService:
         self.db.commit()
         self.db.refresh(change_set)
         return change_set
+
+    def _prevalidate_dry_run_action(self, action_type: str, payload: dict[str, Any]) -> None:
+        if action_type == "create_task":
+            model = TaskCreate.model_validate(payload)
+            validator = TaskService(self.db)
+            validator._validate_topic(model.topic_id)
+            validator._validate_cancel_reason_for_cancelled_status(model.status, model.cancelled_reason)
 
     def commit(self, change_set_id: str, payload: CommitIn) -> tuple[Optional[Commit], Optional[ChangeSet]]:
         change_set = self.db.get(ChangeSet, change_set_id)
@@ -342,37 +378,50 @@ class ChangeService:
             raise
 
     def _build_diff_line(self, action_type: str, payload: dict) -> str:
-        if action_type != "create_task":
-            return f"{action_type} prepared"
-        parts = []
-        for key in ["title", "status", "priority", "cycle_id", "next_review_at", "blocked_by_task_id"]:
-            if key in payload and payload.get(key) is not None:
-                parts.append(f"{key}={payload.get(key)}")
-        if not parts:
-            return "create_task prepared"
-        return f"create_task: {', '.join(parts)}"
+        if action_type == "create_task":
+            parts = []
+            for key in ["title", "status", "priority", "cycle_id", "next_review_at", "blocked_by_task_id"]:
+                if key in payload and payload.get(key) is not None:
+                    parts.append(f"{key}={payload.get(key)}")
+            if not parts:
+                return "create_task prepared"
+            return f"create_task: {', '.join(parts)}"
+        if action_type == "update_task":
+            fields = [k for k in payload.keys() if k not in {"task_id"}]
+            return f"update_task: {', '.join(fields)}" if fields else "update_task prepared"
+        if action_type == "append_note":
+            fields = [k for k in payload.keys() if k not in {"id", "note_id"}]
+            return f"append_note: {', '.join(fields)}" if fields else "append_note prepared"
+        if action_type == "patch_note":
+            fields = [k for k in payload.keys() if k not in {"id", "note_id"}]
+            return f"patch_note: {', '.join(fields)}" if fields else "patch_note prepared"
+        if action_type == "upsert_journal_append":
+            date_value = payload.get("journal_date")
+            return f"upsert_journal_append: journal_date={date_value}" if date_value else "upsert_journal_append prepared"
+        if action_type == "link_entities":
+            fields = [k for k in payload.keys() if k not in {"id"}]
+            return f"link_entities: {', '.join(fields)}" if fields else "link_entities prepared"
+        return f"{action_type} prepared"
 
     def _build_diff_item(self, action_type: str, payload: dict) -> dict:
         entity_map = {
             "create_task": "task",
             "update_task": "task",
             "append_note": "note",
+            "patch_note": "note",
+            "upsert_journal_append": "journal",
             "link_entities": "link",
         }
         action_map = {
             "create_task": "create",
             "update_task": "update",
             "append_note": "append",
+            "patch_note": "update",
+            "upsert_journal_append": "upsert",
             "link_entities": "link",
         }
         fields = [k for k in payload.keys() if k not in {"id", "task_id", "note_id"}]
         text = self._build_diff_line(action_type, payload)
-        if action_type == "update_task":
-            text = f"update_task: {', '.join(fields)}" if fields else "update_task prepared"
-        elif action_type == "append_note":
-            text = f"append_note: {', '.join(fields)}" if fields else "append_note prepared"
-        elif action_type == "link_entities":
-            text = f"link_entities: {', '.join(fields)}" if fields else "link_entities prepared"
         return {
             "entity": entity_map.get(action_type, "unknown"),
             "action": action_map.get(action_type, "other"),
@@ -388,6 +437,10 @@ class ChangeService:
             return self._apply_update_task(payload)
         if action.action_type == "append_note":
             return self._apply_append_note(payload)
+        if action.action_type == "patch_note":
+            return self._apply_patch_note(payload)
+        if action.action_type == "upsert_journal_append":
+            return self._apply_upsert_journal_append(payload)
         if action.action_type == "link_entities":
             return self._apply_link(payload)
         raise ValueError("CHANGE_ACTION_TYPE_UNSUPPORTED")
@@ -520,6 +573,123 @@ class ChangeService:
             "entity_id": note.id,
         }
 
+    def _apply_patch_note(self, payload: dict) -> dict:
+        note_id = payload.get("note_id")
+        if not note_id:
+            raise ValueError("NOTE_ID_REQUIRED")
+        note = self.db.get(Note, note_id)
+        if note is None:
+            raise ValueError("NOTE_NOT_FOUND")
+
+        body_append = payload.get("body_append")
+        source_value = payload.get("source")
+        raw_patch = {k: v for k, v in payload.items() if k not in {"note_id", "body_append", "source"}}
+        patch_model = NotePatch.model_validate(raw_patch)
+        patch_data = patch_model.model_dump(exclude_unset=True)
+        if body_append is None and not patch_data:
+            raise ValueError("NO_PATCH_FIELDS")
+
+        if "topic_id" in patch_data and patch_data["topic_id"] is not None:
+            TaskService(self.db)._validate_topic(patch_data["topic_id"])
+
+        touched_fields: set[str] = set()
+        for key in ("title", "body", "topic_id", "status"):
+            if key in patch_data:
+                touched_fields.add(key)
+        if "tags" in patch_data:
+            touched_fields.add("tags_json")
+        if body_append is not None:
+            touched_fields.add("body")
+
+        if not touched_fields:
+            raise ValueError("NO_PATCH_FIELDS")
+
+        before = {field: self._json_safe(getattr(note, field)) for field in touched_fields}
+
+        if "title" in patch_data:
+            note.title = patch_data["title"]
+        if "body" in patch_data:
+            note.body = patch_data["body"]
+        if body_append is not None:
+            append_text = str(body_append).strip()
+            if not append_text:
+                raise ValueError("NOTE_BODY_APPEND_REQUIRED")
+            note.body = self._append_block(note.body, append_text)
+        if "topic_id" in patch_data:
+            note.topic_id = patch_data["topic_id"]
+        if "status" in patch_data:
+            note.status = patch_data["status"]
+        if "tags" in patch_data:
+            note.tags_json = patch_data["tags"] or []
+
+        after = {field: self._json_safe(getattr(note, field)) for field in touched_fields}
+
+        source_entry_id: Optional[str] = None
+        if source_value:
+            source_entry_id = f"src_{uuid.uuid4().hex[:12]}"
+            self.db.add(
+                NoteSource(
+                    id=source_entry_id,
+                    note_id=note.id,
+                    source_type="text",
+                    source_value=str(source_value),
+                )
+            )
+
+        self.db.add(note)
+        result = {
+            "status": "applied",
+            "action_type": "patch_note",
+            "entity": "note",
+            "entity_id": note.id,
+            "before": before,
+            "after": after,
+        }
+        if source_entry_id:
+            result["source_entry_id"] = source_entry_id
+        return result
+
+    def _apply_upsert_journal_append(self, payload: dict) -> dict:
+        model = JournalUpsertAppendIn.model_validate(payload)
+        append_text = model.append_text.strip()
+        if not append_text:
+            raise ValueError("JOURNAL_APPEND_TEXT_REQUIRED")
+
+        journal = self.db.scalars(select(Journal).where(Journal.journal_date == model.journal_date)).first()
+        created = journal is None
+        if created:
+            journal = Journal(
+                id=f"jrn_{uuid.uuid4().hex[:12]}",
+                journal_date=model.journal_date,
+                raw_content=append_text,
+                digest="",
+                triage_status="open",
+                source=model.source,
+            )
+            before_raw = None
+            after_raw = append_text
+        else:
+            assert journal is not None
+            before_raw = journal.raw_content
+            journal.raw_content = self._append_block(journal.raw_content, append_text)
+            if not journal.source:
+                journal.source = model.source
+            after_raw = journal.raw_content
+
+        self.db.add(journal)
+        self.db.flush()
+        return {
+            "status": "applied",
+            "action_type": "upsert_journal_append",
+            "entity": "journal",
+            "entity_id": journal.id,
+            "journal_date": journal.journal_date.isoformat(),
+            "created": created,
+            "before_raw_content": before_raw,
+            "after_raw_content": after_raw,
+            "source": model.source,
+        }
+
     def _apply_link(self, payload: dict) -> dict:
         model = LinkCreate.model_validate(payload)
         link = Link(
@@ -551,6 +721,12 @@ class ChangeService:
             return
         if action_type == "append_note":
             self._rollback_append_note(result)
+            return
+        if action_type == "patch_note":
+            self._rollback_patch_note(result)
+            return
+        if action_type == "upsert_journal_append":
+            self._rollback_upsert_journal_append(result)
             return
         if action_type == "link_entities":
             self._rollback_link(result)
@@ -609,6 +785,48 @@ class ChangeService:
         note = self.db.get(Note, note_id)
         if note:
             self.db.delete(note)
+
+    def _rollback_patch_note(self, result: dict) -> None:
+        note_id = result.get("entity_id")
+        if not isinstance(note_id, str) or not note_id:
+            raise ValueError("CHANGE_ACTION_RESULT_MISSING_ENTITY_ID")
+        note = self.db.get(Note, note_id)
+        if note is None:
+            raise ValueError("NOTE_NOT_FOUND")
+
+        before = result.get("before")
+        if not isinstance(before, dict):
+            raise ValueError("CHANGE_ACTION_RESULT_MISSING_BEFORE")
+        for key, value in before.items():
+            setattr(note, key, value)
+        self.db.add(note)
+
+        source_entry_id = result.get("source_entry_id")
+        if isinstance(source_entry_id, str) and source_entry_id:
+            src = self.db.get(NoteSource, source_entry_id)
+            if src:
+                self.db.delete(src)
+
+    def _rollback_upsert_journal_append(self, result: dict) -> None:
+        journal_id = result.get("entity_id")
+        if not isinstance(journal_id, str) or not journal_id:
+            raise ValueError("CHANGE_ACTION_RESULT_MISSING_ENTITY_ID")
+        created = bool(result.get("created"))
+        journal = self.db.get(Journal, journal_id)
+        if journal is None:
+            if created:
+                return
+            raise ValueError("JOURNAL_NOT_FOUND")
+
+        if created:
+            self.db.delete(journal)
+            return
+
+        before_raw = result.get("before_raw_content")
+        if not isinstance(before_raw, str):
+            raise ValueError("CHANGE_ACTION_RESULT_MISSING_BEFORE")
+        journal.raw_content = before_raw
+        self.db.add(journal)
 
     def _rollback_link(self, result: dict) -> None:
         link_id = result.get("entity_id")
@@ -671,7 +889,19 @@ class ChangeService:
                 if isinstance(src, dict) and src.get("value"):
                     refs.append(str(src["value"]))
             return refs
+        if action_type == "patch_note":
+            source = payload.get("source")
+            return [str(source)] if source else []
+        if action_type == "upsert_journal_append":
+            source = payload.get("source")
+            return [str(source)] if source else []
         if action_type == "update_task":
             source = payload.get("source")
             return [str(source)] if source else []
         return []
+
+    def _append_block(self, existing: str, addition: str) -> str:
+        trimmed = (existing or "").strip()
+        if not trimmed:
+            return addition
+        return f"{trimmed}\n\n{addition}"

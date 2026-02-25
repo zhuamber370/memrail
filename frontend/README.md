@@ -1,13 +1,20 @@
 # Frontend
 
-Next.js frontend for Agent-First KMS MVP.
+Next.js frontend for Memrail MVP.
 
 ## Env
 
-Frontend reads env from `.env`:
+Frontend reads env from `.env.local`:
 
 - `NEXT_PUBLIC_API_BASE` (for example `http://localhost:8000`)
 - `NEXT_PUBLIC_API_KEY`
+
+Recommended (single source of truth from repo root):
+
+```bash
+cd frontend
+cp ../.env .env.local
+```
 
 ## Local Run
 

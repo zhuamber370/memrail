@@ -13,6 +13,7 @@ from src.schemas import (
     CommitOut,
     DryRunIn,
     DryRunOut,
+    RejectOut,
     UndoIn,
     UndoOut,
 )
@@ -34,7 +35,11 @@ def build_router(get_db_dep):
 
     @router.post("/changes/dry-run", response_model=DryRunOut)
     def dry_run(payload: DryRunIn, db: Session = Depends(get_db_dep)):
-        cs = ChangeService(db).dry_run(payload)
+        try:
+            cs = ChangeService(db).dry_run(payload)
+        except (ValueError, ValidationError) as exc:
+            code = str(exc) if str(exc) else "CHANGE_DRY_RUN_FAILED"
+            raise HTTPException(status_code=422, detail={"code": code, "message": code.lower()}) from exc
         diff_items = cs.diff_json
         diff = [str(item.get("text", "")) for item in diff_items]
         return {
@@ -60,6 +65,21 @@ def build_router(get_db_dep):
             "status": "committed",
             "committed_at": commit_row.committed_at,
         }
+
+    @router.delete("/changes/{change_set_id}", response_model=RejectOut)
+    def reject(change_set_id: str, db: Session = Depends(get_db_dep)):
+        try:
+            rejected_id = ChangeService(db).reject(change_set_id)
+        except ValueError as exc:
+            code = str(exc) if str(exc) else "CHANGE_REJECT_FAILED"
+            status_code = 409 if code == "CHANGE_SET_NOT_PROPOSED" else 422
+            raise HTTPException(status_code=status_code, detail={"code": code, "message": code.lower()}) from exc
+        if not rejected_id:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "CHANGE_SET_NOT_FOUND", "message": "change set not found"},
+            )
+        return {"change_set_id": rejected_id, "status": "rejected"}
 
     @router.post("/commits/undo-last", response_model=UndoOut)
     def undo_last(payload: UndoIn, db: Session = Depends(get_db_dep)):

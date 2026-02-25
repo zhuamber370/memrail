@@ -49,6 +49,93 @@ def test_dry_run_commit_undo_last_flow():
     assert undo.json()["status"] == "reverted"
 
 
+def test_dry_run_create_task_missing_topic_id_returns_422():
+    client = make_client()
+    dry = client.post(
+        "/api/v1/changes/dry-run",
+        json={
+            "actions": [
+                {
+                    "type": "create_task",
+                    "payload": {"title": "x", "status": "todo", "source": "test://changes"},
+                }
+            ],
+            "actor": {"type": "agent", "id": "openclaw"},
+            "tool": "openclaw-skill",
+        },
+    )
+    assert dry.status_code == 422
+
+
+def test_reject_proposed_change_set_deletes_it():
+    client = make_client()
+    topic_id = fixed_topic_id(client)
+    dry = client.post(
+        "/api/v1/changes/dry-run",
+        json={
+            "actions": [
+                {
+                    "type": "create_task",
+                    "payload": {
+                        "title": f"reject_me_{uniq('task')}",
+                        "status": "todo",
+                        "source": f"test://{uniq('reject')}",
+                        "topic_id": topic_id,
+                    },
+                }
+            ],
+            "actor": {"type": "agent", "id": "openclaw"},
+            "tool": "openclaw-skill",
+        },
+    )
+    assert dry.status_code == 200
+    chg_id = dry.json()["change_set_id"]
+
+    rejected = client.delete(f"/api/v1/changes/{chg_id}")
+    assert rejected.status_code == 200
+    assert rejected.json()["status"] == "rejected"
+    assert rejected.json()["change_set_id"] == chg_id
+
+    detail = client.get(f"/api/v1/changes/{chg_id}")
+    assert detail.status_code == 404
+
+
+def test_reject_committed_change_set_returns_409():
+    client = make_client()
+    topic_id = fixed_topic_id(client)
+    dry = client.post(
+        "/api/v1/changes/dry-run",
+        json={
+            "actions": [
+                {
+                    "type": "create_task",
+                    "payload": {
+                        "title": f"reject_committed_{uniq('task')}",
+                        "status": "todo",
+                        "source": f"test://{uniq('reject_commit')}",
+                        "topic_id": topic_id,
+                    },
+                }
+            ],
+            "actor": {"type": "agent", "id": "openclaw"},
+            "tool": "openclaw-skill",
+        },
+    )
+    assert dry.status_code == 200
+    chg_id = dry.json()["change_set_id"]
+
+    commit = client.post(
+        f"/api/v1/changes/{chg_id}/commit",
+        json={"approved_by": {"type": "user", "id": "usr_1"}, "client_request_id": f"idem-{uniq('commit')}"},
+    )
+    assert commit.status_code == 200
+
+    rejected = client.delete(f"/api/v1/changes/{chg_id}")
+    assert rejected.status_code == 409
+    body = rejected.json()
+    assert body["error"]["code"] == "CHANGE_SET_NOT_PROPOSED"
+
+
 def test_undo_last_without_commit_returns_409():
     _truncate_commits()
     client = make_client()
@@ -66,6 +153,7 @@ def test_undo_last_without_commit_returns_409():
 
 def test_dry_run_diff_contains_task_enhanced_fields():
     client = make_client()
+    topic_id = fixed_topic_id(client)
     dry = client.post(
         "/api/v1/changes/dry-run",
         json={
@@ -76,6 +164,7 @@ def test_dry_run_diff_contains_task_enhanced_fields():
                         "title": "Task with cycle",
                         "status": "todo",
                         "source": "test",
+                        "topic_id": topic_id,
                         "cycle_id": "cyc_123",
                         "blocked_by_task_id": "tsk_999",
                     },
@@ -93,6 +182,7 @@ def test_dry_run_diff_contains_task_enhanced_fields():
 
 def test_dry_run_summary_has_entity_and_field_counts():
     client = make_client()
+    topic_id = fixed_topic_id(client)
     dry = client.post(
         "/api/v1/changes/dry-run",
         json={
@@ -103,6 +193,7 @@ def test_dry_run_summary_has_entity_and_field_counts():
                         "title": "Task summary",
                         "status": "todo",
                         "source": "test",
+                        "topic_id": topic_id,
                         "cycle_id": "cyc_123",
                     },
                 },
@@ -129,6 +220,7 @@ def test_dry_run_summary_has_entity_and_field_counts():
 
 def test_dry_run_includes_structured_diff_items():
     client = make_client()
+    topic_id = fixed_topic_id(client)
     dry = client.post(
         "/api/v1/changes/dry-run",
         json={
@@ -139,6 +231,7 @@ def test_dry_run_includes_structured_diff_items():
                         "title": "Structured diff",
                         "status": "todo",
                         "source": "test",
+                        "topic_id": topic_id,
                         "cycle_id": "cyc_123",
                     },
                 }
@@ -160,13 +253,14 @@ def test_dry_run_includes_structured_diff_items():
 
 def test_dry_run_persists_change_actions():
     client = make_client()
+    topic_id = fixed_topic_id(client)
     dry = client.post(
         "/api/v1/changes/dry-run",
         json={
             "actions": [
                 {
                     "type": "create_task",
-                    "payload": {"title": "persist-actions", "status": "todo", "source": "test"},
+                    "payload": {"title": "persist-actions", "status": "todo", "source": "test", "topic_id": topic_id},
                 },
                 {
                     "type": "append_note",
@@ -614,3 +708,158 @@ def test_get_change_detail_contains_actions():
     assert len(body["actions"]) == 2
     assert body["actions"][0]["action_index"] == 1
     assert body["actions"][1]["action_index"] == 2
+
+
+def test_dry_run_supports_patch_note_and_journal_upsert():
+    client = make_client()
+    note = client.post(
+        "/api/v1/notes/append",
+        json={
+            "title": f"dry_patch_note_{uniq('note')}",
+            "body": "seed body",
+            "sources": [{"type": "text", "value": f"test://{uniq('note_src')}"}],
+            "tags": [],
+        },
+    )
+    assert note.status_code == 201
+    note_id = note.json()["id"]
+    journal_date = f"2099-03-{(sum(ord(c) for c in uniq('jdt')) % 28) + 1:02d}"
+
+    dry = client.post(
+        "/api/v1/changes/dry-run",
+        json={
+            "actions": [
+                {
+                    "type": "patch_note",
+                    "payload": {
+                        "note_id": note_id,
+                        "body_append": "increment",
+                        "source": f"test://{uniq('patch_note_src')}",
+                    },
+                },
+                {
+                    "type": "upsert_journal_append",
+                    "payload": {
+                        "journal_date": journal_date,
+                        "append_text": "journal line",
+                        "source": f"test://{uniq('journal_src')}",
+                    },
+                },
+            ],
+            "actor": {"type": "agent", "id": "openclaw"},
+            "tool": "openclaw-skill",
+        },
+    )
+    assert dry.status_code == 200
+    body = dry.json()
+    assert body["summary"]["note_patch"] == 1
+    assert body["summary"]["journal_upsert"] == 1
+    entities = [item["entity"] for item in body["diff_items"]]
+    assert "note" in entities
+    assert "journal" in entities
+
+
+def test_commit_patch_note_and_undo_reverts_body():
+    client = make_client()
+    marker = uniq("patch_note")
+    note = client.post(
+        "/api/v1/notes/append",
+        json={
+            "title": f"patch_note_{marker}",
+            "body": "base body",
+            "sources": [{"type": "text", "value": f"test://{uniq('note_src')}"}],
+            "tags": [],
+        },
+    )
+    assert note.status_code == 201
+    note_id = note.json()["id"]
+
+    dry = client.post(
+        "/api/v1/changes/dry-run",
+        json={
+            "actions": [
+                {
+                    "type": "patch_note",
+                    "payload": {
+                        "note_id": note_id,
+                        "body_append": "new increment",
+                        "source": f"test://{uniq('patch_note_src')}",
+                    },
+                }
+            ],
+            "actor": {"type": "agent", "id": "openclaw"},
+            "tool": "openclaw-skill",
+        },
+    )
+    assert dry.status_code == 200
+    chg_id = dry.json()["change_set_id"]
+
+    commit = client.post(
+        f"/api/v1/changes/{chg_id}/commit",
+        json={"approved_by": {"type": "user", "id": "usr_1"}, "client_request_id": f"idem-{uniq('commit')}"},
+    )
+    assert commit.status_code == 200
+
+    listed_after = client.get("/api/v1/notes/search?page=1&page_size=100")
+    assert listed_after.status_code == 200
+    changed = [item for item in listed_after.json()["items"] if item["id"] == note_id]
+    assert changed
+    assert "base body" in changed[0]["body"]
+    assert "new increment" in changed[0]["body"]
+
+    undo = client.post(
+        "/api/v1/commits/undo-last",
+        json={"requested_by": {"type": "user", "id": "usr_1"}, "reason": "undo patch note"},
+    )
+    assert undo.status_code == 200
+
+    listed_reverted = client.get("/api/v1/notes/search?page=1&page_size=100")
+    assert listed_reverted.status_code == 200
+    reverted = [item for item in listed_reverted.json()["items"] if item["id"] == note_id]
+    assert reverted
+    assert reverted[0]["body"] == "base body"
+
+
+def test_commit_upsert_journal_append_and_undo_removes_created_journal():
+    client = make_client()
+    journal_date = f"2099-04-{(sum(ord(c) for c in uniq('jdt')) % 28) + 1:02d}"
+    marker = f"journal_append_{uniq('j')}"
+
+    dry = client.post(
+        "/api/v1/changes/dry-run",
+        json={
+            "actions": [
+                {
+                    "type": "upsert_journal_append",
+                    "payload": {
+                        "journal_date": journal_date,
+                        "append_text": marker,
+                        "source": f"test://{uniq('journal_src')}",
+                    },
+                }
+            ],
+            "actor": {"type": "agent", "id": "openclaw"},
+            "tool": "openclaw-skill",
+        },
+    )
+    assert dry.status_code == 200
+    chg_id = dry.json()["change_set_id"]
+
+    commit = client.post(
+        f"/api/v1/changes/{chg_id}/commit",
+        json={"approved_by": {"type": "user", "id": "usr_1"}, "client_request_id": f"idem-{uniq('commit')}"},
+    )
+    assert commit.status_code == 200
+
+    fetched = client.get(f"/api/v1/journals/{journal_date}")
+    assert fetched.status_code == 200
+    assert marker in fetched.json()["raw_content"]
+
+    undo = client.post(
+        "/api/v1/commits/undo-last",
+        json={"requested_by": {"type": "user", "id": "usr_1"}, "reason": "undo journal append"},
+    )
+    assert undo.status_code == 200
+
+    fetched_after = client.get(f"/api/v1/journals/{journal_date}")
+    assert fetched_after.status_code == 404

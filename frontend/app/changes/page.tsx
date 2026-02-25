@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 
-import { apiGet, apiPost } from "../../src/lib/api";
+import { apiDelete, apiGet, apiPost } from "../../src/lib/api";
 import { useI18n } from "../../src/i18n";
 
 type ChangeListItem = {
@@ -105,7 +105,7 @@ export default function ChangesPage() {
   const [undoResult, setUndoResult] = useState<UndoResp | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [pending, setPending] = useState<"" | "refresh" | "detail" | "commit" | "undo">("");
+  const [pending, setPending] = useState<"" | "refresh" | "detail" | "commit" | "undo" | "reject">("");
 
   const entitySummaryEntries = useMemo(
     () =>
@@ -219,6 +219,27 @@ export default function ChangesPage() {
     }
   }
 
+  async function onRejectSelected() {
+    if (!selectedId) {
+      setError(t("changes.errNeedSelect"));
+      return;
+    }
+    setError("");
+    setNotice("");
+    setPending("reject");
+    try {
+      await apiDelete(`/api/v1/changes/${selectedId}`);
+      setNotice(t("changes.noticeRejected"));
+      setCommitResult(null);
+      setUndoResult(null);
+      await loadInbox();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setPending("");
+    }
+  }
+
   async function loadCommitAppliedEvents(commitId: string) {
     const listed = await apiGet<AuditListResp>("/api/v1/audit/events?page=1&page_size=100&action=changes_apply_action");
     const rows = listed.items.filter((item) => (item.metadata?.commit_id as string | undefined) === commitId);
@@ -236,6 +257,9 @@ export default function ChangesPage() {
         </button>
         <button className="badge" onClick={onCommitSelected} disabled={pending !== "" || !selectedId}>
           {pending === "commit" ? t("changes.pendingCommit") : t("changes.commitSelected")}
+        </button>
+        <button className="badge" onClick={onRejectSelected} disabled={pending !== "" || !selectedId}>
+          {pending === "reject" ? t("changes.pendingReject") : t("changes.rejectSelected")}
         </button>
         <button className="badge" onClick={onUndoLast} disabled={pending !== ""}>
           {pending === "undo" ? t("changes.pendingUndo") : t("changes.undo")}

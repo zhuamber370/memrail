@@ -11,8 +11,10 @@ from src.middleware.auth import ApiKeyAuthMiddleware
 from src.middleware.error_handler import RequestIdMiddleware, install_error_handlers
 from src.routes.audit import build_router as build_audit_router
 from src.routes.changes import build_router as build_changes_router
+from src.routes.context import build_router as build_context_router
 from src.routes.cycles import build_router as build_cycles_router
 from src.routes.inbox import build_router as build_inbox_router
+from src.routes.journals import build_router as build_journals_router
 from src.routes.links import build_router as build_links_router
 from src.routes.notes import build_router as build_notes_router
 from src.routes.tasks import build_router as build_tasks_router
@@ -36,7 +38,7 @@ def create_app(
     def get_db_dep():
         yield from get_db(session_local)
 
-    app = FastAPI(title="AFKMS Backend")
+    app = FastAPI(title="Memrail Backend")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -49,15 +51,20 @@ def create_app(
     )
     app.add_middleware(RequestIdMiddleware)
     if require_auth:
-        app.add_middleware(ApiKeyAuthMiddleware, api_key=api_key or "dev-api-key")
+        resolved_api_key = (api_key or "").strip()
+        if not resolved_api_key:
+            raise RuntimeError("KMS_API_KEY must be set when AFKMS_REQUIRE_AUTH=true")
+        app.add_middleware(ApiKeyAuthMiddleware, api_key=resolved_api_key)
     install_error_handlers(app)
     app.include_router(build_tasks_router(get_db_dep))
     app.include_router(build_topics_router(get_db_dep))
     app.include_router(build_cycles_router(get_db_dep))
+    app.include_router(build_journals_router(get_db_dep))
     app.include_router(build_inbox_router(get_db_dep))
     app.include_router(build_notes_router(get_db_dep))
     app.include_router(build_links_router(get_db_dep))
     app.include_router(build_changes_router(get_db_dep))
+    app.include_router(build_context_router(get_db_dep))
     app.include_router(build_audit_router(get_db_dep))
 
     @app.get("/health")
@@ -67,4 +74,4 @@ def create_app(
     return app
 
 
-app = create_app()
+app = create_app(require_auth=settings.require_auth, api_key=settings.kms_api_key)
