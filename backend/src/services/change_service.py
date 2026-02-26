@@ -227,6 +227,7 @@ class ChangeService:
             change_set_id=change_set_id,
             committed_by_type=payload.approved_by.type,
             committed_by_id=payload.approved_by.id,
+            committed_at=change_set.committed_at,
             client_request_id=payload.client_request_id,
         )
 
@@ -287,7 +288,8 @@ class ChangeService:
             select(Commit, ChangeSet)
             .join(ChangeSet, ChangeSet.id == Commit.change_set_id)
             .where(ChangeSet.tool != "undo", ChangeSet.status == "committed")
-            .order_by(desc(Commit.committed_at), desc(Commit.id))
+            # Use change-set committed_at (python-side timestamp) for deterministic recency.
+            .order_by(desc(ChangeSet.committed_at), desc(Commit.id))
             .limit(1)
         ).first()
         if not target:
@@ -330,6 +332,7 @@ class ChangeService:
             change_set_id=revert_change_set.id,
             committed_by_type=payload.requested_by.type,
             committed_by_id=payload.requested_by.id,
+            committed_at=now,
             client_request_id=payload.client_request_id,
         )
         try:

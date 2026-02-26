@@ -48,14 +48,11 @@ python3 -m pytest -q
 ```
 
 Result:
-- `71 passed, 4 failed`
-- Failures concentrated in `tests/test_changes_api.py`:
-  - SQLite-incompatible `TRUNCATE TABLE commits`
-  - undo/JSON behavior assertions in change-set revert flows
+- `75 passed in 4.99s`
 
 Interpretation:
 - Route-GoalTree changes are validated by targeted suites and frontend build.
-- Full backend suite in local SQLite mode currently contains pre-existing/non-route blockers in change governance tests.
+- Full backend suite passes in local SQLite mode.
 
 ## New/Updated Error Codes Verified
 
@@ -66,5 +63,5 @@ Interpretation:
 
 ## Conclusion
 
-- Route-GoalTree minimal feature set is implemented and validated on targeted checks.
-- Release gate for full backend suite remains blocked by non-route change-governance tests under local SQLite environment.
+- Route-GoalTree minimal feature set is implemented and validated.
+- Release gate checks pass on current branch (`backend pytest`, `frontend build`).

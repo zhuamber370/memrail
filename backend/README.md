@@ -73,10 +73,6 @@ cd backend
 python3 -m pytest -q
 ```
 
-Note:
-- In local SQLite mode, some `tests/test_changes_api.py` cases depend on PostgreSQL-specific behavior (for example `TRUNCATE`) and may fail.
-- For route-graph verification in SQLite mode, use targeted tests below.
-
 Route graph targeted:
 
 ```bash

@@ -1,3 +1,5 @@
+import json
+
 from sqlalchemy import create_engine, text
 
 from tests.helpers import fixed_topic_id, make_client
@@ -8,7 +10,10 @@ from tests.helpers import uniq
 def _truncate_commits():
     engine = create_engine(database_url(), future=True)
     with engine.begin() as conn:
-        conn.execute(text("TRUNCATE TABLE commits"))
+        if engine.dialect.name == "sqlite":
+            conn.execute(text("DELETE FROM commits"))
+        else:
+            conn.execute(text("TRUNCATE TABLE commits"))
 
 
 def test_dry_run_commit_undo_last_flow():
@@ -372,6 +377,8 @@ def test_commit_executes_create_task_action():
             ),
             {"change_set_id": chg_id},
         ).scalar_one()
+    if isinstance(row, str):
+        row = json.loads(row)
     assert isinstance(row, dict)
     assert row.get("status") == "applied"
     assert row.get("entity") == "task"
