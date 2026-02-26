@@ -256,6 +256,11 @@ class RouteGraphService:
         )
         if node is None:
             return False
+        has_successor = self.db.scalar(
+            select(func.count()).where(RouteEdge.route_id == route_id, RouteEdge.from_node_id == node_id)
+        )
+        if int(has_successor or 0) > 0:
+            raise ValueError("ROUTE_NODE_HAS_SUCCESSORS")
 
         self.db.delete(node)
         self.db.commit()

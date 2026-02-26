@@ -14,11 +14,14 @@ It focuses on one core principle:
 ### 2. Task Command Center (desktop-first)
 - `Tasks` page is the main execution workspace.
 - Supports search, filters, grouped list, and detail editing in one screen.
+- Task detail card is rendered above the execution graph (no overlay drawer).
 - Includes execution canvas (DAG-like graph) for idea/goal flow.
-- Node operations in UI:
-  - status update (`waiting / execute / done / removed`)
-  - rename
-  - delete (non-start node)
+- Node operations are context-menu driven (`...` on selected node):
+  - `+ Add Step` (inline panel near the selected node)
+  - `Set Status` (`waiting / execute / done`)
+  - `Rename`
+  - `Delete` (leaf node only, and non-start node)
+- Branch relation type (`refine/initiate/handoff`) is labeled directly on edges.
 
 ### 3. Knowledge board
 - Topic-based knowledge management.

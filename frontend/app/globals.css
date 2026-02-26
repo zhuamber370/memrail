@@ -659,6 +659,10 @@ a {
   align-items: start;
 }
 
+.taskCommandLayoutManage {
+  grid-template-columns: 300px minmax(620px, 1fr);
+}
+
 .taskFilterPanelCommand {
   border: 2px solid var(--line);
   border-radius: 12px;
@@ -740,6 +744,167 @@ a {
   max-height: 90vh;
   overflow: auto;
   min-width: 0;
+}
+
+.taskStudioPanel {
+  border: 2px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+}
+
+.taskStudioHead {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: start;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  background: #fffdf7;
+  padding: 10px;
+}
+
+.taskStudioHeadMain {
+  min-width: 0;
+}
+
+.taskStudioHeadMain .changesSubTitle {
+  margin: 0;
+}
+
+.taskStudioHeadMain .meta {
+  margin-top: 4px;
+}
+
+.taskStudioHeadActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.taskStudioWorkspace {
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  overflow: visible;
+}
+
+.taskStudioDrawerMask {
+  border: 0;
+  padding: 0;
+  background: #0000001f;
+  cursor: pointer;
+  position: absolute;
+  inset: 0;
+  z-index: 14;
+}
+
+.taskStudioDrawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(460px, 96%);
+  height: 100%;
+  border-left: 2px solid var(--line);
+  background: #fffdfb;
+  box-shadow: -8px 0 22px #00000018;
+  transform: translateX(calc(100% + 40px));
+  transition: transform 180ms ease, opacity 140ms ease, visibility 0ms linear 180ms;
+  z-index: 15;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  display: grid;
+}
+
+.taskStudioDrawerOpen {
+  transform: translateX(0);
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+  transition: transform 180ms ease, opacity 140ms ease;
+}
+
+.taskStudioDrawerInline {
+  position: static;
+  width: 100%;
+  height: auto;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  box-shadow: none;
+  transform: none;
+  transition: none;
+  z-index: auto;
+  pointer-events: auto;
+  opacity: 1;
+  visibility: visible;
+}
+
+.taskStudioDrawerInline .taskStudioDrawerBody {
+  height: auto;
+  overflow: visible;
+}
+
+.taskStudioDrawerInline .taskStudioDrawerHead {
+  position: static;
+  border-bottom: 2px dashed var(--line);
+}
+
+.taskStudioDrawerBody {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  height: 100%;
+  overflow: auto;
+  padding: 10px;
+}
+
+.taskStudioDrawerHead {
+  position: sticky;
+  top: 0;
+  background: #fffdfb;
+  border-bottom: 2px solid #00000010;
+  padding-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+  z-index: 1;
+}
+
+.taskStudioDrawerHead .changesSubTitle {
+  margin: 0;
+}
+
+.taskStudioDetailForm {
+  display: grid;
+  gap: 10px;
+}
+
+.taskStudioSection {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.taskStudioSectionTitle {
+  margin: 0;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #35507c;
+}
+
+.taskStudioGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
 }
 
 .taskArchivedHint {
@@ -912,6 +1077,20 @@ a {
   stroke: #c58100;
 }
 
+.taskDagEdgeLabel {
+  fill: #1f3658;
+  font-size: 11px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fffdf8;
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+.taskDagComposerHint {
+  margin: 0;
+}
+
 .taskDagNode {
   position: absolute;
   border: 2px solid var(--line);
@@ -924,6 +1103,7 @@ a {
   display: grid;
   align-content: space-between;
   gap: 8px;
+  overflow: visible;
 }
 
 .taskDagNodeStart {
@@ -957,7 +1137,13 @@ a {
     0 0 0 2px #2457d626;
 }
 
+.taskDagNode:focus-visible {
+  outline: 2px solid #2457d666;
+  outline-offset: 2px;
+}
+
 .taskDagNodeTitle {
+  margin-right: 26px;
   font-weight: 700;
   font-size: 0.88rem;
   line-height: 1.2;
@@ -973,6 +1159,70 @@ a {
   gap: 4px 8px;
   font-size: 0.72rem;
   color: var(--muted);
+}
+
+.taskDagNodeMenuTrigger {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  border: 1px solid #1f36582b;
+  border-radius: 999px;
+  background: #fff;
+  color: inherit;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 3px 7px;
+  cursor: pointer;
+}
+
+.taskDagInlinePanel {
+  position: absolute;
+  z-index: 3;
+  width: 304px;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 8px;
+  box-shadow: 0 8px 20px #00000012;
+}
+
+.taskDagInlineMenu {
+  display: grid;
+  gap: 6px;
+}
+
+.taskDagInlineMenuBtn {
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: inherit;
+  text-align: left;
+  padding: 6px 8px;
+  cursor: pointer;
+}
+
+.taskDagInlineEditor {
+  display: grid;
+  gap: 8px;
+}
+
+.taskDagInlineEditor .taskSectionTitle {
+  margin: 0;
+}
+
+.taskDagInlineForm {
+  display: grid;
+  gap: 8px;
+}
+
+.taskDagInlineActions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
 }
 
 .taskExecFlowBar {
@@ -1649,10 +1899,22 @@ a {
     grid-template-columns: 260px 1fr;
   }
 
+  .taskCommandLayoutManage {
+    grid-template-columns: 260px 1fr;
+  }
+
   .taskCommandDetail {
     grid-column: 1 / -1;
     position: static;
     max-height: none;
+  }
+
+  .taskStudioDrawer {
+    width: min(420px, 98%);
+  }
+
+  .taskStudioDrawerInline {
+    width: 100%;
   }
 }
 
@@ -1679,10 +1941,62 @@ a {
     grid-template-columns: 1fr;
   }
 
+  .taskCommandLayoutManage {
+    grid-template-columns: 1fr;
+  }
+
   .taskFilterPanelCommand,
   .taskCommandDetail {
     position: static;
     max-height: none;
+  }
+
+  .taskStudioHead {
+    grid-template-columns: 1fr;
+  }
+
+  .taskStudioHeadActions {
+    justify-content: flex-start;
+  }
+
+  .taskStudioGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .taskStudioWorkspace {
+    min-height: 0;
+  }
+
+  .taskStudioDrawerMask {
+    position: fixed;
+    inset: 0;
+  }
+
+  .taskStudioDrawer {
+    position: fixed;
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: min(88vh, 820px);
+    border-left: none;
+    border-top: 2px solid var(--line);
+    border-radius: 14px 14px 0 0;
+    transform: translateY(104%);
+  }
+
+  .taskStudioDrawerOpen {
+    transform: translateY(0);
+  }
+
+  .taskStudioDrawerInline {
+    position: static;
+    width: 100%;
+    height: auto;
+    border-top: 2px solid var(--line);
+    border-radius: 12px;
+    transform: none;
   }
 
   .taskStatusGroupList {
@@ -1732,6 +2046,10 @@ a {
 
   .taskExecCreateGrid {
     grid-template-columns: 1fr;
+  }
+
+  .taskDagInlinePanel {
+    width: 260px;
   }
 
   .taskExecLayout {

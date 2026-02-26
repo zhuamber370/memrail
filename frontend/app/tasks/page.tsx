@@ -46,6 +46,7 @@ type DetailDraft = {
   status: TaskStatus;
   cancelled_reason: string;
   priority: DetailPriority;
+  due: string;
   topic_id: string;
   description: string;
   acceptance_criteria: string;
@@ -73,6 +74,7 @@ export default function TasksPage() {
   const [total, setTotal] = useState(0);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [workspaceMode, setWorkspaceMode] = useState<"manage" | "studio">("manage");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -120,8 +122,8 @@ export default function TasksPage() {
   );
 
   const selectedTask = useMemo(
-    () => filteredTasks.find((task) => task.id === selectedTaskId) ?? filteredTasks[0] ?? null,
-    [filteredTasks, selectedTaskId]
+    () => tasks.find((task) => task.id === selectedTaskId) ?? tasks[0] ?? null,
+    [tasks, selectedTaskId]
   );
 
   const allVisibleSelected = useMemo(
@@ -148,10 +150,16 @@ export default function TasksPage() {
 
   useEffect(() => {
     setSelectedTaskId((prev) => {
-      if (prev && filteredTasks.some((task) => task.id === prev)) return prev;
-      return filteredTasks[0]?.id ?? null;
+      if (prev && tasks.some((task) => task.id === prev)) return prev;
+      return tasks[0]?.id ?? null;
     });
-  }, [filteredTasks]);
+  }, [tasks]);
+
+  useEffect(() => {
+    if (workspaceMode === "studio" && !selectedTask) {
+      setWorkspaceMode("manage");
+    }
+  }, [workspaceMode, selectedTask]);
 
   useEffect(() => {
     if (!selectedTask) {
@@ -163,6 +171,7 @@ export default function TasksPage() {
       status: selectedTask.status,
       cancelled_reason: selectedTask.cancelled_reason ?? "",
       priority: selectedTask.priority ?? "",
+      due: selectedTask.due ?? "",
       topic_id: selectedTask.topic_id,
       description: selectedTask.description,
       acceptance_criteria: selectedTask.acceptance_criteria
@@ -180,12 +189,14 @@ export default function TasksPage() {
     const nextTitle = draft.title.trim();
     const currentPriority = task.priority ?? "";
     const currentCancelReason = task.cancelled_reason ?? "";
+    const currentDue = task.due ?? "";
     const nextCancelReason = draft.cancelled_reason.trim();
 
     if (nextTitle !== task.title) patch.title = nextTitle;
     if (draft.status !== task.status) patch.status = draft.status;
     if (nextCancelReason !== currentCancelReason) patch.cancelled_reason = nextCancelReason || null;
     if (draft.priority !== currentPriority) patch.priority = draft.priority || null;
+    if (draft.due !== currentDue) patch.due = draft.due || null;
     if (draft.topic_id !== task.topic_id) patch.topic_id = draft.topic_id;
     if (draft.description !== task.description) patch.description = draft.description;
     if (draft.acceptance_criteria !== task.acceptance_criteria) patch.acceptance_criteria = draft.acceptance_criteria;
@@ -411,6 +422,7 @@ export default function TasksPage() {
       status: selectedTask.status,
       cancelled_reason: selectedTask.cancelled_reason ?? "",
       priority: selectedTask.priority ?? "",
+      due: selectedTask.due ?? "",
       topic_id: selectedTask.topic_id,
       description: selectedTask.description,
       acceptance_criteria: selectedTask.acceptance_criteria
@@ -444,6 +456,21 @@ export default function TasksPage() {
     }
   }
 
+  function onOpenStudio(taskId: string) {
+    setSelectedTaskId(taskId);
+    setWorkspaceMode("studio");
+    setError("");
+    setNotice("");
+  }
+
+  function onBackToManage() {
+    setWorkspaceMode("manage");
+    setError("");
+    setNotice("");
+  }
+
+  const isStudioMode = workspaceMode === "studio" && selectedTask !== null;
+
   return (
     <section className="card taskBoard taskBoardV3">
       <div className="taskCommandTop">
@@ -457,357 +484,413 @@ export default function TasksPage() {
         </div>
       </div>
 
-      <div className="taskCommandCreateBar">
-        <input
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              void onCreate();
-            }
-          }}
-          placeholder={t("tasks.placeholderTitle")}
-          className="taskInput"
-        />
-        <select value={createTopicId} onChange={(e) => setCreateTopicId(e.target.value)} className="taskInput">
-          {topics.map((topic) => (
-            <option key={topic.id} value={topic.id}>
-              {localizeTopicName(topic)}
-            </option>
-          ))}
-        </select>
-        <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className="taskInput">
-          <option value="P0">P0</option>
-          <option value="P1">P1</option>
-          <option value="P2">P2</option>
-          <option value="P3">P3</option>
-        </select>
-        <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="taskInput" />
-        <button className="badge" onClick={onCreate} disabled={!title.trim() || !createTopicId || loading}>
-          {t("tasks.create")}
-        </button>
-        <button className="badge" onClick={() => onRefresh()} disabled={loading}>
-          {t("tasks.refresh")}
-        </button>
-      </div>
-
-      <div className="taskCommandLayout">
-        <aside className="taskFilterPanel taskFilterPanelCommand">
-          <h2 className="changesSubTitle">{t("tasks.filtersTitle")}</h2>
-          <label className="taskFilterItem taskFilterSearch">
-            <span>{t("tasks.search")}</span>
+      {!isStudioMode ? (
+        <>
+          <div className="taskCommandCreateBar">
             <input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void onCreate();
+                }
+              }}
+              placeholder={t("tasks.placeholderTitle")}
               className="taskInput"
-              placeholder={t("tasks.searchPlaceholder")}
             />
-          </label>
-          <div className="taskFilterGrid">
-            <label className="taskFilterItem">
-              <span>{t("tasks.filterPriority")}</span>
-              <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as FilterPriority)} className="taskInput">
-                {PRIORITY_FILTERS.map((item) => (
-                  <option key={item} value={item}>
-                    {item === "all" ? t("tasks.filterAll") : item}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="taskFilterItem">
-              <span>{t("tasks.filterStatus")}</span>
-              <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)} className="taskInput">
-                {STATUS_FILTERS.map((item) => (
-                  <option key={item} value={item}>
-                    {item === "all" ? t("tasks.filterAll") : t(`tasks.statusValue.${item}`)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="taskFilterItem">
-              <span>{t("tasks.filterCategory")}</span>
-              <select value={filterTopicId} onChange={(e) => setFilterTopicId(e.target.value)} className="taskInput">
-                <option value="all">{t("tasks.filterAll")}</option>
-                {topics.map((topic) => (
-                  <option key={topic.id} value={topic.id}>
-                    {localizeTopicName(topic)}
-                  </option>
-                ))}
-              </select>
-            </label>
+            <select value={createTopicId} onChange={(e) => setCreateTopicId(e.target.value)} className="taskInput">
+              {topics.map((topic) => (
+                <option key={topic.id} value={topic.id}>
+                  {localizeTopicName(topic)}
+                </option>
+              ))}
+            </select>
+            <select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)} className="taskInput">
+              <option value="P0">P0</option>
+              <option value="P1">P1</option>
+              <option value="P2">P2</option>
+              <option value="P3">P3</option>
+            </select>
+            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="taskInput" />
+            <button className="badge" onClick={onCreate} disabled={!title.trim() || !createTopicId || loading}>
+              {t("tasks.create")}
+            </button>
+            <button className="badge" onClick={() => onRefresh()} disabled={loading}>
+              {t("tasks.refresh")}
+            </button>
           </div>
 
-          {!isArchivedView ? (
-            <div className="taskBulkBar">
-              <label className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <div className="taskCommandLayout taskCommandLayoutManage">
+            <aside className="taskFilterPanel taskFilterPanelCommand">
+              <h2 className="changesSubTitle">{t("tasks.filtersTitle")}</h2>
+              <label className="taskFilterItem taskFilterSearch">
+                <span>{t("tasks.search")}</span>
                 <input
-                  type="checkbox"
-                  checked={allVisibleSelected}
-                  onChange={() => toggleSelectAllVisible()}
-                  disabled={!filteredTasks.length || loading}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="taskInput"
+                  placeholder={t("tasks.searchPlaceholder")}
                 />
-                {t("tasks.selectAll")}
               </label>
-              <span className="meta">{t("tasks.selected")}: {selectedIds.length}</span>
-              {canBulkCancel ? (
-                <button className="badge" disabled={loading || !selectedIds.length} onClick={onBulkCancel}>
-                  {t("tasks.bulkCancel")}
-                </button>
-              ) : null}
-              {canArchiveFromView ? (
-                <button className="badge" disabled={loading || !selectedIds.length} onClick={onArchiveSelected}>
-                  {t("tasks.archiveSelected")}
-                </button>
-              ) : null}
+              <div className="taskFilterGrid">
+                <label className="taskFilterItem">
+                  <span>{t("tasks.filterPriority")}</span>
+                  <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value as FilterPriority)} className="taskInput">
+                    {PRIORITY_FILTERS.map((item) => (
+                      <option key={item} value={item}>
+                        {item === "all" ? t("tasks.filterAll") : item}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="taskFilterItem">
+                  <span>{t("tasks.filterStatus")}</span>
+                  <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as FilterStatus)} className="taskInput">
+                    {STATUS_FILTERS.map((item) => (
+                      <option key={item} value={item}>
+                        {item === "all" ? t("tasks.filterAll") : t(`tasks.statusValue.${item}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className="taskFilterItem">
+                  <span>{t("tasks.filterCategory")}</span>
+                  <select value={filterTopicId} onChange={(e) => setFilterTopicId(e.target.value)} className="taskInput">
+                    <option value="all">{t("tasks.filterAll")}</option>
+                    {topics.map((topic) => (
+                      <option key={topic.id} value={topic.id}>
+                        {localizeTopicName(topic)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {!isArchivedView ? (
+                <div className="taskBulkBar">
+                  <label className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                    <input
+                      type="checkbox"
+                      checked={allVisibleSelected}
+                      onChange={() => toggleSelectAllVisible()}
+                      disabled={!filteredTasks.length || loading}
+                    />
+                    {t("tasks.selectAll")}
+                  </label>
+                  <span className="meta">{t("tasks.selected")}: {selectedIds.length}</span>
+                  {canBulkCancel ? (
+                    <button className="badge" disabled={loading || !selectedIds.length} onClick={onBulkCancel}>
+                      {t("tasks.bulkCancel")}
+                    </button>
+                  ) : null}
+                  {canArchiveFromView ? (
+                    <button className="badge" disabled={loading || !selectedIds.length} onClick={onArchiveSelected}>
+                      {t("tasks.archiveSelected")}
+                    </button>
+                  ) : null}
+                </div>
+              ) : (
+                <p className="meta taskArchivedHint">{t("tasks.archivedReadOnly")}</p>
+              )}
+
+              {error ? <p className="meta taskErrorText">{error}</p> : null}
+              {notice ? <p className="meta taskNoticeText">{notice}</p> : null}
+            </aside>
+
+            <section className="taskCommandListPanel">
+              <div className="taskCommandListHead">
+                <h2 className="changesSubTitle">{t("tasks.title")}</h2>
+                <span className="meta">{filteredTasks.length} / {total}</span>
+              </div>
+
+              {visibleGroups.length ? (
+                <div className="taskStatusGroupList">
+                  {visibleGroups.map((group) => (
+                    <section key={group.status} className="taskStatusGroup">
+                      <div className="taskStatusGroupHead">
+                        <span className="badge">{t(`tasks.statusValue.${group.status}`)}</span>
+                        <span className="meta">{group.items.length}</span>
+                      </div>
+                      <div className="taskList taskListV3">
+                        {group.items.map((task) => (
+                          <div
+                            key={task.id}
+                            className={`taskRow ${selectedTaskId === task.id ? "taskRowActive" : ""}`}
+                            onClick={() => setSelectedTaskId(task.id)}
+                          >
+                            {!isArchivedView ? (
+                              <input
+                                type="checkbox"
+                                checked={selectedIds.includes(task.id)}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  toggleSelected(task.id);
+                                }}
+                                aria-label={`select ${task.title}`}
+                              />
+                            ) : null}
+                            <div className="taskRowMain">
+                              <div className="taskTitle">{task.title}</div>
+                              <div className="taskMetaLine">
+                                <span>{task.priority ?? "-"}</span>
+                                <span>{localizeTopicName(topicMap[task.topic_id])}</span>
+                                <span>{task.due ?? "-"}</span>
+                                <span>{formatTime(task.updated_at)}</span>
+                              </div>
+                            </div>
+                            <div className="taskQuickActions">
+                              <button
+                                className="badge"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onOpenStudio(task.id);
+                                }}
+                                disabled={loading}
+                              >
+                                {t("tasks.openStudio")}
+                              </button>
+                              {!isArchivedView ? (
+                                <>
+                                  <button
+                                    className="badge"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void onStatus(task.id, "done");
+                                    }}
+                                    disabled={loading}
+                                  >
+                                    {t("tasks.done")}
+                                  </button>
+                                  <button
+                                    className="badge"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void onCancel(task.id);
+                                    }}
+                                    disabled={loading || task.status === "cancelled"}
+                                  >
+                                    {t("tasks.cancel")}
+                                  </button>
+                                  <button
+                                    className="badge"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      void onDelete(task.id);
+                                    }}
+                                    disabled={loading}
+                                  >
+                                    {t("tasks.delete")}
+                                  </button>
+                                </>
+                              ) : null}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <p className="meta">{t("tasks.empty")}</p>
+              )}
+            </section>
+          </div>
+        </>
+      ) : selectedTask ? (
+        <section className="taskStudioPanel">
+          <div className="taskStudioHead">
+            <button className="badge" onClick={onBackToManage} disabled={loading}>
+              {t("tasks.backToList")}
+            </button>
+            <div className="taskStudioHeadMain">
+              <h2 className="changesSubTitle">{selectedTask.title}</h2>
+              <p className="meta">{selectedTask.id}</p>
             </div>
-          ) : (
-            <p className="meta taskArchivedHint">{t("tasks.archivedReadOnly")}</p>
-          )}
+            <div className="taskStudioHeadActions">
+              <span className="badge">{t(`tasks.statusValue.${selectedTask.status}`)}</span>
+              <button className="badge" onClick={() => onRefresh()} disabled={loading}>
+                {t("tasks.refresh")}
+              </button>
+            </div>
+          </div>
 
           {error ? <p className="meta taskErrorText">{error}</p> : null}
           {notice ? <p className="meta taskNoticeText">{notice}</p> : null}
-        </aside>
 
-        <section className="taskCommandListPanel">
-          <div className="taskCommandListHead">
-            <h2 className="changesSubTitle">{t("tasks.title")}</h2>
-            <span className="meta">{filteredTasks.length} / {total}</span>
-          </div>
-
-          {visibleGroups.length ? (
-            <div className="taskStatusGroupList">
-              {visibleGroups.map((group) => (
-                <section key={group.status} className="taskStatusGroup">
-                  <div className="taskStatusGroupHead">
-                    <span className="badge">{t(`tasks.statusValue.${group.status}`)}</span>
-                    <span className="meta">{group.items.length}</span>
-                  </div>
-                  <div className="taskList taskListV3">
-                    {group.items.map((task) => (
-                      <div
-                        key={task.id}
-                        className={`taskRow ${selectedTaskId === task.id ? "taskRowActive" : ""}`}
-                        onClick={() => setSelectedTaskId(task.id)}
-                      >
-                        {!isArchivedView ? (
-                          <input
-                            type="checkbox"
-                            checked={selectedIds.includes(task.id)}
-                            onChange={(e) => {
-                              e.stopPropagation();
-                              toggleSelected(task.id);
-                            }}
-                            aria-label={`select ${task.title}`}
-                          />
-                        ) : null}
-                        <div className="taskRowMain">
-                          <div className="taskTitle">{task.title}</div>
-                          <div className="taskMetaLine">
-                            <span>{task.priority ?? "-"}</span>
-                            <span>{localizeTopicName(topicMap[task.topic_id])}</span>
-                            <span>{task.due ?? "-"}</span>
-                            <span>{formatTime(task.updated_at)}</span>
-                          </div>
-                        </div>
-                        {!isArchivedView ? (
-                          <div className="taskQuickActions">
-                            <button className="badge" onClick={(e) => { e.stopPropagation(); onStatus(task.id, "done"); }} disabled={loading}>{t("tasks.done")}</button>
-                            <button
-                              className="badge"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                void onCancel(task.id);
-                              }}
-                              disabled={loading || task.status === "cancelled"}
-                            >
-                              {t("tasks.cancel")}
-                            </button>
-                            <button className="badge" onClick={(e) => { e.stopPropagation(); onDelete(task.id); }} disabled={loading}>{t("tasks.delete")}</button>
-                          </div>
-                        ) : null}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              ))}
-            </div>
-          ) : (
-            <p className="meta">{t("tasks.empty")}</p>
-          )}
-        </section>
-
-        <aside className="taskDetail taskCommandDetail">
-          <h2 className="changesSubTitle">{t("tasks.detail")}</h2>
-          {selectedTask ? (
-            <div className="taskDetailContent">
-              <div className="taskDetailTitle">{selectedTask.title}</div>
-              <div className="meta">{selectedTask.id}</div>
-              <div className="taskDetailGrid">
-                <div>
-                  <div className="changesSummaryKey">{t("tasks.updated")}</div>
-                  <div className="changesLedgerText">{formatTime(selectedTask.updated_at)}</div>
+          <div className="taskStudioWorkspace">
+            <section className="taskStudioDrawer taskStudioDrawerInline" aria-hidden={false}>
+              <div className="taskStudioDrawerBody">
+                <div className="taskStudioDrawerHead">
+                  <h2 className="changesSubTitle">{t("tasks.detail")}</h2>
                 </div>
-                <div>
-                  <div className="changesSummaryKey">{t("tasks.source")}</div>
-                  <div className="changesLedgerText">{selectedTask.source}</div>
-                </div>
-              </div>
-              <TaskExecutionPanel
-                taskId={selectedTask.id}
-                onTaskStarted={(status) => onExecutionTaskStatusChange(selectedTask.id, status)}
-              />
-              <div className="taskDetailEdit">
-                {isArchivedView ? (
-                  <div className="taskDetailForm">
-                    <h3 className="changesGroupTitle">{t("tasks.readOnly")}</h3>
-                    <p className="meta">{t("tasks.archivedReadOnly")}</p>
-                    <div className="taskDetailGrid">
-                      <div>
-                        <div className="changesSummaryKey">{t("tasks.status")}</div>
-                        <div className="changesLedgerText">{t(`tasks.statusValue.${selectedTask.status}`)}</div>
-                      </div>
-                      <div>
-                        <div className="changesSummaryKey">{t("tasks.priority")}</div>
-                        <div className="changesLedgerText">{selectedTask.priority ?? "-"}</div>
-                      </div>
-                      <div>
-                        <div className="changesSummaryKey">{t("tasks.due")}</div>
-                        <div className="changesLedgerText">{selectedTask.due ?? "-"}</div>
-                      </div>
-                      <div>
-                        <div className="changesSummaryKey">{t("tasks.filterCategory")}</div>
-                        <div className="changesLedgerText">{localizeTopicName(topicMap[selectedTask.topic_id])}</div>
-                      </div>
-                    </div>
-                    {selectedTask.cancelled_reason ? (
-                      <div className="taskField">
-                        <span>{t("tasks.cancelReason")}</span>
-                        <div className="changesLedgerText">{selectedTask.cancelled_reason}</div>
-                      </div>
-                    ) : null}
-                  </div>
-                ) : (
-                  <>
-                    <h3 className="changesGroupTitle">{t("tasks.quickEdit")}</h3>
-                    {detailDraft ? (
-                      <div className="taskDetailForm">
-                        <div className="taskDetailFormGrid taskDetailFormGridCore">
-                          <label className="taskField">
-                            <span>{t("tasks.status")}</span>
-                            <select
-                              value={detailDraft.status}
-                              onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, status: e.target.value as TaskStatus } : prev))}
-                              className="taskInput"
-                            >
-                              <option value="todo">{t("tasks.statusValue.todo")}</option>
-                              <option value="in_progress">{t("tasks.statusValue.in_progress")}</option>
-                              <option value="done">{t("tasks.statusValue.done")}</option>
-                              <option value="cancelled">{t("tasks.statusValue.cancelled")}</option>
-                            </select>
-                          </label>
 
-                          <label className="taskField">
-                            <span>{t("tasks.priority")}</span>
-                            <select
-                              value={detailDraft.priority}
-                              onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, priority: e.target.value as DetailPriority } : prev))}
-                              className="taskInput"
-                            >
-                              <option value="">{t("tasks.none")}</option>
-                              <option value="P0">P0</option>
-                              <option value="P1">P1</option>
-                              <option value="P2">P2</option>
-                              <option value="P3">P3</option>
-                            </select>
-                          </label>
+                {detailDraft ? (
+                  <div className="taskStudioDetailForm">
+                    {isArchivedView ? <p className="meta">{t("tasks.archivedReadOnly")}</p> : null}
 
-                          <label className="taskField">
-                            <span>{t("tasks.filterCategory")}</span>
-                            <select
-                              value={detailDraft.topic_id}
-                              onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, topic_id: e.target.value } : prev))}
-                              className="taskInput"
-                            >
-                              {topics.map((topic) => (
-                                <option key={topic.id} value={topic.id}>
-                                  {localizeTopicName(topic)}
-                                </option>
-                              ))}
-                            </select>
-                          </label>
-
-                          <label className="taskField taskFieldWide">
-                            <span>{t("tasks.title")}</span>
-                            <input
-                              value={detailDraft.title}
-                              onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))}
-                              className="taskInput"
-                            />
-                          </label>
-
-                          {detailDraft.status === "cancelled" ? (
-                            <label className="taskField taskFieldWide">
-                              <span>{t("tasks.cancelReason")}</span>
-                              <textarea
-                                value={detailDraft.cancelled_reason}
-                                onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, cancelled_reason: e.target.value } : prev))}
-                                placeholder={t("tasks.placeholderCancelReason")}
-                                className="taskInput taskTextArea"
-                                rows={2}
-                              />
-                            </label>
-                          ) : null}
-
-                          <label className="taskField taskFieldWide">
-                            <span>{t("tasks.description")}</span>
-                            <textarea
-                              value={detailDraft.description}
-                              onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, description: e.target.value } : prev))}
-                              placeholder={t("tasks.placeholderDescription")}
-                              className="taskInput taskTextArea"
-                              rows={3}
-                            />
-                          </label>
-
-                          <label className="taskField taskFieldWide">
-                            <span>{t("tasks.acceptance")}</span>
-                            <textarea
-                              value={detailDraft.acceptance_criteria}
-                              onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, acceptance_criteria: e.target.value } : prev))}
-                              placeholder={t("tasks.placeholderAcceptance")}
-                              className="taskInput taskTextArea"
-                              rows={3}
-                            />
-                          </label>
-                        </div>
-
+                    <section className="taskStudioSection">
+                      <h3 className="taskStudioSectionTitle">{t("tasks.detailIdentity")}</h3>
+                      <div className="taskStudioGrid">
                         <label className="taskField">
+                          <span>{t("tasks.id")}</span>
+                          <input value={selectedTask.id} disabled className="taskInput" />
+                        </label>
+                        <label className="taskField">
+                          <span>{t("tasks.updated")}</span>
+                          <input value={formatTime(selectedTask.updated_at)} disabled className="taskInput" />
+                        </label>
+                        <label className="taskField taskFieldWide">
                           <span>{t("tasks.source")}</span>
                           <input value={selectedTask.source} disabled className="taskInput" />
                         </label>
+                      </div>
+                    </section>
 
-                        <div className="taskDetailFormActions">
-                          <button className="badge" onClick={onResetDetail} disabled={loading || !detailDirty}>
-                            {t("tasks.resetDetail")}
-                          </button>
-                          <button className="badge" onClick={onSaveDetail} disabled={loading || !detailDirty}>
-                            {t("tasks.saveDetail")}
-                          </button>
-                        </div>
+                    <section className="taskStudioSection">
+                      <h3 className="taskStudioSectionTitle">{t("tasks.detailPlan")}</h3>
+                      <div className="taskStudioGrid">
+                        <label className="taskField">
+                          <span>{t("tasks.status")}</span>
+                          <select
+                            value={detailDraft.status}
+                            onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, status: e.target.value as TaskStatus } : prev))}
+                            className="taskInput"
+                            disabled={isArchivedView}
+                          >
+                            <option value="todo">{t("tasks.statusValue.todo")}</option>
+                            <option value="in_progress">{t("tasks.statusValue.in_progress")}</option>
+                            <option value="done">{t("tasks.statusValue.done")}</option>
+                            <option value="cancelled">{t("tasks.statusValue.cancelled")}</option>
+                          </select>
+                        </label>
+
+                        <label className="taskField">
+                          <span>{t("tasks.priority")}</span>
+                          <select
+                            value={detailDraft.priority}
+                            onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, priority: e.target.value as DetailPriority } : prev))}
+                            className="taskInput"
+                            disabled={isArchivedView}
+                          >
+                            <option value="">{t("tasks.none")}</option>
+                            <option value="P0">P0</option>
+                            <option value="P1">P1</option>
+                            <option value="P2">P2</option>
+                            <option value="P3">P3</option>
+                          </select>
+                        </label>
+
+                        <label className="taskField">
+                          <span>{t("tasks.due")}</span>
+                          <input
+                            type="date"
+                            value={detailDraft.due}
+                            onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, due: e.target.value } : prev))}
+                            className="taskInput"
+                            disabled={isArchivedView}
+                          />
+                        </label>
+
+                        <label className="taskField">
+                          <span>{t("tasks.filterCategory")}</span>
+                          <select
+                            value={detailDraft.topic_id}
+                            onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, topic_id: e.target.value } : prev))}
+                            className="taskInput"
+                            disabled={isArchivedView}
+                          >
+                            {topics.map((topic) => (
+                              <option key={topic.id} value={topic.id}>
+                                {localizeTopicName(topic)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+                    </section>
+
+                    <section className="taskStudioSection">
+                      <h3 className="taskStudioSectionTitle">{t("tasks.detailContent")}</h3>
+                      <div className="taskStudioGrid">
+                        <label className="taskField taskFieldWide">
+                          <span>{t("tasks.title")}</span>
+                          <input
+                            value={detailDraft.title}
+                            onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, title: e.target.value } : prev))}
+                            className="taskInput"
+                            disabled={isArchivedView}
+                          />
+                        </label>
+
+                        <label className="taskField taskFieldWide">
+                          <span>{t("tasks.description")}</span>
+                          <textarea
+                            value={detailDraft.description}
+                            onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, description: e.target.value } : prev))}
+                            placeholder={t("tasks.placeholderDescription")}
+                            className="taskInput taskTextArea"
+                            rows={3}
+                            disabled={isArchivedView}
+                          />
+                        </label>
+
+                        <label className="taskField taskFieldWide">
+                          <span>{t("tasks.acceptance")}</span>
+                          <textarea
+                            value={detailDraft.acceptance_criteria}
+                            onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, acceptance_criteria: e.target.value } : prev))}
+                            placeholder={t("tasks.placeholderAcceptance")}
+                            className="taskInput taskTextArea"
+                            rows={3}
+                            disabled={isArchivedView}
+                          />
+                        </label>
+                      </div>
+                    </section>
+
+                    {detailDraft.status === "cancelled" || selectedTask.cancelled_reason ? (
+                      <section className="taskStudioSection">
+                        <h3 className="taskStudioSectionTitle">{t("tasks.cancelReason")}</h3>
+                        <label className="taskField taskFieldWide">
+                          <textarea
+                            value={detailDraft.cancelled_reason}
+                            onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, cancelled_reason: e.target.value } : prev))}
+                            placeholder={t("tasks.placeholderCancelReason")}
+                            className="taskInput taskTextArea"
+                            rows={3}
+                            disabled={isArchivedView}
+                          />
+                        </label>
+                      </section>
+                    ) : null}
+
+                    {!isArchivedView ? (
+                      <div className="taskDetailFormActions">
+                        <button className="badge" onClick={onResetDetail} disabled={loading || !detailDirty}>
+                          {t("tasks.resetDetail")}
+                        </button>
+                        <button className="badge" onClick={onSaveDetail} disabled={loading || !detailDirty}>
+                          {t("tasks.saveDetail")}
+                        </button>
                       </div>
                     ) : null}
-                  </>
-                )}
+                  </div>
+                ) : null}
               </div>
-            </div>
-          ) : (
-            <p className="meta">{t("tasks.pickOne")}</p>
-          )}
-        </aside>
-      </div>
+            </section>
+
+            <TaskExecutionPanel
+              taskId={selectedTask.id}
+              onTaskStarted={(status) => onExecutionTaskStatusChange(selectedTask.id, status)}
+            />
+          </div>
+        </section>
+      ) : (
+        <p className="meta">{t("tasks.pickOne")}</p>
+      )}
     </section>
   );
 }

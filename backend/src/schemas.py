@@ -395,7 +395,7 @@ class ContextBundleOut(BaseModel):
 IdeaStatus = Literal["captured", "triage", "discovery", "ready", "rejected"]
 RouteStatus = Literal["candidate", "active", "parked", "completed", "cancelled"]
 RouteNodeType = Literal["start", "goal", "idea"]
-RouteNodeStatus = Literal["waiting", "execute", "done", "removed", "todo", "in_progress", "cancelled"]
+RouteNodeStatus = Literal["waiting", "execute", "done"]
 RouteAssigneeType = Literal["human", "agent"]
 RouteEdgeRelation = Literal["refine", "initiate", "handoff"]
 NodeLogType = Literal["note", "evidence", "decision", "summary"]
@@ -490,7 +490,7 @@ class RouteNodeCreate(BaseModel):
     node_type: RouteNodeType
     title: str = Field(min_length=1, max_length=200)
     description: str = ""
-    status: RouteNodeStatus = "todo"
+    status: RouteNodeStatus = "waiting"
     parent_node_id: Optional[str] = Field(default=None, min_length=1)
     order_hint: int = 0
     assignee_type: RouteAssigneeType = "human"

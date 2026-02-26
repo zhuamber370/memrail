@@ -10,8 +10,14 @@
 - Task domain with fixed topic classification, cancel-reason guard, archive semantics
 - Task Command Center UI (desktop-first):
   - search + filter + grouped list + detail in one screen
+  - task detail card above execution graph (non-overlay)
   - execution canvas with idea-goal flow graph
-  - node status change (`waiting/execute/done`), rename, delete
+  - branch relation labels rendered directly on edges
+  - selected-node `...` menu supports:
+    - inline add step
+    - set status (`waiting/execute/done`)
+    - rename
+    - delete (leaf node only)
 - Knowledge Topic Board with classify/edit/archive operations
 - Changes proposal inbox for human review and direct commit/reject
 - OpenClaw skill support including `reject_changes`

@@ -479,6 +479,13 @@ def test_route_nodes_edges_and_logs():
     assert rename.status_code == 200
     assert rename.json()["title"] == "Build MVP v2"
 
+    delete_non_leaf = client.delete(f"/api/v1/routes/{route1_id}/nodes/{n1_id}")
+    assert delete_non_leaf.status_code == 409
+    assert delete_non_leaf.json()["error"]["code"] == "ROUTE_NODE_HAS_SUCCESSORS"
+
+    delete_leaf = client.delete(f"/api/v1/routes/{route1_id}/nodes/{n2_id}")
+    assert delete_leaf.status_code == 204
+
     delete_node = client.delete(f"/api/v1/routes/{route1_id}/nodes/{n1_id}")
     assert delete_node.status_code == 204
 
@@ -486,7 +493,11 @@ def test_route_nodes_edges_and_logs():
     assert graph_after_delete.status_code == 200
     body = graph_after_delete.json()
     assert all(item["id"] != n1_id for item in body["nodes"])
-    assert all(item["from_node_id"] != n1_id and item["to_node_id"] != n1_id for item in body["edges"])
+    assert all(item["id"] != n2_id for item in body["nodes"])
+    assert all(
+        item["from_node_id"] not in {n1_id, n2_id} and item["to_node_id"] not in {n1_id, n2_id}
+        for item in body["edges"]
+    )
 
     logs_after_delete = client.get(f"/api/v1/routes/{route1_id}/nodes/{n1_id}/logs")
     assert logs_after_delete.status_code == 404

@@ -54,11 +54,13 @@ python3 -m uvicorn src.app:app --reload --port 8000
   - route node APIs include create/patch/**delete**
   - edge APIs include create/delete
   - node types: `idea` and `goal` (`start` is system-created only)
+  - node status contract: `waiting | execute | done` (legacy values normalized at runtime)
   - edge relations are inferred and validated by node types:
     - `idea -> idea`: `refine`
     - `idea -> goal`: `initiate`
     - `goal -> idea`: `handoff`
     - `goal -> goal`: forbidden
+  - node delete rule: only leaf nodes (no successors) can be deleted
   - parent node must stay in same route and cannot form cycles
   - non-`candidate` route cannot rewire `parent_route_id`
   - node log fields: `log_type`, `source_ref`

@@ -360,7 +360,7 @@ class RouteNode(Base):
     node_type: Mapped[str] = mapped_column(String(20), nullable=False)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
-    status: Mapped[str] = mapped_column(String(20), nullable=False, default="todo")
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="waiting")
     parent_node_id: Mapped[Optional[str]] = mapped_column(
         String(40), ForeignKey("route_nodes.id", ondelete="SET NULL"), nullable=True
     )

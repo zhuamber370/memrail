@@ -150,6 +150,26 @@ def ensure_runtime_schema(engine) -> None:
         "ALTER TABLE notes ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40)",
         "ALTER TABLE notes ADD COLUMN IF NOT EXISTS status VARCHAR(20)",
         "UPDATE notes SET status = 'active' WHERE status IS NULL",
+        """
+        UPDATE route_nodes
+        SET status = CASE
+          WHEN status = 'todo' THEN 'waiting'
+          WHEN status = 'in_progress' THEN 'execute'
+          WHEN status IN ('cancelled', 'removed') THEN 'done'
+          ELSE status
+        END
+        WHERE status IN ('todo', 'in_progress', 'cancelled', 'removed')
+        """,
+        """
+        UPDATE route_nodes
+        SET status = 'waiting'
+        WHERE status NOT IN ('waiting', 'execute', 'done')
+        """,
+        """
+        UPDATE route_nodes
+        SET status = 'done'
+        WHERE node_type = 'start' AND status <> 'done'
+        """,
         "UPDATE tasks SET description = '' WHERE description IS NULL",
         "UPDATE tasks SET acceptance_criteria = '' WHERE acceptance_criteria IS NULL",
         "UPDATE node_logs SET log_type = 'note' WHERE log_type IS NULL",
@@ -468,6 +488,38 @@ def _ensure_runtime_schema_sqlite(engine) -> None:
         _sqlite_add_column_if_missing(conn, "node_logs", "log_type VARCHAR(20) NOT NULL DEFAULT 'note'")
         _sqlite_add_column_if_missing(conn, "node_logs", "source_ref TEXT")
         conn.execute(text("UPDATE node_logs SET log_type = 'note' WHERE log_type IS NULL"))
+        conn.execute(
+            text(
+                """
+                UPDATE route_nodes
+                SET status = CASE
+                  WHEN status = 'todo' THEN 'waiting'
+                  WHEN status = 'in_progress' THEN 'execute'
+                  WHEN status IN ('cancelled', 'removed') THEN 'done'
+                  ELSE status
+                END
+                WHERE status IN ('todo', 'in_progress', 'cancelled', 'removed')
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                UPDATE route_nodes
+                SET status = 'waiting'
+                WHERE status NOT IN ('waiting', 'execute', 'done')
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                UPDATE route_nodes
+                SET status = 'done'
+                WHERE node_type = 'start' AND status <> 'done'
+                """
+            )
+        )
         _sqlite_rebuild_tasks_table_if_needed(conn)
         for stmt in statements:
             conn.execute(text(stmt))

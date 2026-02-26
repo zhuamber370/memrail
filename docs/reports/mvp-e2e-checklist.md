@@ -34,14 +34,16 @@
 - Verify:
   - left filter/search works
   - middle list grouped by status
-  - right detail loads selected task
-  - execution canvas renders nodes and edges
+  - task detail renders above DAG and does not overflow over canvas
+  - execution canvas renders nodes, edges, and edge relation labels
 
 7. Canvas node operations
 - On selected task graph:
-  - change node status (`waiting/execute/done`)
-  - rename a node
-  - delete a non-start node
+  - click node and open `...` menu
+  - use `Set Status` and update to `waiting/execute/done`
+  - use `+ Add Step`, submit inline form near node
+  - rename a node via menu
+  - verify delete only works for leaf non-start node
 - Expect graph refresh and no crash
 
 8. Task-scoped helper pages

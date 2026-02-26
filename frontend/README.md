@@ -34,7 +34,13 @@ npm run build
 - `/tasks`
   - Task Command Center
   - Search/filter/list/detail in one layout
-  - Execution canvas with node status / rename / delete operations
+  - Task detail card is above DAG (not overlaying the graph)
+  - Execution canvas with node context menu (`...`) operations:
+    - `+ Add Step` inline panel (predecessor auto-locked to selected node)
+    - `Set Status` (`waiting / execute / done`)
+    - `Rename`
+    - `Delete` (leaf node only)
+  - Branch relation type is rendered directly on DAG edges
 - `/knowledge`
   - topic-based knowledge board
 - `/changes`

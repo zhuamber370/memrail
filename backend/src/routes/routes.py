@@ -45,6 +45,7 @@ def _raise_from_code(code: str) -> None:
         "ROUTE_EDGE_RELATION_MISMATCH",
         "ROUTE_EDGE_GOAL_TO_GOAL_FORBIDDEN",
         "ROUTE_EDGE_NODE_TYPE_UNSUPPORTED",
+        "ROUTE_NODE_HAS_SUCCESSORS",
     }:
         status_code = 409
     raise HTTPException(status_code=status_code, detail={"code": code, "message": code.lower()})
