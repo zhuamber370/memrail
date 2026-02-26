@@ -7,6 +7,8 @@ export type RouteGraphNode = {
   node_type: "start" | "goal" | "idea" | "decision" | "milestone" | "task";
   title: string;
   status: "waiting" | "execute" | "done" | "removed" | "todo" | "in_progress" | "cancelled";
+  parent_node_id: string | null;
+  refinement_status: "rough" | "exploring" | "decided" | "decomposed";
   order_hint: number;
 };
 
@@ -75,8 +77,20 @@ export function RouteGraphPreview({ nodes, edges, t }: Props) {
               <div className="badges">
                 <span className="badge">{t(`routes.nodeType.${node.node_type}`)}</span>
                 <span className="badge">{t(`routes.nodeStatus.${node.status}`)}</span>
+                <span className="badge">{t(`routes.refinementStatus.${node.refinement_status}`)}</span>
               </div>
             </header>
+
+            <section className="routeGraphSection">
+              <div className="routeGraphLabel">{t("routes.parentNode")}</div>
+              <div className="routeGraphChips">
+                {node.parent_node_id ? (
+                  <span className="badge">{incomingByNode.get(node.id)?.[0]?.title ?? node.parent_node_id}</span>
+                ) : (
+                  <span className="meta">-</span>
+                )}
+              </div>
+            </section>
 
             <section className="routeGraphSection">
               <div className="routeGraphLabel">{t("routes.graphDependsOn")}</div>

@@ -8,8 +8,9 @@ import { apiGet, apiPatch, apiPost } from "../../src/lib/api";
 import { useI18n } from "../../src/i18n";
 
 type RouteStatus = "candidate" | "active" | "parked" | "completed" | "cancelled";
-type RouteNodeType = "decision" | "milestone" | "task";
-type RouteNodeStatus = "todo" | "in_progress" | "done" | "cancelled";
+type RouteNodeType = "start" | "goal" | "idea" | "decision" | "milestone" | "task";
+type RouteNodeStatus = "waiting" | "execute" | "done" | "removed" | "todo" | "in_progress" | "cancelled";
+type RouteRefinementStatus = "rough" | "exploring" | "decided" | "decomposed";
 type RoutePriority = "P0" | "P1" | "P2" | "P3" | "";
 
 type Route = {
@@ -19,6 +20,8 @@ type Route = {
   status: RouteStatus;
   priority: RoutePriority;
   owner: string | null;
+  parent_route_id: string | null;
+  spawned_from_node_id: string | null;
   updated_at: string;
 };
 
@@ -36,7 +39,8 @@ type RouteGraphOut = {
 };
 
 const ROUTE_STATUSES: RouteStatus[] = ["candidate", "active", "parked", "completed", "cancelled"];
-const NODE_TYPES: RouteNodeType[] = ["decision", "milestone", "task"];
+const NODE_TYPES: RouteNodeType[] = ["goal", "decision", "milestone", "task"];
+const NODE_REFINEMENT_STATUSES: RouteRefinementStatus[] = ["rough", "exploring", "decided", "decomposed"];
 const ROUTE_PRIORITIES: RoutePriority[] = ["", "P0", "P1", "P2", "P3"];
 
 export default function RoutesPage() {
@@ -55,8 +59,12 @@ export default function RoutesPage() {
 
   const [statusDraft, setStatusDraft] = useState<RouteStatus>("candidate");
   const [nodeType, setNodeType] = useState<RouteNodeType>("task");
+  const [parentRouteId, setParentRouteId] = useState("");
+  const [spawnedFromNodeId, setSpawnedFromNodeId] = useState("");
   const [nodeTitle, setNodeTitle] = useState("");
   const [nodeDescription, setNodeDescription] = useState("");
+  const [parentNodeId, setParentNodeId] = useState("");
+  const [refinementStatus, setRefinementStatus] = useState<RouteRefinementStatus>("rough");
 
   const [nodes, setNodes] = useState<RouteGraphNode[]>([]);
   const [edges, setEdges] = useState<RouteGraphEdge[]>([]);
@@ -68,6 +76,10 @@ export default function RoutesPage() {
   const selectedRoute = useMemo(
     () => routes.find((item) => item.id === selectedRouteId) ?? null,
     [routes, selectedRouteId]
+  );
+  const selectedNodeLookup = useMemo(
+    () => new Map(nodes.map((item) => [item.id, item.title])),
+    [nodes]
   );
 
   useEffect(() => {
@@ -145,11 +157,15 @@ export default function RoutesPage() {
         goal: goal.trim(),
         status,
         priority: priority || null,
-        owner: owner.trim() || null
+        owner: owner.trim() || null,
+        parent_route_id: parentRouteId || null,
+        spawned_from_node_id: spawnedFromNodeId || null
       });
       setName("");
       setGoal("");
       setOwner("");
+      setParentRouteId("");
+      setSpawnedFromNodeId("");
       setStatus("candidate");
       setPriority("P2");
       setNotice(t("routes.noticeCreated"));
@@ -187,10 +203,14 @@ export default function RoutesPage() {
         node_type: nodeType,
         title: nodeTitle.trim(),
         description: nodeDescription.trim(),
-        status: "todo" as RouteNodeStatus
+        status: "todo" as RouteNodeStatus,
+        parent_node_id: parentNodeId || null,
+        refinement_status: refinementStatus
       });
       setNodeTitle("");
       setNodeDescription("");
+      setParentNodeId("");
+      setRefinementStatus("rough");
       setNotice(t("routes.noticeNodeCreated"));
       await onLoadGraph(selectedRoute.id);
     } catch (e) {
@@ -251,6 +271,18 @@ export default function RoutesPage() {
           value={owner}
           onChange={(event) => setOwner(event.target.value)}
           placeholder={t("routes.placeholderOwner")}
+        />
+        <input
+          className="taskInput"
+          value={parentRouteId}
+          onChange={(event) => setParentRouteId(event.target.value)}
+          placeholder={t("routes.placeholderParentRouteId")}
+        />
+        <input
+          className="taskInput"
+          value={spawnedFromNodeId}
+          onChange={(event) => setSpawnedFromNodeId(event.target.value)}
+          placeholder={t("routes.placeholderSpawnedFromNodeId")}
         />
         <button className="badge" disabled={loading} onClick={onCreateRoute}>
           {t("routes.create")}
@@ -338,6 +370,16 @@ export default function RoutesPage() {
                   {t("routes.updated")}: {new Date(selectedRoute.updated_at).toLocaleString()}
                 </span>
               </div>
+              <div className="taskMetaLine">
+                <span>
+                  {t("routes.parentRoute")}: {selectedRoute.parent_route_id || "-"}
+                </span>
+              </div>
+              <div className="taskMetaLine">
+                <span>
+                  {t("routes.spawnedFromNode")}: {selectedRoute.spawned_from_node_id || "-"}
+                </span>
+              </div>
               <div className="ideasActionRow">
                 <button className="badge" disabled={loading} onClick={onSaveRouteStatus}>
                   {t("routes.saveStatus")}
@@ -370,6 +412,29 @@ export default function RoutesPage() {
                     onChange={(event) => setNodeDescription(event.target.value)}
                     placeholder={t("routes.nodeDescription")}
                   />
+                  <select
+                    className="taskInput"
+                    value={parentNodeId}
+                    onChange={(event) => setParentNodeId(event.target.value)}
+                  >
+                    <option value="">{t("routes.parentNodeOptional")}</option>
+                    {nodes.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.title}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="taskInput"
+                    value={refinementStatus}
+                    onChange={(event) => setRefinementStatus(event.target.value as RouteRefinementStatus)}
+                  >
+                    {NODE_REFINEMENT_STATUSES.map((item) => (
+                      <option key={item} value={item}>
+                        {t(`routes.refinementStatus.${item}`)}
+                      </option>
+                    ))}
+                  </select>
                   <button className="badge" disabled={loading} onClick={onCreateNode}>
                     {t("routes.nodeCreateAction")}
                   </button>
@@ -379,6 +444,15 @@ export default function RoutesPage() {
               <div className="routesGraphBlock">
                 <h3 className="changesSubTitle">{t("routes.graphTitle")}</h3>
                 <RouteGraphPreview nodes={nodes} edges={edges} t={t} />
+                {nodes.length ? (
+                  <div className="meta" style={{ marginTop: 10 }}>
+                    {t("routes.parentHint")}{" "}
+                    {nodes
+                      .filter((node) => node.parent_node_id)
+                      .map((node) => `${node.title} <- ${selectedNodeLookup.get(node.parent_node_id ?? "") ?? "-"}`)
+                      .join(" | ") || "-"}
+                  </div>
+                ) : null}
               </div>
             </>
           ) : (
