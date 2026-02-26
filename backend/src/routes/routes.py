@@ -27,7 +27,12 @@ def _raise_from_code(code: str) -> None:
     status_code = 422
     if code in {"ROUTE_NOT_FOUND", "ROUTE_NODE_NOT_FOUND", "ROUTE_EDGE_NOT_FOUND", "TASK_NOT_FOUND"}:
         status_code = 404
-    elif code in {"ROUTE_ACTIVE_CONFLICT", "ROUTE_INVALID_STATUS_TRANSITION", "ROUTE_EDGE_DUPLICATE"}:
+    elif code in {
+        "ROUTE_ACTIVE_CONFLICT",
+        "ROUTE_INVALID_STATUS_TRANSITION",
+        "ROUTE_EDGE_DUPLICATE",
+        "TASK_INVALID_STATUS_TRANSITION",
+    }:
         status_code = 409
     raise HTTPException(status_code=status_code, detail={"code": code, "message": code.lower()})
 

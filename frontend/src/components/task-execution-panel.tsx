@@ -9,6 +9,7 @@ import { useI18n } from "../i18n";
 type FlowStatus = "candidate" | "active" | "parked" | "completed" | "cancelled";
 type StepType = "start" | "goal" | "idea" | "decision" | "milestone" | "task";
 type StepStatus = "waiting" | "execute" | "done" | "removed" | "todo" | "in_progress" | "cancelled";
+type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
 
 type Flow = {
   id: string;
@@ -87,7 +88,7 @@ function mapNodeClass(step: Step, selected: boolean): string {
   return classes.join(" ");
 }
 
-export function TaskExecutionPanel({ taskId }: { taskId: string }) {
+export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; onTaskStarted?: (status: TaskStatus) => void }) {
   const { t } = useI18n();
 
   const [flows, setFlows] = useState<Flow[]>([]);
@@ -402,9 +403,11 @@ export function TaskExecutionPanel({ taskId }: { taskId: string }) {
         predecessorNodeId: createdStart.id,
         orderHint: 2
       });
+      await apiPatch(`/api/v1/tasks/${taskId}`, { status: "in_progress" });
       setStartGoalTitle("");
       await loadFlows();
       setSelectedFlowId(createdFlow.id);
+      onTaskStarted?.("in_progress");
     } catch (e) {
       setError((e as Error).message);
     } finally {

@@ -1,6 +1,29 @@
 from tests.helpers import create_test_task, make_client, uniq
 
 
+def test_create_active_route_promotes_task_to_in_progress():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_active_promote_task")
+
+    created = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('active_promote')}",
+            "goal": "start execution",
+            "status": "active",
+        },
+    )
+    assert created.status_code == 201
+
+    listed = client.get("/api/v1/tasks?page=1&page_size=100")
+    assert listed.status_code == 200
+    items = listed.json()["items"]
+    task = next((item for item in items if item["id"] == task_id), None)
+    assert task is not None
+    assert task["status"] == "in_progress"
+
+
 def test_single_active_route_enforced():
     client = make_client()
     task_id = create_test_task(client, prefix="route_active_task")

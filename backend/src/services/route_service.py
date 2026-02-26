@@ -45,6 +45,8 @@ class RouteService:
             owner=payload.owner,
         )
         self.db.add(route)
+        if payload.status == "active":
+            self._promote_task_to_in_progress(payload.task_id)
         self.db.commit()
         self.db.refresh(route)
         log_audit_event(
@@ -101,6 +103,7 @@ class RouteService:
             self._validate_route_transition(route.status, next_status)
             if next_status == "active":
                 self._ensure_single_active(task_id=route.task_id, ignore_route_id=route.id)
+                self._promote_task_to_in_progress(route.task_id)
 
         for key, value in patch_data.items():
             setattr(route, key, value)
@@ -138,6 +141,16 @@ class RouteService:
     def _validate_task(self, task_id: str) -> None:
         if self.db.get(Task, task_id) is None:
             raise ValueError("TASK_NOT_FOUND")
+
+    def _promote_task_to_in_progress(self, task_id: str) -> None:
+        task = self.db.get(Task, task_id)
+        if task is None:
+            raise ValueError("TASK_NOT_FOUND")
+        if task.status in {"done", "cancelled"}:
+            raise ValueError("TASK_INVALID_STATUS_TRANSITION")
+        if task.status == "todo":
+            task.status = "in_progress"
+            self.db.add(task)
 
 
 class RouteGraphService:

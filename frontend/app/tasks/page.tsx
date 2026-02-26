@@ -289,6 +289,13 @@ export default function TasksPage() {
     }
   }
 
+  function onExecutionTaskStatusChange(taskId: string, status: TaskStatus) {
+    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status } : task)));
+    if (selectedTaskId === taskId) {
+      setDetailDraft((prev) => (prev ? { ...prev, status } : prev));
+    }
+  }
+
   async function onDelete(taskId: string) {
     if (!window.confirm(t("tasks.confirmDelete"))) return;
     setError("");
@@ -648,7 +655,10 @@ export default function TasksPage() {
                   <div className="changesLedgerText">{selectedTask.source}</div>
                 </div>
               </div>
-              <TaskExecutionPanel taskId={selectedTask.id} />
+              <TaskExecutionPanel
+                taskId={selectedTask.id}
+                onTaskStarted={(status) => onExecutionTaskStatusChange(selectedTask.id, status)}
+              />
               <div className="taskDetailEdit">
                 {isArchivedView ? (
                   <div className="taskDetailForm">

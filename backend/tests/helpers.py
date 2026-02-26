@@ -1,19 +1,14 @@
-import os
 import uuid
 from typing import Optional
 
 from fastapi.testclient import TestClient
 
 from src.app import create_app
+from src.config import settings
 
 
 def database_url() -> str:
-    host = os.getenv("AFKMS_DB_HOST", "127.0.0.1")
-    port = os.getenv("AFKMS_DB_PORT", "5432")
-    name = os.getenv("AFKMS_DB_NAME", "afkms")
-    user = os.getenv("AFKMS_DB_USER", "afkms")
-    password = os.getenv("AFKMS_DB_PASSWORD", "afkms")
-    return f"postgresql+psycopg://{user}:{password}@{host}:{port}/{name}"
+    return settings.database_url
 
 
 def make_client(*, require_auth: bool = False, api_key: Optional[str] = None) -> TestClient:
