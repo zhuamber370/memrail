@@ -51,12 +51,23 @@ Use this skill when you need to read or write Memrail data (tasks, journals, kno
 
 - `get_context_bundle`
 - `list_tasks`
+- `list_topics`
+- `list_cycles`
+- `list_ideas`
+- `list_changes`
+- `get_change`
+- `list_audit_events`
+- `list_task_views_summary`
+- `list_note_topic_summary`
+- `list_routes`
 - `list_task_routes`
 - `get_route_graph`
+- `list_route_node_logs`
 - `get_task_execution_snapshot` (includes current node + previous step)
 - `search_notes`
 - `list_journals`
 - `get_journal`
+- `api_get` (generic GET for any `/api/v1/*` path using `path + params`)
 
 ## Write Actions
 
