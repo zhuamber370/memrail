@@ -31,6 +31,10 @@ It focuses on one core principle:
 ### 5. Task-scoped idea/route pages
 - `/ideas` and `/routes` are task-scoped tools.
 - They require `task_id` context (opened from task workflow), not top-level nav by default.
+- Route graph now supports minimal hierarchy fields:
+  - route-level: `parent_route_id`, `spawned_from_node_id`
+  - node-level: `parent_node_id`, `refinement_status`
+  - node logs: `log_type`, `source_ref`
 
 ## Tech Stack
 - Backend: FastAPI + SQLAlchemy

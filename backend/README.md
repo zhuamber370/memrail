@@ -53,6 +53,14 @@ python3 -m uvicorn src.app:app --reload --port 8000
 - `routes`: task-scoped route graph entities
   - route node APIs include create/patch/**delete**
   - edge APIs include create/delete
+  - hierarchy fields:
+    - route: `parent_route_id`, `spawned_from_node_id`
+    - node: `parent_node_id`, `refinement_status`
+    - node log: `log_type`, `source_ref`
+  - hierarchy validation:
+    - spawned route node must be `decision`
+    - parent node must stay in same route and cannot form cycles
+    - non-`candidate` route cannot rewire `parent_route_id`
 - `context`: aggregated retrieval bundle
 - `audit`: event trace query
 
@@ -64,6 +72,10 @@ Full:
 cd backend
 python3 -m pytest -q
 ```
+
+Note:
+- In local SQLite mode, some `tests/test_changes_api.py` cases depend on PostgreSQL-specific behavior (for example `TRUNCATE`) and may fail.
+- For route-graph verification in SQLite mode, use targeted tests below.
 
 Route graph targeted:
 
