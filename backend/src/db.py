@@ -143,11 +143,19 @@ def ensure_runtime_schema(engine) -> None:
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ",
         "ALTER TABLE ideas ADD COLUMN IF NOT EXISTS task_id VARCHAR(40)",
         "ALTER TABLE routes ADD COLUMN IF NOT EXISTS task_id VARCHAR(40)",
+        "ALTER TABLE routes ADD COLUMN IF NOT EXISTS parent_route_id VARCHAR(40)",
+        "ALTER TABLE routes ADD COLUMN IF NOT EXISTS spawned_from_node_id VARCHAR(40)",
+        "ALTER TABLE route_nodes ADD COLUMN IF NOT EXISTS parent_node_id VARCHAR(40)",
+        "ALTER TABLE route_nodes ADD COLUMN IF NOT EXISTS refinement_status VARCHAR(20)",
+        "ALTER TABLE node_logs ADD COLUMN IF NOT EXISTS log_type VARCHAR(20)",
+        "ALTER TABLE node_logs ADD COLUMN IF NOT EXISTS source_ref TEXT",
         "ALTER TABLE notes ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40)",
         "ALTER TABLE notes ADD COLUMN IF NOT EXISTS status VARCHAR(20)",
         "UPDATE notes SET status = 'active' WHERE status IS NULL",
         "UPDATE tasks SET description = '' WHERE description IS NULL",
         "UPDATE tasks SET acceptance_criteria = '' WHERE acceptance_criteria IS NULL",
+        "UPDATE route_nodes SET refinement_status = 'rough' WHERE refinement_status IS NULL",
+        "UPDATE node_logs SET log_type = 'note' WHERE log_type IS NULL",
         """
         INSERT INTO topics (id, name, name_en, name_zh, kind, status, summary)
         VALUES (
@@ -281,6 +289,10 @@ def ensure_runtime_schema(engine) -> None:
         "ALTER TABLE tasks DROP COLUMN IF EXISTS project",
         "ALTER TABLE notes ALTER COLUMN status SET DEFAULT 'active'",
         "ALTER TABLE notes ALTER COLUMN status SET NOT NULL",
+        "ALTER TABLE route_nodes ALTER COLUMN refinement_status SET DEFAULT 'rough'",
+        "ALTER TABLE route_nodes ALTER COLUMN refinement_status SET NOT NULL",
+        "ALTER TABLE node_logs ALTER COLUMN log_type SET DEFAULT 'note'",
+        "ALTER TABLE node_logs ALTER COLUMN log_type SET NOT NULL",
         """
         DO $$
         BEGIN
@@ -304,6 +316,32 @@ def ensure_runtime_schema(engine) -> None:
             ALTER TABLE notes
               ADD CONSTRAINT fk_notes_topic_id
               FOREIGN KEY (topic_id) REFERENCES topics(id) ON DELETE SET NULL;
+          END IF;
+        END $$;
+        """,
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'fk_routes_parent_route_id'
+          ) THEN
+            ALTER TABLE routes
+              ADD CONSTRAINT fk_routes_parent_route_id
+              FOREIGN KEY (parent_route_id) REFERENCES routes(id) ON DELETE SET NULL;
+          END IF;
+        END $$;
+        """,
+        """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'fk_route_nodes_parent_node_id'
+          ) THEN
+            ALTER TABLE route_nodes
+              ADD CONSTRAINT fk_route_nodes_parent_node_id
+              FOREIGN KEY (parent_node_id) REFERENCES route_nodes(id) ON DELETE SET NULL;
           END IF;
         END $$;
         """,
@@ -430,6 +468,16 @@ def _ensure_runtime_schema_sqlite(engine) -> None:
     with engine.begin() as conn:
         _sqlite_add_column_if_missing(conn, "ideas", "task_id VARCHAR(40)")
         _sqlite_add_column_if_missing(conn, "routes", "task_id VARCHAR(40)")
+        _sqlite_add_column_if_missing(conn, "routes", "parent_route_id VARCHAR(40)")
+        _sqlite_add_column_if_missing(conn, "routes", "spawned_from_node_id VARCHAR(40)")
+        _sqlite_add_column_if_missing(conn, "route_nodes", "parent_node_id VARCHAR(40)")
+        _sqlite_add_column_if_missing(
+            conn, "route_nodes", "refinement_status VARCHAR(20) NOT NULL DEFAULT 'rough'"
+        )
+        _sqlite_add_column_if_missing(conn, "node_logs", "log_type VARCHAR(20) NOT NULL DEFAULT 'note'")
+        _sqlite_add_column_if_missing(conn, "node_logs", "source_ref TEXT")
+        conn.execute(text("UPDATE route_nodes SET refinement_status = 'rough' WHERE refinement_status IS NULL"))
+        conn.execute(text("UPDATE node_logs SET log_type = 'note' WHERE log_type IS NULL"))
         _sqlite_rebuild_tasks_table_if_needed(conn)
         for stmt in statements:
             conn.execute(text(stmt))

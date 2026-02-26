@@ -43,6 +43,8 @@ class RouteService:
             status=payload.status,
             priority=payload.priority,
             owner=payload.owner,
+            parent_route_id=payload.parent_route_id,
+            spawned_from_node_id=payload.spawned_from_node_id,
         )
         self.db.add(route)
         if payload.status == "active":
@@ -173,6 +175,8 @@ class RouteGraphService:
             title=payload.title,
             description=payload.description,
             status=payload.status,
+            parent_node_id=payload.parent_node_id,
+            refinement_status=payload.refinement_status,
             order_hint=order_hint,
             assignee_type=payload.assignee_type,
             assignee_id=payload.assignee_id,
@@ -334,6 +338,8 @@ class RouteGraphService:
             actor_type=payload.actor_type,
             actor_id=payload.actor_id,
             content=payload.content,
+            log_type=payload.log_type,
+            source_ref=payload.source_ref,
         )
         self.db.add(log)
         self.db.commit()

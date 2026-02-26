@@ -67,6 +67,85 @@ def test_single_active_route_enforced():
         assert park_seeded.status_code == 200
 
 
+def test_route_create_accepts_parent_fields():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_parent_fields_task")
+
+    parent_route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('parent')}",
+            "goal": "parent route",
+            "status": "candidate",
+        },
+    )
+    assert parent_route.status_code == 201
+    parent_route_id = parent_route.json()["id"]
+
+    decision_node = client.post(
+        f"/api/v1/routes/{parent_route_id}/nodes",
+        json={"node_type": "decision", "title": "Decide split", "description": "spawn child route"},
+    )
+    assert decision_node.status_code == 201
+    decision_node_id = decision_node.json()["id"]
+
+    created = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('child')}",
+            "goal": "child route",
+            "status": "candidate",
+            "parent_route_id": parent_route_id,
+            "spawned_from_node_id": decision_node_id,
+        },
+    )
+    assert created.status_code == 201
+    body = created.json()
+    assert body["parent_route_id"] == parent_route_id
+    assert body["spawned_from_node_id"] == decision_node_id
+
+
+def test_route_node_create_accepts_parent_and_refinement():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_node_hierarchy_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('node_parent')}",
+            "goal": "nested goals",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    parent_node = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "Top Goal", "description": "rough objective"},
+    )
+    assert parent_node.status_code == 201
+    parent_node_id = parent_node.json()["id"]
+
+    created = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={
+            "node_type": "goal",
+            "title": "Child Goal",
+            "description": "refined objective",
+            "parent_node_id": parent_node_id,
+            "refinement_status": "exploring",
+        },
+    )
+    assert created.status_code == 201
+    body = created.json()
+    assert body["parent_node_id"] == parent_node_id
+    assert body["refinement_status"] == "exploring"
+
+
 def test_route_nodes_edges_and_logs():
     client = make_client()
     task_id = create_test_task(client, prefix="route_graph_task")

@@ -396,8 +396,10 @@ IdeaStatus = Literal["captured", "triage", "discovery", "ready", "rejected"]
 RouteStatus = Literal["candidate", "active", "parked", "completed", "cancelled"]
 RouteNodeType = Literal["start", "goal", "idea", "decision", "milestone", "task"]
 RouteNodeStatus = Literal["waiting", "execute", "done", "removed", "todo", "in_progress", "cancelled"]
+RouteRefinementStatus = Literal["rough", "exploring", "decided", "decomposed"]
 RouteAssigneeType = Literal["human", "agent"]
 RouteEdgeRelation = Literal["depends_on", "blocks"]
+NodeLogType = Literal["note", "evidence", "decision", "summary"]
 
 
 class IdeaCreate(BaseModel):
@@ -450,6 +452,8 @@ class RouteCreate(BaseModel):
     status: RouteStatus = "candidate"
     priority: Optional[TaskPriority] = None
     owner: Optional[str] = None
+    parent_route_id: Optional[str] = Field(default=None, min_length=1)
+    spawned_from_node_id: Optional[str] = Field(default=None, min_length=1)
 
 
 class RoutePatch(BaseModel):
@@ -459,6 +463,7 @@ class RoutePatch(BaseModel):
     status: Optional[RouteStatus] = None
     priority: Optional[TaskPriority] = None
     owner: Optional[str] = None
+    parent_route_id: Optional[str] = Field(default=None, min_length=1)
 
 
 class RouteOut(BaseModel):
@@ -470,6 +475,8 @@ class RouteOut(BaseModel):
     status: RouteStatus
     priority: Optional[TaskPriority]
     owner: Optional[str]
+    parent_route_id: Optional[str]
+    spawned_from_node_id: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -487,6 +494,8 @@ class RouteNodeCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)
     description: str = ""
     status: RouteNodeStatus = "todo"
+    parent_node_id: Optional[str] = Field(default=None, min_length=1)
+    refinement_status: RouteRefinementStatus = "rough"
     order_hint: int = 0
     assignee_type: RouteAssigneeType = "human"
     assignee_id: Optional[str] = None
@@ -498,6 +507,8 @@ class RouteNodePatch(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     description: Optional[str] = None
     status: Optional[RouteNodeStatus] = None
+    parent_node_id: Optional[str] = Field(default=None, min_length=1)
+    refinement_status: Optional[RouteRefinementStatus] = None
     order_hint: Optional[int] = None
     assignee_type: Optional[RouteAssigneeType] = None
     assignee_id: Optional[str] = None
@@ -511,6 +522,8 @@ class RouteNodeOut(BaseModel):
     title: str
     description: str
     status: RouteNodeStatus
+    parent_node_id: Optional[str]
+    refinement_status: RouteRefinementStatus
     order_hint: int
     assignee_type: RouteAssigneeType
     assignee_id: Optional[str]
@@ -546,6 +559,8 @@ class NodeLogCreate(BaseModel):
     content: str = Field(min_length=1)
     actor_type: RouteAssigneeType = "human"
     actor_id: str = Field(default="local", min_length=1)
+    log_type: NodeLogType = "note"
+    source_ref: Optional[str] = None
 
 
 class NodeLogOut(BaseModel):
@@ -555,6 +570,8 @@ class NodeLogOut(BaseModel):
     actor_type: RouteAssigneeType
     actor_id: str
     content: str
+    log_type: NodeLogType
+    source_ref: Optional[str]
     created_at: datetime
 
 

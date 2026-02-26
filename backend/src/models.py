@@ -336,6 +336,11 @@ class Route(Base):
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="candidate")
     priority: Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
     owner: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    parent_route_id: Mapped[Optional[str]] = mapped_column(
+        String(40), ForeignKey("routes.id", ondelete="SET NULL"), nullable=True
+    )
+    # Keep as scalar in V1 to avoid cyclic DDL between routes <-> route_nodes.
+    spawned_from_node_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -358,6 +363,10 @@ class RouteNode(Base):
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     status: Mapped[str] = mapped_column(String(20), nullable=False, default="todo")
+    parent_node_id: Mapped[Optional[str]] = mapped_column(
+        String(40), ForeignKey("route_nodes.id", ondelete="SET NULL"), nullable=True
+    )
+    refinement_status: Mapped[str] = mapped_column(String(20), nullable=False, default="rough")
     order_hint: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     assignee_type: Mapped[str] = mapped_column(String(20), nullable=False, default="human")
     assignee_id: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
@@ -401,6 +410,8 @@ class NodeLog(Base):
     actor_type: Mapped[str] = mapped_column(String(20), nullable=False, default="human")
     actor_id: Mapped[str] = mapped_column(String(80), nullable=False, default="local")
     content: Mapped[str] = mapped_column(Text, nullable=False)
+    log_type: Mapped[str] = mapped_column(String(20), nullable=False, default="note")
+    source_ref: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
