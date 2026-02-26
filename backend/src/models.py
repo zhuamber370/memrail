@@ -339,8 +339,6 @@ class Route(Base):
     parent_route_id: Mapped[Optional[str]] = mapped_column(
         String(40), ForeignKey("routes.id", ondelete="SET NULL"), nullable=True
     )
-    # Keep as scalar in V1 to avoid cyclic DDL between routes <-> route_nodes.
-    spawned_from_node_id: Mapped[Optional[str]] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -366,7 +364,6 @@ class RouteNode(Base):
     parent_node_id: Mapped[Optional[str]] = mapped_column(
         String(40), ForeignKey("route_nodes.id", ondelete="SET NULL"), nullable=True
     )
-    refinement_status: Mapped[str] = mapped_column(String(20), nullable=False, default="rough")
     order_hint: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     assignee_type: Mapped[str] = mapped_column(String(20), nullable=False, default="human")
     assignee_id: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
@@ -394,7 +391,7 @@ class RouteEdge(Base):
     to_node_id: Mapped[str] = mapped_column(
         String(40), ForeignKey("route_nodes.id", ondelete="CASCADE"), nullable=False
     )
-    relation: Mapped[str] = mapped_column(String(20), nullable=False, default="depends_on")
+    relation: Mapped[str] = mapped_column(String(20), nullable=False, default="refine")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

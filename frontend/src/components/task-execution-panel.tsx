@@ -7,8 +7,11 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import { useI18n } from "../i18n";
 
 type FlowStatus = "candidate" | "active" | "parked" | "completed" | "cancelled";
-type StepType = "start" | "goal" | "idea" | "decision" | "milestone" | "task";
+type StepType = "start" | "goal" | "idea";
+type EditableStepType = Exclude<StepType, "start">;
 type StepStatus = "waiting" | "execute" | "done" | "removed" | "todo" | "in_progress" | "cancelled";
+type StepEdgeRelation = "refine" | "initiate" | "handoff";
+type CreatableEdgeRelation = StepEdgeRelation;
 type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
 
 type Flow = {
@@ -35,6 +38,7 @@ type StepEdge = {
   id: string;
   from_node_id: string;
   to_node_id: string;
+  relation: StepEdgeRelation;
 };
 
 type FlowGraphOut = {
@@ -56,6 +60,7 @@ const DAG_COLUMN_GAP = 86;
 const DAG_ROW_GAP = 18;
 const DAG_PADDING_X = 20;
 const DAG_PADDING_Y = 16;
+const EDITABLE_NODE_TYPES: EditableStepType[] = ["goal", "idea"];
 
 function pickPrimaryFlow(flows: Flow[]): Flow | null {
   return flows.find((item) => item.status === "active") ?? flows[0] ?? null;
@@ -88,6 +93,35 @@ function mapNodeClass(step: Step, selected: boolean): string {
   return classes.join(" ");
 }
 
+function statusOptions(step: Step): StepStatus[] {
+  if (step.node_type === "start") return ["done"];
+  if (step.node_type === "goal") return ["waiting", "execute", "done"];
+  return ["todo", "in_progress", "done", "cancelled"];
+}
+
+function createStatusOptions(nodeType: EditableStepType): StepStatus[] {
+  if (nodeType === "goal") return ["waiting", "execute"];
+  return ["todo", "in_progress"];
+}
+
+function defaultCreateStatus(nodeType: EditableStepType): StepStatus {
+  return nodeType === "goal" ? "waiting" : "todo";
+}
+
+function inferEdgeRelation(predecessorType: StepType | null, nextType: EditableStepType): CreatableEdgeRelation | null {
+  const normalizedPredecessor = predecessorType === "start" ? "idea" : predecessorType;
+  if (!normalizedPredecessor) return null;
+  if (normalizedPredecessor === "goal" && nextType === "goal") return null;
+  if (normalizedPredecessor === "idea" && nextType === "idea") return "refine";
+  if (normalizedPredecessor === "idea" && nextType === "goal") return "initiate";
+  return "handoff";
+}
+
+function startStepStatus(nodeType: EditableStepType): StepStatus {
+  if (nodeType === "goal") return "execute";
+  return "in_progress";
+}
+
 export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; onTaskStarted?: (status: TaskStatus) => void }) {
   const { t } = useI18n();
 
@@ -99,13 +133,16 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
   const [error, setError] = useState("");
 
   const [startGoalTitle, setStartGoalTitle] = useState("");
-  const [newGoalTitle, setNewGoalTitle] = useState("");
-  const [newGoalStatus, setNewGoalStatus] = useState<StepStatus>("waiting");
+  const [startStepType, setStartStepType] = useState<EditableStepType>("goal");
+  const [newStepType, setNewStepType] = useState<EditableStepType>("goal");
+  const [newStepTitle, setNewStepTitle] = useState("");
+  const [newStepStatus, setNewStepStatus] = useState<StepStatus>("waiting");
+  const [newPredecessorNodeId, setNewPredecessorNodeId] = useState("");
 
   const [loadingFlows, setLoadingFlows] = useState(false);
   const [loadingGraph, setLoadingGraph] = useState(false);
   const [startingTask, setStartingTask] = useState(false);
-  const [creatingGoal, setCreatingGoal] = useState(false);
+  const [creatingStep, setCreatingStep] = useState(false);
   const [savingStatus, setSavingStatus] = useState(false);
 
   const sortedSteps = useMemo(
@@ -140,16 +177,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
   const activeGoal = goalSteps.find((step) => normalizeStepState(step.status) === "execute") ?? null;
   const lastDoneGoal = [...goalSteps].reverse().find((step) => normalizeStepState(step.status) === "done") ?? null;
   const firstGoal = goalSteps[0] ?? null;
-
   const currentFocusGoal = activeGoal ?? lastDoneGoal ?? firstGoal ?? null;
-
-  const lineHeadNode = useMemo(() => {
-    if (!activeGoal) return null;
-    const upstream = (dependenciesByStepId.get(activeGoal.id) ?? [])[0];
-    return (upstream ? stepById.get(upstream) : null) ?? startNode ?? null;
-  }, [activeGoal?.id, dependenciesByStepId, stepById, startNode?.id]);
-
-  const activationMode = activeGoal ? "line" : "node";
 
   const selectedStep = useMemo(
     () =>
@@ -160,26 +188,31 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     [sortedSteps, selectedStepId, currentFocusGoal?.id, startNode?.id]
   );
 
-  const predecessorAnchor = useMemo(() => {
-    if (activationMode === "line" && activeGoal && selectedStep?.id === activeGoal.id) {
-      return lineHeadNode ?? startNode ?? activeGoal;
-    }
-    if (selectedStep && (selectedStep.node_type === "goal" || selectedStep.node_type === "start")) {
-      return selectedStep;
-    }
-    if (activeGoal) return lineHeadNode ?? startNode ?? activeGoal;
-    return lastDoneGoal ?? startNode ?? firstGoal ?? null;
-  }, [activationMode, selectedStep, activeGoal?.id, lineHeadNode?.id, startNode?.id, lastDoneGoal?.id, firstGoal?.id]);
-
   const selectedStepStatuses = useMemo(
     () => (selectedStep ? statusOptions(selectedStep) : []),
     [selectedStep]
   );
+
   const selectedStepStatusValue = useMemo(() => {
     if (!selectedStep) return "waiting";
     if (selectedStepStatuses.includes(selectedStep.status)) return selectedStep.status;
     return selectedStepStatuses[0] ?? "waiting";
   }, [selectedStep, selectedStepStatuses]);
+
+  const createStepStatuses = useMemo(
+    () => createStatusOptions(newStepType),
+    [newStepType]
+  );
+
+  const predecessorNode = useMemo(
+    () => stepById.get(newPredecessorNodeId) ?? null,
+    [stepById, newPredecessorNodeId]
+  );
+
+  const inferredEdgeType = useMemo(
+    () => inferEdgeRelation(predecessorNode?.node_type ?? null, newStepType),
+    [predecessorNode?.node_type, newStepType]
+  );
 
   const currentStatusText = useMemo(() => {
     if (activeGoal) {
@@ -191,7 +224,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
   }, [activeGoal, lastDoneGoal, firstGoal, t]);
 
   const dagNodes = useMemo(() => {
-    const graphNodes = sortedSteps.filter((step) => step.node_type === "start" || step.node_type === "goal");
+    const graphNodes = sortedSteps;
     if (!graphNodes.length) {
       return {
         positioned: [] as DagNodeLayout[],
@@ -285,11 +318,22 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     return rendered;
   }, [edges, dagNodes.positionedById, stepById]);
 
-  function statusOptions(step: Step): StepStatus[] {
-    if (step.node_type === "start") return ["done"];
-    if (step.node_type === "goal") return ["waiting", "execute", "done"];
-    return ["todo", "in_progress", "done", "cancelled"];
-  }
+  const edgeSummaries = useMemo(() => {
+    const labelByRelation: Record<StepEdgeRelation, string> = {
+      refine: t("tasks.execution.edgeType.refine"),
+      initiate: t("tasks.execution.edgeType.initiate"),
+      handoff: t("tasks.execution.edgeType.handoff")
+    };
+
+    return edges
+      .map((edge) => {
+        const fromTitle = stepById.get(edge.from_node_id)?.title;
+        const toTitle = stepById.get(edge.to_node_id)?.title;
+        if (!fromTitle || !toTitle) return null;
+        return `${fromTitle} -> ${toTitle} · ${labelByRelation[edge.relation] ?? edge.relation}`;
+      })
+      .filter((item): item is string => Boolean(item));
+  }, [edges, stepById, t]);
 
   async function loadFlows() {
     setLoadingFlows(true);
@@ -353,12 +397,30 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     });
   }, [sortedSteps, currentFocusGoal?.id, startNode?.id]);
 
+  useEffect(() => {
+    if (!sortedSteps.length) {
+      setNewPredecessorNodeId("");
+      return;
+    }
+    setNewPredecessorNodeId((prev) => {
+      if (prev && sortedSteps.some((step) => step.id === prev)) return prev;
+      return selectedStep?.id ?? startNode?.id ?? sortedSteps[0].id;
+    });
+  }, [sortedSteps, selectedStep?.id, startNode?.id]);
+
+  useEffect(() => {
+    if (!createStepStatuses.includes(newStepStatus)) {
+      setNewStepStatus(defaultCreateStatus(newStepType));
+    }
+  }, [createStepStatuses, newStepStatus, newStepType]);
+
   async function createNodeWithEdge(payload: {
     routeId: string;
-    nodeType: StepType;
+    nodeType: EditableStepType;
     title: string;
     status: StepStatus;
     predecessorNodeId: string;
+    relation: CreatableEdgeRelation;
     orderHint?: number;
   }) {
     const created = await apiPost<Step>(`/api/v1/routes/${payload.routeId}/nodes`, {
@@ -369,10 +431,11 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
       order_hint: payload.orderHint ?? 0,
       assignee_type: "human"
     });
+
     await apiPost(`/api/v1/routes/${payload.routeId}/edges`, {
       from_node_id: payload.predecessorNodeId,
       to_node_id: created.id,
-      relation: "depends_on"
+      relation: payload.relation
     });
   }
 
@@ -387,6 +450,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
         goal: startGoalTitle.trim(),
         status: "active"
       });
+
       const createdStart = await apiPost<Step>(`/api/v1/routes/${createdFlow.id}/nodes`, {
         node_type: "start",
         title: t("tasks.execution.startNodeTitle"),
@@ -395,14 +459,22 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
         order_hint: 1,
         assignee_type: "human"
       });
+
+      const startEdgeRelation = inferEdgeRelation("start", startStepType);
+      if (!startEdgeRelation) {
+        throw new Error(t("tasks.execution.edgeRuleGoalToGoal"));
+      }
+
       await createNodeWithEdge({
         routeId: createdFlow.id,
-        nodeType: "goal",
+        nodeType: startStepType,
         title: startGoalTitle.trim(),
-        status: "execute",
+        status: startStepStatus(startStepType),
         predecessorNodeId: createdStart.id,
+        relation: startEdgeRelation,
         orderHint: 2
       });
+
       await apiPatch(`/api/v1/tasks/${taskId}`, { status: "in_progress" });
       setStartGoalTitle("");
       await loadFlows();
@@ -415,25 +487,29 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     }
   }
 
-  async function onAddGoal() {
-    if (!selectedFlowId || !predecessorAnchor || !newGoalTitle.trim()) return;
-    setCreatingGoal(true);
+  async function onAddStep() {
+    if (!selectedFlowId || !newPredecessorNodeId || !newStepTitle.trim()) return;
+    if (!inferredEdgeType) {
+      setError(t("tasks.execution.edgeRuleGoalToGoal"));
+      return;
+    }
+    setCreatingStep(true);
     setError("");
     try {
       await createNodeWithEdge({
         routeId: selectedFlowId,
-        nodeType: "goal",
-        title: newGoalTitle.trim(),
-        status: newGoalStatus,
-        predecessorNodeId: predecessorAnchor.id
+        nodeType: newStepType,
+        title: newStepTitle.trim(),
+        status: newStepStatus,
+        predecessorNodeId: newPredecessorNodeId,
+        relation: inferredEdgeType
       });
-      setNewGoalTitle("");
-      setNewGoalStatus("waiting");
+      setNewStepTitle("");
       await loadGraph(selectedFlowId);
     } catch (e) {
       setError((e as Error).message);
     } finally {
-      setCreatingGoal(false);
+      setCreatingStep(false);
     }
   }
 
@@ -486,12 +562,27 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
 
   return (
     <section className="taskExecPanel taskExecPanelV3">
+      <div className="taskExecFlowBar">
+        <span className="meta">{t("tasks.execution.title")}</span>
+      </div>
       {error ? <p style={{ color: "var(--danger)" }}>{error}</p> : null}
 
       {!flows.length ? (
         <div className="taskExecStartBox">
           <p className="meta">{t("tasks.execution.startHint")}</p>
           <div className="taskExecStartRow">
+            <select
+              className="taskInput"
+              value={startStepType}
+              onChange={(event) => setStartStepType(event.target.value as EditableStepType)}
+              aria-label={t("tasks.execution.startType")}
+            >
+              {EDITABLE_NODE_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {t(`routes.nodeType.${type}`)}
+                </option>
+              ))}
+            </select>
             <input
               className="taskInput"
               value={startGoalTitle}
@@ -569,6 +660,17 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
             ) : (
               <p className="meta">{loadingGraph ? t("tasks.execution.loadingMap") : t("routes.graphEmpty")}</p>
             )}
+
+            <div className="taskExecLinksBlock">
+              <div className="taskSectionTitle">{t("tasks.execution.edgeSummary")}</div>
+              <div className="taskExecLinks">
+                {edgeSummaries.length ? (
+                  edgeSummaries.map((summary) => <span key={summary} className="badge">{summary}</span>)
+                ) : (
+                  <span className="meta">{t("tasks.execution.edgeEmpty")}</span>
+                )}
+              </div>
+            </div>
           </div>
 
           {selectedStep ? (
@@ -607,28 +709,64 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
 
           <div className="taskExecCreateStep">
             <h4 className="taskSectionTitle">{t("tasks.execution.addStep")}</h4>
-            <div className="taskExecCreateGrid taskExecCreateGridGoal">
-              <input
-                className="taskInput"
-                value={newGoalTitle}
-                onChange={(event) => setNewGoalTitle(event.target.value)}
-                placeholder={t("tasks.execution.stepTitlePlaceholder")}
-              />
+            <div className="taskExecCreateGrid">
               <select
                 className="taskInput"
-                value={newGoalStatus}
-                onChange={(event) => setNewGoalStatus(event.target.value as StepStatus)}
+                value={newStepType}
+                onChange={(event) => setNewStepType(event.target.value as EditableStepType)}
               >
-                <option value="waiting">{t("routes.nodeStatus.waiting")}</option>
-                <option value="execute">{t("routes.nodeStatus.execute")}</option>
+                {EDITABLE_NODE_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {t(`routes.nodeType.${type}`)}
+                  </option>
+                ))}
               </select>
-              <button className="badge" disabled={creatingGoal || !predecessorAnchor} onClick={onAddGoal}>
+
+              <input
+                className="taskInput"
+                value={newStepTitle}
+                onChange={(event) => setNewStepTitle(event.target.value)}
+                placeholder={t("tasks.execution.stepTitlePlaceholder")}
+              />
+
+              <select
+                className="taskInput"
+                value={newPredecessorNodeId}
+                onChange={(event) => setNewPredecessorNodeId(event.target.value)}
+              >
+                {sortedSteps.map((node) => (
+                  <option key={node.id} value={node.id}>
+                    {node.title}
+                  </option>
+                ))}
+              </select>
+
+              <select
+                className="taskInput"
+                value={newStepStatus}
+                onChange={(event) => setNewStepStatus(event.target.value as StepStatus)}
+              >
+                {createStepStatuses.map((status) => (
+                  <option key={status} value={status}>
+                    {t(`routes.nodeStatus.${status}`)}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                className="badge"
+                disabled={creatingStep || !newStepTitle.trim() || !newPredecessorNodeId || !inferredEdgeType}
+                onClick={onAddStep}
+              >
                 {t("tasks.execution.addAction")}
               </button>
             </div>
+
             <p className="meta">
-              {t("tasks.execution.predecessorLabel")}: {predecessorAnchor?.title ?? t("tasks.execution.noPredecessorAnchor")}
+              {t("tasks.execution.edgeSummary")}:{" "}
+              {inferredEdgeType ? t(`tasks.execution.edgeType.${inferredEdgeType}`) : t("tasks.execution.edgeRuleGoalToGoal")}
             </p>
+
             <p className="meta">{t("tasks.execution.predecessorHint")}</p>
           </div>
         </>

@@ -1,7 +1,7 @@
 > Documentation Status: Current
-> Last synced: 2026-02-25
+> Last synced: 2026-02-26
 
-# MVP E2E Checklist (Synced 2026-02-25)
+# MVP E2E Checklist (Synced 2026-02-26)
 
 ## Environment
 - API Base: `http://localhost:8000`
@@ -45,8 +45,8 @@
 - Expect graph refresh and no crash
 
 8. Task-scoped helper pages
-- Open `/ideas?task_id=<valid_task_id>` and `/routes?task_id=<valid_task_id>`
-- Expect pages load with task context
+- Open `/ideas?task_id=<valid_task_id>`
+- Expect page loads with task context
 
 9. Frontend routes
 - Visit `/tasks`, `/knowledge`, `/changes`

@@ -40,12 +40,12 @@ def test_idea_lifecycle_and_promote_to_route_node():
 
     promoted = client.post(
         f"/api/v1/ideas/{idea_id}/promote",
-        json={"route_id": route_id, "node_type": "task"},
+        json={"route_id": route_id, "node_type": "goal"},
     )
     assert promoted.status_code == 201
     promoted_body = promoted.json()
     assert promoted_body["route_id"] == route_id
-    assert promoted_body["node_type"] == "task"
+    assert promoted_body["node_type"] == "goal"
 
 
 def test_idea_invalid_transition_rejected():
@@ -98,7 +98,7 @@ def test_promote_requires_ready_status():
 
     promoted = client.post(
         f"/api/v1/ideas/{idea_id}/promote",
-        json={"route_id": route_id, "node_type": "task"},
+        json={"route_id": route_id, "node_type": "goal"},
     )
     assert promoted.status_code == 409
     assert promoted.json()["error"]["code"] == "IDEA_NOT_READY"

@@ -53,14 +53,15 @@ python3 -m uvicorn src.app:app --reload --port 8000
 - `routes`: task-scoped route graph entities
   - route node APIs include create/patch/**delete**
   - edge APIs include create/delete
-  - hierarchy fields:
-    - route: `parent_route_id`, `spawned_from_node_id`
-    - node: `parent_node_id`, `refinement_status`
-    - node log: `log_type`, `source_ref`
-  - hierarchy validation:
-    - spawned route node must be `decision`
-    - parent node must stay in same route and cannot form cycles
-    - non-`candidate` route cannot rewire `parent_route_id`
+  - node types: `idea` and `goal` (`start` is system-created only)
+  - edge relations are inferred and validated by node types:
+    - `idea -> idea`: `refine`
+    - `idea -> goal`: `initiate`
+    - `goal -> idea`: `handoff`
+    - `goal -> goal`: forbidden
+  - parent node must stay in same route and cannot form cycles
+  - non-`candidate` route cannot rewire `parent_route_id`
+  - node log fields: `log_type`, `source_ref`
 - `context`: aggregated retrieval bundle
 - `audit`: event trace query
 

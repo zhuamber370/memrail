@@ -394,11 +394,10 @@ class ContextBundleOut(BaseModel):
 
 IdeaStatus = Literal["captured", "triage", "discovery", "ready", "rejected"]
 RouteStatus = Literal["candidate", "active", "parked", "completed", "cancelled"]
-RouteNodeType = Literal["start", "goal", "idea", "decision", "milestone", "task"]
+RouteNodeType = Literal["start", "goal", "idea"]
 RouteNodeStatus = Literal["waiting", "execute", "done", "removed", "todo", "in_progress", "cancelled"]
-RouteRefinementStatus = Literal["rough", "exploring", "decided", "decomposed"]
 RouteAssigneeType = Literal["human", "agent"]
-RouteEdgeRelation = Literal["depends_on", "blocks"]
+RouteEdgeRelation = Literal["refine", "initiate", "handoff"]
 NodeLogType = Literal["note", "evidence", "decision", "summary"]
 
 
@@ -453,7 +452,6 @@ class RouteCreate(BaseModel):
     priority: Optional[TaskPriority] = None
     owner: Optional[str] = None
     parent_route_id: Optional[str] = Field(default=None, min_length=1)
-    spawned_from_node_id: Optional[str] = Field(default=None, min_length=1)
 
 
 class RoutePatch(BaseModel):
@@ -476,7 +474,6 @@ class RouteOut(BaseModel):
     priority: Optional[TaskPriority]
     owner: Optional[str]
     parent_route_id: Optional[str]
-    spawned_from_node_id: Optional[str]
     created_at: datetime
     updated_at: datetime
 
@@ -495,7 +492,6 @@ class RouteNodeCreate(BaseModel):
     description: str = ""
     status: RouteNodeStatus = "todo"
     parent_node_id: Optional[str] = Field(default=None, min_length=1)
-    refinement_status: RouteRefinementStatus = "rough"
     order_hint: int = 0
     assignee_type: RouteAssigneeType = "human"
     assignee_id: Optional[str] = None
@@ -508,7 +504,6 @@ class RouteNodePatch(BaseModel):
     description: Optional[str] = None
     status: Optional[RouteNodeStatus] = None
     parent_node_id: Optional[str] = Field(default=None, min_length=1)
-    refinement_status: Optional[RouteRefinementStatus] = None
     order_hint: Optional[int] = None
     assignee_type: Optional[RouteAssigneeType] = None
     assignee_id: Optional[str] = None
@@ -523,7 +518,6 @@ class RouteNodeOut(BaseModel):
     description: str
     status: RouteNodeStatus
     parent_node_id: Optional[str]
-    refinement_status: RouteRefinementStatus
     order_hint: int
     assignee_type: RouteAssigneeType
     assignee_id: Optional[str]
@@ -535,7 +529,7 @@ class RouteEdgeCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
     from_node_id: str = Field(min_length=1)
     to_node_id: str = Field(min_length=1)
-    relation: RouteEdgeRelation = "depends_on"
+    relation: RouteEdgeRelation = "refine"
 
 
 class RouteEdgeOut(BaseModel):
@@ -582,6 +576,6 @@ class NodeLogListOut(BaseModel):
 class IdeaPromoteIn(BaseModel):
     model_config = ConfigDict(extra="forbid")
     route_id: str = Field(min_length=1)
-    node_type: RouteNodeType = "idea"
+    node_type: Literal["goal", "idea"] = "idea"
     title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     description: Optional[str] = None

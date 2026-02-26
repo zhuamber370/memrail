@@ -14,9 +14,9 @@ It focuses on one core principle:
 ### 2. Task Command Center (desktop-first)
 - `Tasks` page is the main execution workspace.
 - Supports search, filters, grouped list, and detail editing in one screen.
-- Includes execution canvas (DAG-like graph) for task goal nodes.
+- Includes execution canvas (DAG-like graph) for idea/goal flow.
 - Node operations in UI:
-  - status update (`waiting / execute / done`)
+  - status update (`waiting / execute / done / removed`)
   - rename
   - delete (non-start node)
 
@@ -28,13 +28,10 @@ It focuses on one core principle:
 - Human review surface for proposed writes.
 - Commit/reject proposals and undo last commit.
 
-### 5. Task-scoped idea/route pages
-- `/ideas` and `/routes` are task-scoped tools.
-- They require `task_id` context (opened from task workflow), not top-level nav by default.
-- Route graph now supports minimal hierarchy fields:
-  - route-level: `parent_route_id`, `spawned_from_node_id`
-  - node-level: `parent_node_id`, `refinement_status`
-  - node logs: `log_type`, `source_ref`
+### 5. Task-scoped idea page
+- `/ideas` is a task-scoped tool.
+- It requires `task_id` context (opened from task workflow), not top-level nav.
+- Ideas can be promoted to `idea` or `goal` route nodes.
 
 ## Tech Stack
 - Backend: FastAPI + SQLAlchemy
@@ -132,11 +129,6 @@ openclaw skills check --json
   - `frontend/README.md`
   - `docs/reports/mvp-release-notes.md`
   - `docs/reports/mvp-e2e-checklist.md`
-- **Historical snapshots**:
-  - `docs/plans/*`
-  - dated design/plan reports under `docs/reports/*`
-
-If historical docs conflict with current runtime behavior, follow the authoritative docs above.
 
 ## Security
 

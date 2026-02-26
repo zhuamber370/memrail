@@ -43,6 +43,5 @@ npm run build
 ## Task-scoped helper pages
 
 - `/ideas?task_id=<task_id>`
-- `/routes?task_id=<task_id>`
 
-These pages require task context and are not default top-level navigation.
+This page requires task context and is not default top-level navigation.

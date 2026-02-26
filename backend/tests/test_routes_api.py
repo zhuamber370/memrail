@@ -67,7 +67,7 @@ def test_single_active_route_enforced():
         assert park_seeded.status_code == 200
 
 
-def test_route_create_accepts_parent_fields():
+def test_route_create_accepts_parent_route():
     client = make_client()
     task_id = create_test_task(client, prefix="route_parent_fields_task")
 
@@ -83,13 +83,6 @@ def test_route_create_accepts_parent_fields():
     assert parent_route.status_code == 201
     parent_route_id = parent_route.json()["id"]
 
-    decision_node = client.post(
-        f"/api/v1/routes/{parent_route_id}/nodes",
-        json={"node_type": "decision", "title": "Decide split", "description": "spawn child route"},
-    )
-    assert decision_node.status_code == 201
-    decision_node_id = decision_node.json()["id"]
-
     created = client.post(
         "/api/v1/routes",
         json={
@@ -98,16 +91,14 @@ def test_route_create_accepts_parent_fields():
             "goal": "child route",
             "status": "candidate",
             "parent_route_id": parent_route_id,
-            "spawned_from_node_id": decision_node_id,
         },
     )
     assert created.status_code == 201
     body = created.json()
     assert body["parent_route_id"] == parent_route_id
-    assert body["spawned_from_node_id"] == decision_node_id
 
 
-def test_route_node_create_accepts_parent_and_refinement():
+def test_route_node_create_accepts_parent_node():
     client = make_client()
     task_id = create_test_task(client, prefix="route_node_hierarchy_task")
 
@@ -137,50 +128,11 @@ def test_route_node_create_accepts_parent_and_refinement():
             "title": "Child Goal",
             "description": "refined objective",
             "parent_node_id": parent_node_id,
-            "refinement_status": "exploring",
         },
     )
     assert created.status_code == 201
     body = created.json()
     assert body["parent_node_id"] == parent_node_id
-    assert body["refinement_status"] == "exploring"
-
-
-def test_spawned_from_node_must_be_decision():
-    client = make_client()
-    task_id = create_test_task(client, prefix="route_spawn_guard_task")
-
-    parent_route = client.post(
-        "/api/v1/routes",
-        json={
-            "task_id": task_id,
-            "name": f"route_test_{uniq('spawn_parent')}",
-            "goal": "parent route",
-            "status": "candidate",
-        },
-    )
-    assert parent_route.status_code == 201
-    parent_route_id = parent_route.json()["id"]
-
-    task_node = client.post(
-        f"/api/v1/routes/{parent_route_id}/nodes",
-        json={"node_type": "task", "title": "Non-decision node", "description": ""},
-    )
-    assert task_node.status_code == 201
-
-    created = client.post(
-        "/api/v1/routes",
-        json={
-            "task_id": task_id,
-            "name": f"route_test_{uniq('spawn_child')}",
-            "goal": "child route",
-            "status": "candidate",
-            "parent_route_id": parent_route_id,
-            "spawned_from_node_id": task_node.json()["id"],
-        },
-    )
-    assert created.status_code == 409
-    assert created.json()["error"]["code"] == "ROUTE_SPAWN_NODE_NOT_DECISION"
 
 
 def test_parent_node_must_be_same_route_and_acyclic():
@@ -232,7 +184,6 @@ def test_parent_node_must_be_same_route_and_acyclic():
             "title": "Cross Parent",
             "description": "",
             "parent_node_id": r2_node_id,
-            "refinement_status": "exploring",
         },
     )
     assert cross.status_code == 409
@@ -245,7 +196,6 @@ def test_parent_node_must_be_same_route_and_acyclic():
             "title": "Route1 Child",
             "description": "",
             "parent_node_id": r1_root_id,
-            "refinement_status": "exploring",
         },
     )
     assert child.status_code == 201
@@ -339,6 +289,109 @@ def test_append_typed_node_log():
     assert item["source_ref"] == "https://example.com/report"
 
 
+def test_route_edges_are_inferred_by_node_type():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_edge_relations_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('edge_rel')}",
+            "goal": "edge relation semantics",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    idea1 = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "idea", "title": "Idea 1", "description": ""},
+    )
+    assert idea1.status_code == 201
+    idea1_id = idea1.json()["id"]
+
+    idea2 = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "idea", "title": "Idea 2", "description": ""},
+    )
+    assert idea2.status_code == 201
+    idea2_id = idea2.json()["id"]
+
+    goal1 = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "Goal 1", "description": ""},
+    )
+    assert goal1.status_code == 201
+    goal1_id = goal1.json()["id"]
+
+    refine = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={"from_node_id": idea1_id, "to_node_id": idea2_id, "relation": "refine"},
+    )
+    assert refine.status_code == 201
+    assert refine.json()["relation"] == "refine"
+
+    initiate = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={
+            "from_node_id": idea2_id,
+            "to_node_id": goal1_id,
+            "relation": "initiate",
+        },
+    )
+    assert initiate.status_code == 201
+    assert initiate.json()["relation"] == "initiate"
+
+    handoff = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={
+            "from_node_id": goal1_id,
+            "to_node_id": idea1_id,
+            "relation": "handoff",
+        },
+    )
+    assert handoff.status_code == 201
+    assert handoff.json()["relation"] == "handoff"
+
+    graph = client.get(f"/api/v1/routes/{route_id}/graph")
+    assert graph.status_code == 200
+    edges = graph.json()["edges"]
+    assert any(edge["relation"] == "refine" for edge in edges)
+    assert any(edge["relation"] == "initiate" for edge in edges)
+    assert any(edge["relation"] == "handoff" for edge in edges)
+
+    goal2 = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "Goal 2", "description": ""},
+    )
+    assert goal2.status_code == 201
+    goal2_id = goal2.json()["id"]
+
+    forbidden = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={
+            "from_node_id": goal1_id,
+            "to_node_id": goal2_id,
+            "relation": "handoff",
+        },
+    )
+    assert forbidden.status_code == 409
+    assert forbidden.json()["error"]["code"] == "ROUTE_EDGE_GOAL_TO_GOAL_FORBIDDEN"
+
+    mismatch = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={
+            "from_node_id": idea1_id,
+            "to_node_id": goal2_id,
+            "relation": "refine",
+        },
+    )
+    assert mismatch.status_code == 409
+    assert mismatch.json()["error"]["code"] == "ROUTE_EDGE_RELATION_MISMATCH"
+
+
 def test_route_nodes_edges_and_logs():
     client = make_client()
     task_id = create_test_task(client, prefix="route_graph_task")
@@ -369,21 +422,21 @@ def test_route_nodes_edges_and_logs():
 
     n1 = client.post(
         f"/api/v1/routes/{route1_id}/nodes",
-        json={"node_type": "decision", "title": "Choose direction", "description": "compare options"},
+        json={"node_type": "idea", "title": "Choose direction", "description": "compare options"},
     )
     assert n1.status_code == 201
     n1_id = n1.json()["id"]
 
     n2 = client.post(
         f"/api/v1/routes/{route1_id}/nodes",
-        json={"node_type": "task", "title": "Build MVP", "description": "ship first version"},
+        json={"node_type": "goal", "title": "Build MVP", "description": "ship first version"},
     )
     assert n2.status_code == 201
     n2_id = n2.json()["id"]
 
     edge = client.post(
         f"/api/v1/routes/{route1_id}/edges",
-        json={"from_node_id": n1_id, "to_node_id": n2_id, "relation": "depends_on"},
+        json={"from_node_id": n1_id, "to_node_id": n2_id, "relation": "initiate"},
     )
     assert edge.status_code == 201
 
@@ -397,14 +450,14 @@ def test_route_nodes_edges_and_logs():
 
     other_node = client.post(
         f"/api/v1/routes/{route2_id}/nodes",
-        json={"node_type": "task", "title": "Cross route node", "description": "cross route"},
+        json={"node_type": "goal", "title": "Cross route node", "description": "cross route"},
     )
     assert other_node.status_code == 201
     other_node_id = other_node.json()["id"]
 
     cross = client.post(
         f"/api/v1/routes/{route1_id}/edges",
-        json={"from_node_id": n1_id, "to_node_id": other_node_id, "relation": "depends_on"},
+        json={"from_node_id": n1_id, "to_node_id": other_node_id, "relation": "initiate"},
     )
     assert cross.status_code == 422
     assert cross.json()["error"]["code"] == "ROUTE_EDGE_CROSS_ROUTE"

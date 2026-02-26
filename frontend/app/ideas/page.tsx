@@ -7,7 +7,7 @@ import { apiGet, apiPatch, apiPost } from "../../src/lib/api";
 import { useI18n } from "../../src/i18n";
 
 type IdeaStatus = "captured" | "triage" | "discovery" | "ready" | "rejected";
-type RouteNodeType = "decision" | "milestone" | "task";
+type RouteNodeType = "goal" | "idea";
 
 type Idea = {
   id: string;
@@ -40,7 +40,7 @@ type RouteListOut = {
 };
 
 const IDEA_STATUSES: IdeaStatus[] = ["captured", "triage", "discovery", "ready", "rejected"];
-const NODE_TYPES: RouteNodeType[] = ["decision", "milestone", "task"];
+const NODE_TYPES: RouteNodeType[] = ["goal", "idea"];
 
 export default function IdeasPage() {
   const { t } = useI18n();
@@ -59,7 +59,7 @@ export default function IdeasPage() {
 
   const [statusDraft, setStatusDraft] = useState<IdeaStatus>("captured");
   const [promoteRouteId, setPromoteRouteId] = useState("");
-  const [promoteNodeType, setPromoteNodeType] = useState<RouteNodeType>("task");
+  const [promoteNodeType, setPromoteNodeType] = useState<RouteNodeType>("goal");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");

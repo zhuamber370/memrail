@@ -993,7 +993,7 @@ a {
 
 .taskExecStartRow {
   display: grid;
-  grid-template-columns: 1fr auto;
+  grid-template-columns: minmax(140px, 190px) 1fr auto;
   gap: 8px;
 }
 

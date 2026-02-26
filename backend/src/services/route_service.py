@@ -34,7 +34,6 @@ class RouteService:
     def create(self, payload: RouteCreate) -> Route:
         self._validate_task(payload.task_id)
         self._validate_parent_route(parent_route_id=payload.parent_route_id)
-        self._validate_spawn_node(spawned_from_node_id=payload.spawned_from_node_id)
         if payload.status == "active":
             self._ensure_single_active(task_id=payload.task_id)
         route = Route(
@@ -46,7 +45,6 @@ class RouteService:
             priority=payload.priority,
             owner=payload.owner,
             parent_route_id=payload.parent_route_id,
-            spawned_from_node_id=payload.spawned_from_node_id,
         )
         self.db.add(route)
         if payload.status == "active":
@@ -158,15 +156,6 @@ class RouteService:
         if self.db.get(Route, parent_route_id) is None:
             raise ValueError("ROUTE_PARENT_NOT_FOUND")
 
-    def _validate_spawn_node(self, spawned_from_node_id: Optional[str]) -> None:
-        if not spawned_from_node_id:
-            return
-        node = self.db.get(RouteNode, spawned_from_node_id)
-        if node is None:
-            raise ValueError("ROUTE_SPAWN_NODE_NOT_FOUND")
-        if node.node_type != "decision":
-            raise ValueError("ROUTE_SPAWN_NODE_NOT_DECISION")
-
     def _promote_task_to_in_progress(self, task_id: str) -> None:
         task = self.db.get(Task, task_id)
         if task is None:
@@ -204,7 +193,6 @@ class RouteGraphService:
             description=payload.description,
             status=payload.status,
             parent_node_id=payload.parent_node_id,
-            refinement_status=payload.refinement_status,
             order_hint=order_hint,
             assignee_type=payload.assignee_type,
             assignee_id=payload.assignee_id,
@@ -305,6 +293,13 @@ class RouteGraphService:
         if existing is not None:
             raise ValueError("ROUTE_EDGE_DUPLICATE")
 
+        expected_relation = self._infer_edge_relation(
+            from_node_type=from_node.node_type,
+            to_node_type=to_node.node_type,
+        )
+        if payload.relation != expected_relation:
+            raise ValueError("ROUTE_EDGE_RELATION_MISMATCH")
+
         edge = RouteEdge(
             id=f"red_{uuid.uuid4().hex[:12]}",
             route_id=route_id,
@@ -326,6 +321,20 @@ class RouteGraphService:
             source_refs=[f"route://{route_id}"],
         )
         return edge
+
+    def _infer_edge_relation(self, *, from_node_type: str, to_node_type: str) -> str:
+        normalized_from = "idea" if from_node_type == "start" else from_node_type
+        normalized_to = to_node_type
+
+        if normalized_from not in {"idea", "goal"} or normalized_to not in {"idea", "goal"}:
+            raise ValueError("ROUTE_EDGE_NODE_TYPE_UNSUPPORTED")
+        if normalized_from == "goal" and normalized_to == "goal":
+            raise ValueError("ROUTE_EDGE_GOAL_TO_GOAL_FORBIDDEN")
+        if normalized_from == "idea" and normalized_to == "idea":
+            return "refine"
+        if normalized_from == "idea" and normalized_to == "goal":
+            return "initiate"
+        return "handoff"
 
     def delete_edge(self, route_id: str, edge_id: str) -> bool:
         self._ensure_route(route_id)

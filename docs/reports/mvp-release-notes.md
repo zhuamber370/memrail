@@ -1,7 +1,7 @@
 > Documentation Status: Current
-> Last synced: 2026-02-25
+> Last synced: 2026-02-26
 
-# MVP Release Notes (Synced 2026-02-25)
+# MVP Release Notes (Synced 2026-02-26)
 
 ## Delivered
 - Backend APIs for `topics/tasks/notes/journals/links/changes/context/audit/ideas/routes`
@@ -10,7 +10,7 @@
 - Task domain with fixed topic classification, cancel-reason guard, archive semantics
 - Task Command Center UI (desktop-first):
   - search + filter + grouped list + detail in one screen
-  - execution canvas with branching goal graph
+  - execution canvas with idea-goal flow graph
   - node status change (`waiting/execute/done`), rename, delete
 - Knowledge Topic Board with classify/edit/archive operations
 - Changes proposal inbox for human review and direct commit/reject
