@@ -295,6 +295,50 @@ def test_parent_route_rewire_forbidden_when_non_candidate():
     assert patched.json()["error"]["code"] == "ROUTE_PARENT_REWIRE_FORBIDDEN"
 
 
+def test_append_typed_node_log():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_typed_log_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('typed_log_route')}",
+            "goal": "typed logs",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    node = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "Collect evidence", "description": ""},
+    )
+    assert node.status_code == 201
+    node_id = node.json()["id"]
+
+    appended = client.post(
+        f"/api/v1/routes/{route_id}/nodes/{node_id}/logs",
+        json={
+            "content": f"benchmark report {uniq('evidence')}",
+            "log_type": "evidence",
+            "source_ref": "https://example.com/report",
+            "actor_type": "human",
+            "actor_id": "tester",
+        },
+    )
+    assert appended.status_code == 201
+    assert appended.json()["log_type"] == "evidence"
+    assert appended.json()["source_ref"] == "https://example.com/report"
+
+    listed = client.get(f"/api/v1/routes/{route_id}/nodes/{node_id}/logs")
+    assert listed.status_code == 200
+    item = next(row for row in listed.json()["items"] if row["id"] == appended.json()["id"])
+    assert item["log_type"] == "evidence"
+    assert item["source_ref"] == "https://example.com/report"
+
+
 def test_route_nodes_edges_and_logs():
     client = make_client()
     task_id = create_test_task(client, prefix="route_graph_task")
