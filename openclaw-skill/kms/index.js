@@ -15,6 +15,9 @@ const skill = {
           intent: { type: "string" },
           window_days: { type: "number", default: 14 },
           include_done: { type: "boolean", default: false },
+          tasks_limit: { type: "number", default: 20 },
+          notes_limit: { type: "number", default: 20 },
+          journals_limit: { type: "number", default: 14 },
           topic_id: {
             type: "array",
             items: { type: "string" },
@@ -28,6 +31,9 @@ const skill = {
           intent: args.intent,
           window_days: args.window_days ?? 14,
           include_done: args.include_done ?? false,
+          tasks_limit: args.tasks_limit,
+          notes_limit: args.notes_limit,
+          journals_limit: args.journals_limit,
           topic_id: args.topic_id,
         };
         return client.getContextBundle(params);
@@ -42,13 +48,150 @@ const skill = {
           page_size: { type: "number", default: 50 },
           status: { type: "string" },
           priority: { type: "string" },
+          archived: { type: "boolean" },
           topic_id: { type: "string" },
+          cycle_id: { type: "string" },
+          stale_days: { type: "number" },
+          due_before: { type: "string" },
+          updated_before: { type: "string" },
+          view: { type: "string" },
           q: { type: "string" },
         },
       },
       handler: async (args, context) => {
         const client = createKmsClient(context);
         return client.listTasks(args || {});
+      },
+    },
+    list_topics: {
+      description: "List all topics",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+      handler: async (_args, context) => {
+        const client = createKmsClient(context);
+        return client.listTopics();
+      },
+    },
+    list_cycles: {
+      description: "List all cycles",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+      handler: async (_args, context) => {
+        const client = createKmsClient(context);
+        return client.listCycles();
+      },
+    },
+    list_ideas: {
+      description: "List ideas",
+      parameters: {
+        type: "object",
+        properties: {
+          page: { type: "number", default: 1 },
+          page_size: { type: "number", default: 20 },
+          task_id: { type: "string" },
+          status: { type: "string" },
+          q: { type: "string" },
+        },
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listIdeas(args || {});
+      },
+    },
+    list_changes: {
+      description: "List proposed/committed/rejected change sets",
+      parameters: {
+        type: "object",
+        properties: {
+          page: { type: "number", default: 1 },
+          page_size: { type: "number", default: 20 },
+          status: { type: "string" },
+        },
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listChanges(args || {});
+      },
+    },
+    get_change: {
+      description: "Get one change set detail",
+      parameters: {
+        type: "object",
+        properties: {
+          change_set_id: { type: "string" },
+        },
+        required: ["change_set_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.getChange(args.change_set_id);
+      },
+    },
+    list_audit_events: {
+      description: "List audit events with filters",
+      parameters: {
+        type: "object",
+        properties: {
+          page: { type: "number", default: 1 },
+          page_size: { type: "number", default: 20 },
+          actor_type: { type: "string" },
+          actor_id: { type: "string" },
+          tool: { type: "string" },
+          action: { type: "string" },
+          target_type: { type: "string" },
+          target_id: { type: "string" },
+          occurred_from: { type: "string" },
+          occurred_to: { type: "string" },
+        },
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listAuditEvents(args || {});
+      },
+    },
+    list_task_views_summary: {
+      description: "Get task view counters (today/overdue/this_week/backlog/blocked/done)",
+      parameters: {
+        type: "object",
+        properties: {},
+      },
+      handler: async (_args, context) => {
+        const client = createKmsClient(context);
+        return client.listTaskViewsSummary();
+      },
+    },
+    list_note_topic_summary: {
+      description: "Get note count summary grouped by topic",
+      parameters: {
+        type: "object",
+        properties: {
+          status: { type: "string", default: "active" },
+        },
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listNoteTopicSummary(args || {});
+      },
+    },
+    list_routes: {
+      description: "List routes with optional filters",
+      parameters: {
+        type: "object",
+        properties: {
+          page: { type: "number", default: 1 },
+          page_size: { type: "number", default: 100 },
+          task_id: { type: "string" },
+          status: { type: "string" },
+          q: { type: "string" },
+        },
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listRoutes(args || {});
       },
     },
     list_task_routes: {
@@ -73,6 +216,21 @@ const skill = {
           status: args.status,
           q: args.q,
         });
+      },
+    },
+    list_route_node_logs: {
+      description: "List execution logs for one route node",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+          node_id: { type: "string" },
+        },
+        required: ["route_id", "node_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.getNodeLogs(args.route_id, args.node_id);
       },
     },
     get_route_graph: {
@@ -157,6 +315,24 @@ const skill = {
       handler: async (args, context) => {
         const client = createKmsClient(context);
         return client.getJournal(args.journal_date);
+      },
+    },
+    api_get: {
+      description: "Generic read-through for any /api/v1/* endpoint",
+      parameters: {
+        type: "object",
+        properties: {
+          path: { type: "string" },
+          params: {
+            type: "object",
+            additionalProperties: true,
+          },
+        },
+        required: ["path"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.apiGet(args.path, args.params || {});
       },
     },
     propose_record_todo: {

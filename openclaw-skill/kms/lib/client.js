@@ -164,6 +164,16 @@ function createKmsClient(context) {
     "Content-Type": "application/json",
   };
 
+  function normalizeApiPath(path) {
+    const raw = String(path || "").trim();
+    if (!raw) throw new Error("path is required");
+    if (!raw.startsWith("/")) throw new Error("path must start with '/'");
+    if (raw.includes("://")) throw new Error("path must be a relative API path");
+    if (raw.includes("?")) throw new Error("path must not include query string; use params");
+    if (!raw.startsWith("/api/v1/")) throw new Error("path must start with /api/v1/");
+    return raw;
+  }
+
   async function request(method, path, payload, params, retries429, retries500) {
     const retry429 = Number.isFinite(retries429) ? retries429 : 3;
     const retry500 = Number.isFinite(retries500) ? retries500 : 2;
@@ -233,6 +243,35 @@ function createKmsClient(context) {
     return get("/api/v1/topics", {});
   }
 
+  async function listCycles() {
+    return get("/api/v1/cycles", {});
+  }
+
+  async function listIdeas(params) {
+    return get("/api/v1/ideas", params || {});
+  }
+
+  async function listChanges(params) {
+    return get("/api/v1/changes", params || {});
+  }
+
+  async function getChange(changeSetId) {
+    if (!changeSetId) throw new Error("change_set_id is required");
+    return get(`/api/v1/changes/${changeSetId}`, {});
+  }
+
+  async function listAuditEvents(params) {
+    return get("/api/v1/audit/events", params || {});
+  }
+
+  async function listTaskViewsSummary() {
+    return get("/api/v1/tasks/views/summary", {});
+  }
+
+  async function listNoteTopicSummary(params) {
+    return get("/api/v1/notes/topic-summary", params || {});
+  }
+
   async function listJournals(params) {
     return get("/api/v1/journals", params || {});
   }
@@ -258,6 +297,10 @@ function createKmsClient(context) {
     if (!routeId) throw new Error("route_id is required");
     if (!nodeId) throw new Error("node_id is required");
     return get(`/api/v1/routes/${routeId}/nodes/${nodeId}/logs`, {});
+  }
+
+  async function apiGet(path, params) {
+    return get(normalizeApiPath(path), params || {});
   }
 
   async function getTaskExecutionSnapshot(params) {
@@ -509,12 +552,21 @@ function createKmsClient(context) {
 
   return {
     actorId,
+    apiGet,
     listTasks,
     listRoutes,
     getRouteGraph,
+    getNodeLogs,
     getTaskExecutionSnapshot,
     searchNotes,
     listTopics,
+    listCycles,
+    listIdeas,
+    listChanges,
+    getChange,
+    listAuditEvents,
+    listTaskViewsSummary,
+    listNoteTopicSummary,
     listJournals,
     getJournal,
     getContextBundle,
