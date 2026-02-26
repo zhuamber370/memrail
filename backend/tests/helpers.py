@@ -1,17 +1,26 @@
+import os
 import uuid
 from typing import Optional
 
 from fastapi.testclient import TestClient
 
-from src.app import create_app
-from src.config import settings
+from src.config import Settings
 
 
 def database_url() -> str:
-    return settings.database_url
+    runtime_settings = Settings()
+    if os.getenv("AFKMS_DATABASE_URL", "").strip():
+        return runtime_settings.database_url
+    if os.getenv("AFKMS_DB_BACKEND", "").strip():
+        return runtime_settings.database_url
+    if os.getenv("GITHUB_ACTIONS", "").strip().lower() == "true":
+        return runtime_settings.postgres_url
+    return runtime_settings.database_url
 
 
 def make_client(*, require_auth: bool = False, api_key: Optional[str] = None) -> TestClient:
+    from src.app import create_app
+
     app = create_app(database_url(), require_auth=require_auth, api_key=api_key)
     return TestClient(app)
 
