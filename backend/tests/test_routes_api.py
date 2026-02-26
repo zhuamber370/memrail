@@ -146,6 +146,155 @@ def test_route_node_create_accepts_parent_and_refinement():
     assert body["refinement_status"] == "exploring"
 
 
+def test_spawned_from_node_must_be_decision():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_spawn_guard_task")
+
+    parent_route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('spawn_parent')}",
+            "goal": "parent route",
+            "status": "candidate",
+        },
+    )
+    assert parent_route.status_code == 201
+    parent_route_id = parent_route.json()["id"]
+
+    task_node = client.post(
+        f"/api/v1/routes/{parent_route_id}/nodes",
+        json={"node_type": "task", "title": "Non-decision node", "description": ""},
+    )
+    assert task_node.status_code == 201
+
+    created = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('spawn_child')}",
+            "goal": "child route",
+            "status": "candidate",
+            "parent_route_id": parent_route_id,
+            "spawned_from_node_id": task_node.json()["id"],
+        },
+    )
+    assert created.status_code == 409
+    assert created.json()["error"]["code"] == "ROUTE_SPAWN_NODE_NOT_DECISION"
+
+
+def test_parent_node_must_be_same_route_and_acyclic():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_node_parent_guard_task")
+
+    route1 = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('parent_guard_r1')}",
+            "goal": "route 1",
+            "status": "candidate",
+        },
+    )
+    assert route1.status_code == 201
+    route1_id = route1.json()["id"]
+
+    route2 = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('parent_guard_r2')}",
+            "goal": "route 2",
+            "status": "candidate",
+        },
+    )
+    assert route2.status_code == 201
+    route2_id = route2.json()["id"]
+
+    r1_root = client.post(
+        f"/api/v1/routes/{route1_id}/nodes",
+        json={"node_type": "goal", "title": "Route1 Root", "description": ""},
+    )
+    assert r1_root.status_code == 201
+    r1_root_id = r1_root.json()["id"]
+
+    r2_node = client.post(
+        f"/api/v1/routes/{route2_id}/nodes",
+        json={"node_type": "goal", "title": "Route2 Root", "description": ""},
+    )
+    assert r2_node.status_code == 201
+    r2_node_id = r2_node.json()["id"]
+
+    cross = client.post(
+        f"/api/v1/routes/{route1_id}/nodes",
+        json={
+            "node_type": "goal",
+            "title": "Cross Parent",
+            "description": "",
+            "parent_node_id": r2_node_id,
+            "refinement_status": "exploring",
+        },
+    )
+    assert cross.status_code == 409
+    assert cross.json()["error"]["code"] == "ROUTE_NODE_PARENT_CROSS_ROUTE"
+
+    child = client.post(
+        f"/api/v1/routes/{route1_id}/nodes",
+        json={
+            "node_type": "goal",
+            "title": "Route1 Child",
+            "description": "",
+            "parent_node_id": r1_root_id,
+            "refinement_status": "exploring",
+        },
+    )
+    assert child.status_code == 201
+    child_id = child.json()["id"]
+
+    cycle = client.patch(
+        f"/api/v1/routes/{route1_id}/nodes/{r1_root_id}",
+        json={"parent_node_id": child_id},
+    )
+    assert cycle.status_code == 409
+    assert cycle.json()["error"]["code"] == "ROUTE_NODE_PARENT_CYCLE"
+
+
+def test_parent_route_rewire_forbidden_when_non_candidate():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_parent_rewire_task")
+
+    parent_route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('rewire_parent')}",
+            "goal": "parent route",
+            "status": "candidate",
+        },
+    )
+    assert parent_route.status_code == 201
+    parent_route_id = parent_route.json()["id"]
+
+    active_route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('rewire_active')}",
+            "goal": "active route",
+            "status": "active",
+        },
+    )
+    assert active_route.status_code == 201
+    active_route_id = active_route.json()["id"]
+
+    patched = client.patch(
+        f"/api/v1/routes/{active_route_id}",
+        json={"parent_route_id": parent_route_id},
+    )
+    assert patched.status_code == 409
+    assert patched.json()["error"]["code"] == "ROUTE_PARENT_REWIRE_FORBIDDEN"
+
+
 def test_route_nodes_edges_and_logs():
     client = make_client()
     task_id = create_test_task(client, prefix="route_graph_task")

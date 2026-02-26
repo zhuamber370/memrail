@@ -33,6 +33,8 @@ class RouteService:
 
     def create(self, payload: RouteCreate) -> Route:
         self._validate_task(payload.task_id)
+        self._validate_parent_route(parent_route_id=payload.parent_route_id)
+        self._validate_spawn_node(spawned_from_node_id=payload.spawned_from_node_id)
         if payload.status == "active":
             self._ensure_single_active(task_id=payload.task_id)
         route = Route(
@@ -100,6 +102,12 @@ class RouteService:
         if not patch_data:
             raise ValueError("NO_PATCH_FIELDS")
 
+        next_parent_route_id = patch_data.get("parent_route_id", route.parent_route_id)
+        if next_parent_route_id != route.parent_route_id:
+            if route.status != "candidate":
+                raise ValueError("ROUTE_PARENT_REWIRE_FORBIDDEN")
+            self._validate_parent_route(parent_route_id=next_parent_route_id)
+
         next_status = patch_data.get("status")
         if next_status and next_status != route.status:
             self._validate_route_transition(route.status, next_status)
@@ -144,6 +152,21 @@ class RouteService:
         if self.db.get(Task, task_id) is None:
             raise ValueError("TASK_NOT_FOUND")
 
+    def _validate_parent_route(self, parent_route_id: Optional[str]) -> None:
+        if not parent_route_id:
+            return
+        if self.db.get(Route, parent_route_id) is None:
+            raise ValueError("ROUTE_PARENT_NOT_FOUND")
+
+    def _validate_spawn_node(self, spawned_from_node_id: Optional[str]) -> None:
+        if not spawned_from_node_id:
+            return
+        node = self.db.get(RouteNode, spawned_from_node_id)
+        if node is None:
+            raise ValueError("ROUTE_SPAWN_NODE_NOT_FOUND")
+        if node.node_type != "decision":
+            raise ValueError("ROUTE_SPAWN_NODE_NOT_DECISION")
+
     def _promote_task_to_in_progress(self, task_id: str) -> None:
         task = self.db.get(Task, task_id)
         if task is None:
@@ -161,6 +184,11 @@ class RouteGraphService:
 
     def create_node(self, route_id: str, payload: RouteNodeCreate) -> RouteNode:
         self._ensure_route(route_id)
+        self._ensure_parent_node_valid(
+            route_id=route_id,
+            parent_node_id=payload.parent_node_id,
+            node_id=None,
+        )
         order_hint = payload.order_hint
         if order_hint <= 0:
             max_hint = self.db.scalar(
@@ -207,6 +235,13 @@ class RouteGraphService:
         patch_data = payload.model_dump(exclude_unset=True)
         if not patch_data:
             raise ValueError("NO_PATCH_FIELDS")
+
+        if "parent_node_id" in patch_data:
+            self._ensure_parent_node_valid(
+                route_id=route_id,
+                parent_node_id=patch_data.get("parent_node_id"),
+                node_id=node.id,
+            )
 
         for key, value in patch_data.items():
             setattr(node, key, value)
@@ -376,3 +411,41 @@ class RouteGraphService:
         if node is None:
             raise ValueError("ROUTE_NODE_NOT_FOUND")
         return node
+
+    def _ensure_parent_node_valid(
+        self,
+        *,
+        route_id: str,
+        parent_node_id: Optional[str],
+        node_id: Optional[str],
+    ) -> None:
+        if not parent_node_id:
+            return
+        parent_node = self.db.get(RouteNode, parent_node_id)
+        if parent_node is None:
+            raise ValueError("ROUTE_NODE_PARENT_NOT_FOUND")
+        if parent_node.route_id != route_id:
+            raise ValueError("ROUTE_NODE_PARENT_CROSS_ROUTE")
+        if node_id is None:
+            return
+        if parent_node_id == node_id:
+            raise ValueError("ROUTE_NODE_PARENT_CYCLE")
+        if self._is_descendant(route_id=route_id, node_id=node_id, parent_node_id=parent_node_id):
+            raise ValueError("ROUTE_NODE_PARENT_CYCLE")
+
+    def _is_descendant(self, *, route_id: str, node_id: str, parent_node_id: str) -> bool:
+        current = parent_node_id
+        visited: set[str] = set()
+        while current:
+            if current == node_id:
+                return True
+            if current in visited:
+                return False
+            visited.add(current)
+            current = self.db.scalar(
+                select(RouteNode.parent_node_id).where(
+                    RouteNode.id == current,
+                    RouteNode.route_id == route_id,
+                )
+            )
+        return False
