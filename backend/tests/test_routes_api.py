@@ -375,7 +375,7 @@ def test_route_edges_are_inferred_by_node_type():
     assert goal2.status_code == 201
     goal2_id = goal2.json()["id"]
 
-    forbidden = client.post(
+    goal_to_goal = client.post(
         f"/api/v1/routes/{route_id}/edges",
         json={
             "from_node_id": goal1_id,
@@ -383,8 +383,8 @@ def test_route_edges_are_inferred_by_node_type():
             "relation": "handoff",
         },
     )
-    assert forbidden.status_code == 409
-    assert forbidden.json()["error"]["code"] == "ROUTE_EDGE_GOAL_TO_GOAL_FORBIDDEN"
+    assert goal_to_goal.status_code == 201
+    assert goal_to_goal.json()["relation"] == "handoff"
 
     mismatch = client.post(
         f"/api/v1/routes/{route_id}/edges",

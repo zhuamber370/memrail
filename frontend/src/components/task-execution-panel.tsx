@@ -110,7 +110,6 @@ function nodeStatusOptions(nodeType: StepType): StepStatus[] {
 function inferEdgeRelation(predecessorType: StepType | null, nextType: EditableStepType): CreatableEdgeRelation | null {
   const normalizedPredecessor = predecessorType === "start" ? "idea" : predecessorType;
   if (!normalizedPredecessor) return null;
-  if (normalizedPredecessor === "goal" && nextType === "goal") return null;
   if (normalizedPredecessor === "idea" && nextType === "idea") return "refine";
   if (normalizedPredecessor === "idea" && nextType === "goal") return "initiate";
   return "handoff";
@@ -332,6 +331,76 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
         return { level, nodes: sorted };
       });
 
+    const baseOrder = new Map<string, number>();
+    let baseOrderCursor = 0;
+    levels.forEach(({ nodes }) => {
+      nodes.forEach((node) => {
+        baseOrder.set(node.id, baseOrderCursor);
+        baseOrderCursor += 1;
+      });
+    });
+
+    const dependentsByStepId = new Map<string, string[]>();
+    for (const edge of edges) {
+      dependentsByStepId.set(edge.from_node_id, [...(dependentsByStepId.get(edge.from_node_id) ?? []), edge.to_node_id]);
+    }
+
+    const sortByAnchors = (
+      nodes: Step[],
+      anchorRows: Map<string, number>,
+      anchorIdsForNode: (nodeId: string) => string[]
+    ) => {
+      return [...nodes].sort((left, right) => {
+        const leftRows = anchorIdsForNode(left.id)
+          .map((nodeId) => anchorRows.get(nodeId))
+          .filter((value): value is number => value !== undefined);
+        const rightRows = anchorIdsForNode(right.id)
+          .map((nodeId) => anchorRows.get(nodeId))
+          .filter((value): value is number => value !== undefined);
+
+        const leftScore = leftRows.length ? leftRows.reduce((acc, value) => acc + value, 0) / leftRows.length : Number.NaN;
+        const rightScore = rightRows.length ? rightRows.reduce((acc, value) => acc + value, 0) / rightRows.length : Number.NaN;
+
+        const leftHasScore = Number.isFinite(leftScore);
+        const rightHasScore = Number.isFinite(rightScore);
+        if (leftHasScore && rightHasScore && leftScore !== rightScore) return leftScore - rightScore;
+        if (leftHasScore && !rightHasScore) return -1;
+        if (!leftHasScore && rightHasScore) return 1;
+
+        return (baseOrder.get(left.id) ?? 0) - (baseOrder.get(right.id) ?? 0);
+      });
+    };
+
+    for (let sweep = 0; sweep < 2; sweep += 1) {
+      for (let levelIndex = 1; levelIndex < levels.length; levelIndex += 1) {
+        const parentRows = new Map<string, number>();
+        for (let parentLevelIndex = 0; parentLevelIndex < levelIndex; parentLevelIndex += 1) {
+          levels[parentLevelIndex].nodes.forEach((node, rowIndex) => {
+            parentRows.set(node.id, rowIndex);
+          });
+        }
+        levels[levelIndex].nodes = sortByAnchors(
+          levels[levelIndex].nodes,
+          parentRows,
+          (nodeId) => dependenciesByStepId.get(nodeId) ?? []
+        );
+      }
+
+      for (let levelIndex = levels.length - 2; levelIndex >= 0; levelIndex -= 1) {
+        const childRows = new Map<string, number>();
+        for (let childLevelIndex = levelIndex + 1; childLevelIndex < levels.length; childLevelIndex += 1) {
+          levels[childLevelIndex].nodes.forEach((node, rowIndex) => {
+            childRows.set(node.id, rowIndex);
+          });
+        }
+        levels[levelIndex].nodes = sortByAnchors(
+          levels[levelIndex].nodes,
+          childRows,
+          (nodeId) => dependentsByStepId.get(nodeId) ?? []
+        );
+      }
+    }
+
     const positioned: DagNodeLayout[] = [];
     for (const { level, nodes } of levels) {
       nodes.forEach((node, index) => {
@@ -356,7 +425,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
       width: DAG_PADDING_X * 2 + (maxLevel + 1) * DAG_NODE_WIDTH + maxLevel * DAG_COLUMN_GAP,
       height: DAG_PADDING_Y * 2 + maxRows * DAG_NODE_HEIGHT + (maxRows - 1) * DAG_ROW_GAP
     };
-  }, [sortedSteps, dependenciesByStepId, stepById]);
+  }, [sortedSteps, dependenciesByStepId, stepById, edges]);
 
   const dagEdges = useMemo(() => {
     const rendered: Array<StepEdge & { toStatus: StepStatus }> = [];
@@ -663,10 +732,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
         assignee_type: "human"
       });
 
-      const startEdgeRelation = inferEdgeRelation("start", startStepType);
-      if (!startEdgeRelation) {
-        throw new Error(t("tasks.execution.edgeRuleGoalToGoal"));
-      }
+      const startEdgeRelation = inferEdgeRelation("start", startStepType) ?? "refine";
 
       await createNodeWithEdge({
         routeId: createdFlow.id,
@@ -723,7 +789,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
   async function onAddStep() {
     if (!selectedFlowId || !newPredecessorNodeId || !newStepTitle.trim()) return;
     if (!inferredEdgeType) {
-      setError(t("tasks.execution.edgeRuleGoalToGoal"));
+      setError(t("tasks.execution.predecessorHint"));
       return;
     }
     setCreatingStep(true);
@@ -1122,7 +1188,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                                 </div>
                                 <p className="meta taskDagComposerHint">
                                   {t("tasks.execution.edgeSummary")}:{" "}
-                                  {inferredEdgeType ? t(`tasks.execution.edgeType.${inferredEdgeType}`) : t("tasks.execution.edgeRuleGoalToGoal")}
+                                  {inferredEdgeType ? t(`tasks.execution.edgeType.${inferredEdgeType}`) : t("tasks.execution.predecessorHint")}
                                 </p>
                                 <div className="taskDagInlineActions">
                                   <button

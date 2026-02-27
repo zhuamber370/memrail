@@ -363,8 +363,6 @@ class RouteGraphService:
 
         if normalized_from not in {"idea", "goal"} or normalized_to not in {"idea", "goal"}:
             raise ValueError("ROUTE_EDGE_NODE_TYPE_UNSUPPORTED")
-        if normalized_from == "goal" and normalized_to == "goal":
-            raise ValueError("ROUTE_EDGE_GOAL_TO_GOAL_FORBIDDEN")
         if normalized_from == "idea" and normalized_to == "idea":
             return "refine"
         if normalized_from == "idea" and normalized_to == "goal":
