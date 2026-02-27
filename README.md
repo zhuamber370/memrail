@@ -23,9 +23,15 @@ It focuses on one core principle:
   - `Delete` (leaf node only, and non-start node)
 - Branch relation type (`refine/initiate/handoff`) is labeled directly on edges.
 
-### 3. Knowledge board
-- Topic-based knowledge management.
-- Supports classify/edit/archive with source-aware notes.
+### 3. Knowledge domain (independent)
+- Structured knowledge objects for agent retrieval:
+  - `playbook`, `decision`, `brief`
+- Evidence is required for each knowledge item (`source_ref + excerpt`).
+- `/knowledge` uses unified list + type/topic/tag filters with typed detail forms.
+- Legacy `notes` are preserved for migration, but no longer the primary knowledge UI domain.
+- Migration support is built-in:
+  - `GET /api/v1/knowledge/migration/candidates`
+  - `POST /api/v1/knowledge/migration/commit` (max 20 note IDs per batch)
 
 ### 4. Change review inbox
 - Human review surface for proposed writes.

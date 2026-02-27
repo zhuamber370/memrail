@@ -29,6 +29,18 @@ def test_options_preflight_not_blocked_by_auth():
     assert res.status_code in (200, 204)
 
 
+def test_options_preflight_allows_localhost_custom_port():
+    client = make_client(require_auth=True, api_key="secret")
+    res = client.options(
+        "/api/v1/tasks",
+        headers={
+            "Origin": "http://localhost:3002",
+            "Access-Control-Request-Method": "GET",
+        },
+    )
+    assert res.status_code in (200, 204)
+
+
 def test_auth_enabled_requires_api_key():
     with pytest.raises(RuntimeError, match="KMS_API_KEY"):
         create_app(database_url="sqlite+pysqlite:////tmp/memrail-auth-test.db", require_auth=True, api_key="")

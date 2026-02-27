@@ -6,25 +6,8 @@ import { useEffect, useMemo, useState } from "react";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../src/lib/api";
 import { useI18n } from "../../src/i18n";
 
-type NoteStatus = "active" | "archived";
-type GroupKey = string | "__unclassified";
-
-type SourceItem = { type: string; value: string };
-type Note = {
-  id: string;
-  title: string;
-  body: string;
-  tags: string[];
-  topic_id: string | null;
-  status: NoteStatus;
-  source_count: number;
-  sources: SourceItem[];
-  linked_task_ids: string[];
-  linked_note_ids: string[];
-  created_at?: string;
-  updated_at?: string;
-};
-type NoteList = { items: Note[]; page: number; page_size: number; total: number };
+type KnowledgeType = "playbook" | "decision" | "brief";
+type KnowledgeStatus = "active" | "archived";
 
 type Topic = {
   id: string;
@@ -37,52 +20,76 @@ type Topic = {
 };
 type TopicList = { items: Topic[] };
 
-type TopicSummaryItem = { topic_id: string | null; topic_name: string; count: number };
-type TopicSummary = { items: TopicSummaryItem[] };
+type KnowledgeListItem = {
+  id: string;
+  type: KnowledgeType;
+  title: string;
+  topic_id: string | null;
+  tags: string[];
+  status: KnowledgeStatus;
+  evidence_count: number;
+  created_at?: string;
+  updated_at?: string;
+};
+type KnowledgeList = { items: KnowledgeListItem[]; page: number; page_size: number; total: number };
 
-type NoteOut = { id: string };
-type BatchClassifyOut = { updated: number; failed: number; failures: Array<{ note_id: string; reason: string }> };
+type KnowledgeEvidence = {
+  id: string;
+  item_id: string;
+  source_ref: string;
+  excerpt: string;
+  created_at?: string;
+};
+
+type KnowledgeDetail = KnowledgeListItem & {
+  content: Record<string, unknown>;
+  evidences: KnowledgeEvidence[];
+};
 
 export default function KnowledgePage() {
   const { t, lang } = useI18n();
 
   const [topics, setTopics] = useState<Topic[]>([]);
-  const [summary, setSummary] = useState<TopicSummaryItem[]>([]);
-  const [selectedGroup, setSelectedGroup] = useState<GroupKey>("__unclassified");
-  const [statusFilter, setStatusFilter] = useState<NoteStatus>("active");
+  const [items, setItems] = useState<KnowledgeListItem[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<KnowledgeDetail | null>(null);
 
+  const [statusFilter, setStatusFilter] = useState<KnowledgeStatus>("active");
+  const [typeFilter, setTypeFilter] = useState<KnowledgeType | "all">("all");
+  const [topicFilter, setTopicFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [tagQuery, setTagQuery] = useState("");
 
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-
+  const [createType, setCreateType] = useState<KnowledgeType>("playbook");
   const [createTitle, setCreateTitle] = useState("");
-  const [createBody, setCreateBody] = useState("");
-  const [createSource, setCreateSource] = useState("ui://knowledge");
+  const [createTopicId, setCreateTopicId] = useState("");
   const [createTags, setCreateTags] = useState("");
-  const [createTopicId, setCreateTopicId] = useState<string>("");
+  const [createSourceRef, setCreateSourceRef] = useState("ui://knowledge");
+  const [createExcerpt, setCreateExcerpt] = useState("");
+  const [createGoal, setCreateGoal] = useState("");
+  const [createSteps, setCreateSteps] = useState("");
+  const [createDecision, setCreateDecision] = useState("");
+  const [createRationale, setCreateRationale] = useState("");
+  const [createSummary, setCreateSummary] = useState("");
+  const [createHighlights, setCreateHighlights] = useState("");
 
-  const [detailTopicId, setDetailTopicId] = useState<string>("");
+  const [detailTitle, setDetailTitle] = useState("");
+  const [detailTopicId, setDetailTopicId] = useState("");
   const [detailTags, setDetailTags] = useState("");
+  const [detailGoal, setDetailGoal] = useState("");
+  const [detailSteps, setDetailSteps] = useState("");
+  const [detailDecision, setDetailDecision] = useState("");
+  const [detailRationale, setDetailRationale] = useState("");
+  const [detailSummary, setDetailSummary] = useState("");
+  const [detailHighlights, setDetailHighlights] = useState("");
+  const [detailSourceRef, setDetailSourceRef] = useState("ui://knowledge");
+  const [detailExcerpt, setDetailExcerpt] = useState("");
 
-  const [bulkTopicId, setBulkTopicId] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [ready, setReady] = useState(false);
 
-  const selectedNote = useMemo(
-    () => notes.find((item) => item.id === selectedNoteId) ?? null,
-    [notes, selectedNoteId]
-  );
-  const isUnclassifiedView = selectedGroup === "__unclassified";
-  const isArchivedView = statusFilter === "archived";
-  const allVisibleSelected = useMemo(
-    () => notes.length > 0 && notes.every((item) => selectedIds.includes(item.id)),
-    [notes, selectedIds]
-  );
+  const activeTopics = useMemo(() => topics.filter((topic) => topic.status === "active"), [topics]);
 
   useEffect(() => {
     void onInit();
@@ -90,16 +97,9 @@ export default function KnowledgePage() {
   }, []);
 
   useEffect(() => {
-    if (!ready) return;
-    void onRefreshNotes();
+    void onRefreshList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, selectedGroup, statusFilter, searchQuery, tagQuery]);
-
-  useEffect(() => {
-    if (!selectedNote) return;
-    setDetailTopicId(selectedNote.topic_id ?? "");
-    setDetailTags(selectedNote.tags.join(", "));
-  }, [selectedNote]);
+  }, [statusFilter, typeFilter, topicFilter, searchQuery, tagQuery]);
 
   function localizeTopicName(topic?: Topic): string {
     if (!topic) return t("knowledge.unclassified");
@@ -114,195 +114,11 @@ export default function KnowledgePage() {
       .filter(Boolean);
   }
 
-  function getGroupCount(group: GroupKey): number {
-    if (group === "__unclassified") {
-      return summary.find((item) => item.topic_id === null)?.count ?? 0;
-    }
-    return summary.find((item) => item.topic_id === group)?.count ?? 0;
-  }
-
-  async function onInit() {
-    setError("");
-    setLoading(true);
-    try {
-      const [topicRes, summaryRes] = await Promise.all([
-        apiGet<TopicList>("/api/v1/topics"),
-        apiGet<TopicSummary>("/api/v1/notes/topic-summary?status=active")
-      ]);
-      const activeTopics = topicRes.items.filter((item) => item.status === "active");
-      setTopics(activeTopics);
-      setSummary(summaryRes.items);
-      setCreateTopicId(activeTopics[0]?.id ?? "");
-      setBulkTopicId(activeTopics[0]?.id ?? "");
-
-      const firstNonEmpty = activeTopics.find((topic) => {
-        const found = summaryRes.items.find((item) => item.topic_id === topic.id);
-        return (found?.count ?? 0) > 0;
-      });
-      if (firstNonEmpty) setSelectedGroup(firstNonEmpty.id);
-      else if ((summaryRes.items.find((item) => item.topic_id === null)?.count ?? 0) > 0) setSelectedGroup("__unclassified");
-      else setSelectedGroup(activeTopics[0]?.id ?? "__unclassified");
-
-      setReady(true);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function onRefreshSummary() {
-    const summaryRes = await apiGet<TopicSummary>(`/api/v1/notes/topic-summary?status=${statusFilter}`);
-    setSummary(summaryRes.items);
-  }
-
-  async function onRefreshNotes() {
-    setError("");
-    setNotice("");
-    setLoading(true);
-    try {
-      const params = new URLSearchParams({ page: "1", page_size: "100", status: statusFilter });
-      if (selectedGroup === "__unclassified") params.set("unclassified", "true");
-      else params.set("topic_id", selectedGroup);
-      if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      if (tagQuery.trim()) params.set("tag", tagQuery.trim());
-
-      const listed = await apiGet<NoteList>(`/api/v1/notes/search?${params.toString()}`);
-      setNotes(listed.items);
-      setSelectedIds((prev) => prev.filter((id) => listed.items.some((item) => item.id === id)));
-      setSelectedNoteId((prev) => {
-        if (prev && listed.items.some((item) => item.id === prev)) return prev;
-        return listed.items[0]?.id ?? null;
-      });
-      await onRefreshSummary();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function onAppend() {
-    if (!createTitle.trim() || !createBody.trim() || !createSource.trim()) {
-      setError(t("knowledge.errValidation"));
-      return;
-    }
-    setError("");
-    setNotice("");
-    setLoading(true);
-    try {
-      await apiPost<NoteOut>("/api/v1/notes/append", {
-        title: createTitle.trim(),
-        body: createBody.trim(),
-        topic_id: createTopicId || null,
-        sources: [{ type: "text", value: createSource.trim() }],
-        tags: parseTags(createTags)
-      });
-      setCreateTitle("");
-      setCreateBody("");
-      setCreateTags("");
-      setNotice(t("knowledge.noticeAppended"));
-      await onRefreshNotes();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function onSaveDetail() {
-    if (!selectedNote || isArchivedView) return;
-    const nextTags = parseTags(detailTags);
-    const tagsSame = JSON.stringify(nextTags) === JSON.stringify(selectedNote.tags);
-    const nextTopic = detailTopicId || null;
-    const topicSame = nextTopic === selectedNote.topic_id;
-    if (tagsSame && topicSame) {
-      setNotice(t("knowledge.noticeNoChange"));
-      return;
-    }
-    setError("");
-    setNotice("");
-    setLoading(true);
-    try {
-      await apiPatch<Note>(`/api/v1/notes/${selectedNote.id}`, {
-        topic_id: nextTopic,
-        tags: nextTags
-      });
-      setNotice(t("knowledge.noticeUpdated"));
-      await onRefreshNotes();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function onArchiveNote() {
-    if (!selectedNote || isArchivedView) return;
-    setError("");
-    setNotice("");
-    setLoading(true);
-    try {
-      await apiPatch<Note>(`/api/v1/notes/${selectedNote.id}`, { status: "archived" });
-      setNotice(t("knowledge.noticeArchived"));
-      await onRefreshNotes();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function onDeleteNote() {
-    if (!selectedNote) return;
-    if (!window.confirm(t("knowledge.confirmDelete"))) return;
-    setError("");
-    setNotice("");
-    setLoading(true);
-    try {
-      await apiDelete(`/api/v1/notes/${selectedNote.id}`);
-      setNotice(t("knowledge.noticeDeleted"));
-      await onRefreshNotes();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function onBulkClassify() {
-    if (!selectedIds.length || !bulkTopicId) return;
-    setError("");
-    setNotice("");
-    setLoading(true);
-    try {
-      const result = await apiPost<BatchClassifyOut>("/api/v1/notes/batch-classify", {
-        note_ids: selectedIds,
-        topic_id: bulkTopicId
-      });
-      setNotice(`${t("knowledge.noticeClassified")}: ${result.updated}, failed: ${result.failed}`);
-      await onRefreshNotes();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function toggleSelected(noteId: string) {
-    setSelectedIds((prev) => (prev.includes(noteId) ? prev.filter((id) => id !== noteId) : [...prev, noteId]));
-  }
-
-  function toggleSelectAllVisible() {
-    if (allVisibleSelected) {
-      setSelectedIds((prev) => prev.filter((id) => !notes.some((note) => note.id === id)));
-      return;
-    }
-    setSelectedIds((prev) => {
-      const merged = new Set(prev);
-      notes.forEach((note) => merged.add(note.id));
-      return Array.from(merged);
-    });
+  function parseLines(input: string): string[] {
+    return input
+      .split("\n")
+      .map((item) => item.trim())
+      .filter(Boolean);
   }
 
   function formatTime(value?: string): string {
@@ -311,6 +127,293 @@ export default function KnowledgePage() {
       return new Date(value).toLocaleString();
     } catch {
       return value;
+    }
+  }
+
+  function typeLabel(type: KnowledgeType): string {
+    return t(`knowledge.type.${type}`);
+  }
+
+  function buildCreateContent(): Record<string, unknown> | null {
+    if (createType === "playbook") {
+      const steps = parseLines(createSteps);
+      if (!createGoal.trim() || !steps.length) return null;
+      return { goal: createGoal.trim(), steps };
+    }
+    if (createType === "decision") {
+      if (!createDecision.trim() || !createRationale.trim()) return null;
+      return { decision: createDecision.trim(), rationale: createRationale.trim() };
+    }
+    const highlights = parseLines(createHighlights);
+    if (!createSummary.trim() || !highlights.length) return null;
+    return { summary: createSummary.trim(), highlights };
+  }
+
+  function buildDetailContent(type: KnowledgeType): Record<string, unknown> | null {
+    if (type === "playbook") {
+      const steps = parseLines(detailSteps);
+      if (!detailGoal.trim() || !steps.length) return null;
+      return { goal: detailGoal.trim(), steps };
+    }
+    if (type === "decision") {
+      if (!detailDecision.trim() || !detailRationale.trim()) return null;
+      return { decision: detailDecision.trim(), rationale: detailRationale.trim() };
+    }
+    const highlights = parseLines(detailHighlights);
+    if (!detailSummary.trim() || !highlights.length) return null;
+    return { summary: detailSummary.trim(), highlights };
+  }
+
+  function hydrateDetailForm(detail: KnowledgeDetail) {
+    setDetailTitle(detail.title);
+    setDetailTopicId(detail.topic_id ?? "");
+    setDetailTags(detail.tags.join(", "));
+    setDetailSourceRef("ui://knowledge");
+    setDetailExcerpt("");
+
+    const content = detail.content ?? {};
+    if (detail.type === "playbook") {
+      setDetailGoal(String(content.goal ?? ""));
+      setDetailSteps(Array.isArray(content.steps) ? (content.steps as string[]).join("\n") : "");
+      setDetailDecision("");
+      setDetailRationale("");
+      setDetailSummary("");
+      setDetailHighlights("");
+      return;
+    }
+    if (detail.type === "decision") {
+      setDetailDecision(String(content.decision ?? ""));
+      setDetailRationale(String(content.rationale ?? ""));
+      setDetailGoal("");
+      setDetailSteps("");
+      setDetailSummary("");
+      setDetailHighlights("");
+      return;
+    }
+    setDetailSummary(String(content.summary ?? ""));
+    setDetailHighlights(Array.isArray(content.highlights) ? (content.highlights as string[]).join("\n") : "");
+    setDetailGoal("");
+    setDetailSteps("");
+    setDetailDecision("");
+    setDetailRationale("");
+  }
+
+  function renderContentReadonly(detail: KnowledgeDetail) {
+    const content = detail.content ?? {};
+    if (detail.type === "playbook") {
+      const steps = Array.isArray(content.steps) ? (content.steps as string[]) : [];
+      return (
+        <div className="knowledgeSection">
+          <h3 className="changesGroupTitle">{t("knowledge.goal")}</h3>
+          <p className="changesLedgerText">{String(content.goal ?? "-")}</p>
+          <h3 className="changesGroupTitle" style={{ marginTop: 12 }}>{t("knowledge.steps")}</h3>
+          {steps.length ? (
+            steps.map((step, idx) => <p key={`${idx}:${step}`} className="changesLedgerText">{idx + 1}. {step}</p>)
+          ) : (
+            <p className="changesLedgerText">-</p>
+          )}
+        </div>
+      );
+    }
+    if (detail.type === "decision") {
+      return (
+        <div className="knowledgeSection">
+          <h3 className="changesGroupTitle">{t("knowledge.decision")}</h3>
+          <p className="changesLedgerText">{String(content.decision ?? "-")}</p>
+          <h3 className="changesGroupTitle" style={{ marginTop: 12 }}>{t("knowledge.rationale")}</h3>
+          <p className="changesLedgerText">{String(content.rationale ?? "-")}</p>
+        </div>
+      );
+    }
+    const highlights = Array.isArray(content.highlights) ? (content.highlights as string[]) : [];
+    return (
+      <div className="knowledgeSection">
+        <h3 className="changesGroupTitle">{t("knowledge.summary")}</h3>
+        <p className="changesLedgerText">{String(content.summary ?? "-")}</p>
+        <h3 className="changesGroupTitle" style={{ marginTop: 12 }}>{t("knowledge.highlights")}</h3>
+        {highlights.length ? (
+          highlights.map((line, idx) => <p key={`${idx}:${line}`} className="changesLedgerText">{idx + 1}. {line}</p>)
+        ) : (
+          <p className="changesLedgerText">-</p>
+        )}
+      </div>
+    );
+  }
+
+  async function onInit() {
+    setError("");
+    setLoading(true);
+    try {
+      const topicRes = await apiGet<TopicList>("/api/v1/topics");
+      const topicsActive = topicRes.items.filter((item) => item.status === "active");
+      setTopics(topicRes.items);
+      setCreateTopicId(topicsActive[0]?.id ?? "");
+      await onRefreshList();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onLoadDetail(itemId: string) {
+    const detail = await apiGet<KnowledgeDetail>(`/api/v1/knowledge/${itemId}`);
+    setSelectedDetail(detail);
+    hydrateDetailForm(detail);
+  }
+
+  async function onRefreshList(preferredId?: string) {
+    setError("");
+    setNotice("");
+    setLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: "1",
+        page_size: "100",
+        status: statusFilter,
+      });
+      if (typeFilter !== "all") params.set("type", typeFilter);
+      if (topicFilter) params.set("topic_id", topicFilter);
+      if (searchQuery.trim()) params.set("q", searchQuery.trim());
+      if (tagQuery.trim()) params.set("tag", tagQuery.trim());
+
+      const listed = await apiGet<KnowledgeList>(`/api/v1/knowledge?${params.toString()}`);
+      setItems(listed.items);
+      const nextId =
+        preferredId && listed.items.some((item) => item.id === preferredId)
+          ? preferredId
+          : selectedId && listed.items.some((item) => item.id === selectedId)
+            ? selectedId
+            : listed.items[0]?.id ?? null;
+      setSelectedId(nextId);
+      if (nextId) {
+        await onLoadDetail(nextId);
+      } else {
+        setSelectedDetail(null);
+      }
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onCreateKnowledge() {
+    const content = buildCreateContent();
+    if (!createTitle.trim() || !createSourceRef.trim() || !createExcerpt.trim() || !content) {
+      setError(t("knowledge.errValidation"));
+      return;
+    }
+    setError("");
+    setNotice("");
+    setLoading(true);
+    try {
+      const created = await apiPost<KnowledgeDetail>("/api/v1/knowledge", {
+        type: createType,
+        title: createTitle.trim(),
+        topic_id: createTopicId || null,
+        tags: parseTags(createTags),
+        content,
+        evidences: [{ source_ref: createSourceRef.trim(), excerpt: createExcerpt.trim() }],
+      });
+      setCreateTitle("");
+      setCreateTags("");
+      setCreateExcerpt("");
+      setCreateGoal("");
+      setCreateSteps("");
+      setCreateDecision("");
+      setCreateRationale("");
+      setCreateSummary("");
+      setCreateHighlights("");
+      setNotice(t("knowledge.noticeCreated"));
+      await onRefreshList(created.id);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onSaveDetail() {
+    if (!selectedDetail || selectedDetail.status === "archived") return;
+    const content = buildDetailContent(selectedDetail.type);
+    if (!detailTitle.trim() || !content) {
+      setError(t("knowledge.errValidation"));
+      return;
+    }
+    setError("");
+    setNotice("");
+    setLoading(true);
+    try {
+      await apiPatch<KnowledgeDetail>(`/api/v1/knowledge/${selectedDetail.id}`, {
+        title: detailTitle.trim(),
+        topic_id: detailTopicId || null,
+        tags: parseTags(detailTags),
+        content,
+      });
+      setNotice(t("knowledge.noticeUpdated"));
+      await onRefreshList(selectedDetail.id);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onArchiveSelected() {
+    if (!selectedDetail || selectedDetail.status === "archived") return;
+    setError("");
+    setNotice("");
+    setLoading(true);
+    try {
+      await apiPost<KnowledgeDetail>(`/api/v1/knowledge/${selectedDetail.id}/archive`, {});
+      setNotice(t("knowledge.noticeArchived"));
+      await onRefreshList(selectedDetail.id);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onDeleteSelected() {
+    if (!selectedDetail) return;
+    if (!window.confirm(t("knowledge.confirmDelete"))) return;
+    setError("");
+    setNotice("");
+    setLoading(true);
+    try {
+      await apiDelete(`/api/v1/knowledge/${selectedDetail.id}`);
+      setNotice(t("knowledge.noticeDeleted"));
+      await onRefreshList();
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function onAppendEvidence() {
+    if (!selectedDetail || selectedDetail.status === "archived") return;
+    if (!detailSourceRef.trim() || !detailExcerpt.trim()) {
+      setError(t("knowledge.errValidation"));
+      return;
+    }
+    setError("");
+    setNotice("");
+    setLoading(true);
+    try {
+      await apiPost<KnowledgeEvidence>(`/api/v1/knowledge/${selectedDetail.id}/evidences`, {
+        source_ref: detailSourceRef.trim(),
+        excerpt: detailExcerpt.trim(),
+      });
+      setDetailExcerpt("");
+      setNotice(t("knowledge.noticeEvidenceAdded"));
+      await onRefreshList(selectedDetail.id);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -334,7 +437,21 @@ export default function KnowledgePage() {
             placeholder={t("knowledge.placeholderTag")}
             className="taskInput"
           />
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as NoteStatus)} className="taskInput">
+          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as KnowledgeType | "all")} className="taskInput">
+            <option value="all">{t("knowledge.typeAll")}</option>
+            <option value="playbook">{t("knowledge.type.playbook")}</option>
+            <option value="decision">{t("knowledge.type.decision")}</option>
+            <option value="brief">{t("knowledge.type.brief")}</option>
+          </select>
+          <select value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)} className="taskInput">
+            <option value="">{t("knowledge.topicAll")}</option>
+            {activeTopics.map((topic) => (
+              <option key={topic.id} value={topic.id}>
+                {localizeTopicName(topic)}
+              </option>
+            ))}
+          </select>
+          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as KnowledgeStatus)} className="taskInput">
             <option value="active">{t("knowledge.statusActive")}</option>
             <option value="archived">{t("knowledge.statusArchived")}</option>
           </select>
@@ -342,6 +459,11 @@ export default function KnowledgePage() {
       </div>
 
       <div className="knowledgeCreate">
+        <select value={createType} onChange={(e) => setCreateType(e.target.value as KnowledgeType)} className="taskInput">
+          <option value="playbook">{t("knowledge.type.playbook")}</option>
+          <option value="decision">{t("knowledge.type.decision")}</option>
+          <option value="brief">{t("knowledge.type.brief")}</option>
+        </select>
         <input
           value={createTitle}
           onChange={(e) => setCreateTitle(e.target.value)}
@@ -350,7 +472,7 @@ export default function KnowledgePage() {
         />
         <select value={createTopicId} onChange={(e) => setCreateTopicId(e.target.value)} className="taskInput">
           <option value="">{t("knowledge.unclassified")}</option>
-          {topics.map((topic) => (
+          {activeTopics.map((topic) => (
             <option key={topic.id} value={topic.id}>
               {localizeTopicName(topic)}
             </option>
@@ -363,188 +485,235 @@ export default function KnowledgePage() {
           className="taskInput"
         />
         <input
-          value={createSource}
-          onChange={(e) => setCreateSource(e.target.value)}
-          placeholder={t("knowledge.placeholderSource")}
+          value={createSourceRef}
+          onChange={(e) => setCreateSourceRef(e.target.value)}
+          placeholder={t("knowledge.placeholderSourceRef")}
           className="taskInput"
         />
         <textarea
-          value={createBody}
-          onChange={(e) => setCreateBody(e.target.value)}
-          rows={3}
-          placeholder={t("knowledge.placeholderBody")}
+          value={createExcerpt}
+          onChange={(e) => setCreateExcerpt(e.target.value)}
+          rows={2}
+          placeholder={t("knowledge.placeholderExcerpt")}
           className="taskInput taskTextArea knowledgeCreateBody"
         />
-        <button className="badge" onClick={onAppend} disabled={loading || !createTitle.trim() || !createBody.trim() || !createSource.trim()}>
-          {t("knowledge.append")}
+        {createType === "playbook" ? (
+          <>
+            <textarea
+              value={createGoal}
+              onChange={(e) => setCreateGoal(e.target.value)}
+              rows={2}
+              placeholder={t("knowledge.placeholderGoal")}
+              className="taskInput taskTextArea knowledgeCreateBody"
+            />
+            <textarea
+              value={createSteps}
+              onChange={(e) => setCreateSteps(e.target.value)}
+              rows={3}
+              placeholder={t("knowledge.placeholderSteps")}
+              className="taskInput taskTextArea knowledgeCreateBody"
+            />
+          </>
+        ) : null}
+        {createType === "decision" ? (
+          <>
+            <textarea
+              value={createDecision}
+              onChange={(e) => setCreateDecision(e.target.value)}
+              rows={2}
+              placeholder={t("knowledge.placeholderDecision")}
+              className="taskInput taskTextArea knowledgeCreateBody"
+            />
+            <textarea
+              value={createRationale}
+              onChange={(e) => setCreateRationale(e.target.value)}
+              rows={3}
+              placeholder={t("knowledge.placeholderRationale")}
+              className="taskInput taskTextArea knowledgeCreateBody"
+            />
+          </>
+        ) : null}
+        {createType === "brief" ? (
+          <>
+            <textarea
+              value={createSummary}
+              onChange={(e) => setCreateSummary(e.target.value)}
+              rows={2}
+              placeholder={t("knowledge.placeholderSummary")}
+              className="taskInput taskTextArea knowledgeCreateBody"
+            />
+            <textarea
+              value={createHighlights}
+              onChange={(e) => setCreateHighlights(e.target.value)}
+              rows={3}
+              placeholder={t("knowledge.placeholderHighlights")}
+              className="taskInput taskTextArea knowledgeCreateBody"
+            />
+          </>
+        ) : null}
+        <button className="badge" onClick={onCreateKnowledge} disabled={loading}>
+          {t("knowledge.create")}
         </button>
       </div>
 
-      <div className="knowledgeLayout">
-        <aside className="knowledgeTopics">
-          <h2 className="changesSubTitle">{t("knowledge.topicGroups")}</h2>
-          <button
-            className={`knowledgeTopicBtn ${selectedGroup === "__unclassified" ? "knowledgeTopicBtnActive" : ""}`}
-            onClick={() => setSelectedGroup("__unclassified")}
-          >
-            <span>{t("knowledge.unclassified")}</span>
-            <strong>{getGroupCount("__unclassified")}</strong>
-          </button>
-          {topics.map((topic) => (
-            <button
-              key={topic.id}
-              className={`knowledgeTopicBtn ${selectedGroup === topic.id ? "knowledgeTopicBtnActive" : ""}`}
-              onClick={() => setSelectedGroup(topic.id)}
-            >
-              <span>{localizeTopicName(topic)}</span>
-              <strong>{getGroupCount(topic.id)}</strong>
-            </button>
-          ))}
-        </aside>
-
+      <div className="knowledgeLayout" style={{ gridTemplateColumns: "1fr 1.3fr" }}>
         <div className="knowledgeListPanel">
-          {!isArchivedView ? (
-            <div className="knowledgeBulkBar">
-              {isUnclassifiedView ? (
-                <>
-                  <label className="meta" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                    <input
-                      type="checkbox"
-                      checked={allVisibleSelected}
-                      onChange={() => toggleSelectAllVisible()}
-                      disabled={!notes.length || loading}
-                    />
-                    {t("knowledge.selectAll")}
-                  </label>
-                  <span className="meta">{t("knowledge.selected")}: {selectedIds.length}</span>
-                  <select value={bulkTopicId} onChange={(e) => setBulkTopicId(e.target.value)} className="taskInput">
-                    {topics.map((topic) => (
-                      <option key={topic.id} value={topic.id}>
-                        {localizeTopicName(topic)}
-                      </option>
-                    ))}
-                  </select>
-                  <button className="badge" onClick={onBulkClassify} disabled={loading || !selectedIds.length || !bulkTopicId}>
-                    {t("knowledge.bulkClassify")}
-                  </button>
-                </>
-              ) : (
-                <span className="meta">{t("knowledge.selected")}: {selectedIds.length}</span>
-              )}
-            </div>
-          ) : (
-            <p className="meta">{t("knowledge.readOnlyHint")}</p>
-          )}
-
           {error ? <p className="meta" style={{ color: "var(--danger)", marginTop: 8 }}>{error}</p> : null}
           {notice ? <p className="meta" style={{ color: "var(--success)", marginTop: 8 }}>{notice}</p> : null}
-
           <div className="knowledgeList">
-            {notes.map((note) => (
+            {items.map((item) => (
               <div
-                key={note.id}
-                className={`knowledgeRow ${selectedNoteId === note.id ? "knowledgeRowActive" : ""}`}
-                onClick={() => setSelectedNoteId(note.id)}
+                key={item.id}
+                className={`knowledgeRow ${selectedId === item.id ? "knowledgeRowActive" : ""}`}
+                onClick={() => {
+                  setSelectedId(item.id);
+                  void onLoadDetail(item.id);
+                }}
               >
-                {!isArchivedView ? (
-                  <input
-                    type="checkbox"
-                    checked={selectedIds.includes(note.id)}
-                    onChange={(e) => {
-                      e.stopPropagation();
-                      toggleSelected(note.id);
-                    }}
-                    aria-label={`select ${note.title}`}
-                  />
-                ) : null}
                 <div className="knowledgeRowMain">
-                  <div className="knowledgeTitle">{note.title}</div>
+                  <div className="knowledgeTitle">
+                    <span className="badge" style={{ marginRight: 8 }}>{typeLabel(item.type)}</span>
+                    {item.title}
+                  </div>
                   <div className="knowledgeMeta">
-                    <span>{t("knowledge.tags")}: {note.tags.length ? note.tags.join(", ") : "-"}</span>
-                    <span>{t("knowledge.sourceCount")}: {note.source_count}</span>
-                    <span>{t("knowledge.updated")}: {formatTime(note.updated_at)}</span>
+                    <span>{t("knowledge.tags")}: {item.tags.length ? item.tags.join(", ") : "-"}</span>
+                    <span>{t("knowledge.sourceCount")}: {item.evidence_count}</span>
+                    <span>{t("knowledge.updated")}: {formatTime(item.updated_at)}</span>
                   </div>
                 </div>
               </div>
             ))}
-            {!notes.length ? <p className="meta">{t("knowledge.emptyList")}</p> : null}
+            {!items.length ? <p className="meta">{t("knowledge.emptyList")}</p> : null}
           </div>
         </div>
 
         <aside className="knowledgeDetail">
           <h2 className="changesSubTitle">{t("knowledge.detail")}</h2>
-          {selectedNote ? (
+          {selectedDetail ? (
             <div className="knowledgeDetailContent">
-              <div className="knowledgeDetailTitle">{selectedNote.title}</div>
-              <div className="meta">{selectedNote.id}</div>
-              <article className="knowledgeBody">{selectedNote.body}</article>
-
+              <div className="knowledgeDetailTitle">{selectedDetail.title}</div>
+              <div className="meta">{selectedDetail.id}</div>
               <div className="taskDetailGrid">
                 <div>
+                  <div className="changesSummaryKey">{t("knowledge.type")}</div>
+                  <div className="changesLedgerText">{typeLabel(selectedDetail.type)}</div>
+                </div>
+                <div>
                   <div className="changesSummaryKey">{t("knowledge.updated")}</div>
-                  <div className="changesLedgerText">{formatTime(selectedNote.updated_at)}</div>
+                  <div className="changesLedgerText">{formatTime(selectedDetail.updated_at)}</div>
                 </div>
                 <div>
                   <div className="changesSummaryKey">{t("knowledge.sourceCount")}</div>
-                  <div className="changesLedgerText">{selectedNote.source_count}</div>
+                  <div className="changesLedgerText">{selectedDetail.evidence_count}</div>
                 </div>
               </div>
 
-              {selectedNote.sources?.length ? (
-                <div className="knowledgeSection">
-                  <h3 className="changesGroupTitle">{t("knowledge.sources")}</h3>
-                  {selectedNote.sources.map((src, idx) => (
-                    <p key={`${src.type}:${src.value}:${idx}`} className="changesLedgerText">{src.type}: {src.value}</p>
-                  ))}
-                </div>
-              ) : null}
+              {renderContentReadonly(selectedDetail)}
 
-              {selectedNote.linked_task_ids?.length ? (
-                <div className="knowledgeSection">
-                  <h3 className="changesGroupTitle">{t("knowledge.linkedTasks")}</h3>
-                  {selectedNote.linked_task_ids.map((taskId) => (
-                    <p key={taskId} className="changesLedgerText">{taskId}</p>
-                  ))}
-                </div>
-              ) : null}
+              <div className="knowledgeSection">
+                <h3 className="changesGroupTitle">{t("knowledge.sources")}</h3>
+                {selectedDetail.evidences.length ? (
+                  selectedDetail.evidences.map((ev) => (
+                    <div key={ev.id} style={{ marginBottom: 8 }}>
+                      <p className="changesLedgerText">{ev.source_ref}</p>
+                      <p className="changesLedgerText">{ev.excerpt}</p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="changesLedgerText">-</p>
+                )}
+              </div>
 
-              {selectedNote.linked_note_ids?.length ? (
-                <div className="knowledgeSection">
-                  <h3 className="changesGroupTitle">{t("knowledge.linkedNotes")}</h3>
-                  {selectedNote.linked_note_ids.map((noteId) => (
-                    <p key={noteId} className="changesLedgerText">{noteId}</p>
-                  ))}
-                </div>
-              ) : null}
-
-              {!isArchivedView ? (
-                <div className="knowledgeEdit">
-                  <label className="taskField">
-                    <span>{t("knowledge.topic")}</span>
-                    <select value={detailTopicId} onChange={(e) => setDetailTopicId(e.target.value)} className="taskInput">
-                      <option value="">{t("knowledge.unclassified")}</option>
-                      {topics.map((topic) => (
-                        <option key={topic.id} value={topic.id}>
-                          {localizeTopicName(topic)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <label className="taskField">
-                    <span>{t("knowledge.tags")}</span>
-                    <input value={detailTags} onChange={(e) => setDetailTags(e.target.value)} className="taskInput" />
-                  </label>
-                  <div className="taskDetailFormActions">
-                    <button className="badge" onClick={onSaveDetail} disabled={loading}>{t("knowledge.save")}</button>
-                    <button className="badge" onClick={onArchiveNote} disabled={loading}>{t("knowledge.archive")}</button>
-                    <button className="badge" onClick={onDeleteNote} disabled={loading}>{t("knowledge.delete")}</button>
-                  </div>
-                </div>
-              ) : (
+              {selectedDetail.status === "archived" ? (
                 <>
                   <p className="meta">{t("knowledge.readOnlyHint")}</p>
                   <div className="taskDetailFormActions" style={{ marginTop: 10 }}>
-                    <button className="badge" onClick={onDeleteNote} disabled={loading}>{t("knowledge.delete")}</button>
+                    <button className="badge" onClick={onDeleteSelected} disabled={loading}>{t("knowledge.delete")}</button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="knowledgeEdit">
+                    <label className="taskField">
+                      <span>{t("knowledge.titleField")}</span>
+                      <input value={detailTitle} onChange={(e) => setDetailTitle(e.target.value)} className="taskInput" />
+                    </label>
+                    <label className="taskField">
+                      <span>{t("knowledge.topic")}</span>
+                      <select value={detailTopicId} onChange={(e) => setDetailTopicId(e.target.value)} className="taskInput">
+                        <option value="">{t("knowledge.unclassified")}</option>
+                        {activeTopics.map((topic) => (
+                          <option key={topic.id} value={topic.id}>
+                            {localizeTopicName(topic)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="taskField">
+                      <span>{t("knowledge.tags")}</span>
+                      <input value={detailTags} onChange={(e) => setDetailTags(e.target.value)} className="taskInput" />
+                    </label>
+                    {selectedDetail.type === "playbook" ? (
+                      <>
+                        <label className="taskField">
+                          <span>{t("knowledge.goal")}</span>
+                          <textarea value={detailGoal} onChange={(e) => setDetailGoal(e.target.value)} className="taskInput taskTextArea" rows={2} />
+                        </label>
+                        <label className="taskField">
+                          <span>{t("knowledge.steps")}</span>
+                          <textarea value={detailSteps} onChange={(e) => setDetailSteps(e.target.value)} className="taskInput taskTextArea" rows={3} />
+                        </label>
+                      </>
+                    ) : null}
+                    {selectedDetail.type === "decision" ? (
+                      <>
+                        <label className="taskField">
+                          <span>{t("knowledge.decision")}</span>
+                          <textarea value={detailDecision} onChange={(e) => setDetailDecision(e.target.value)} className="taskInput taskTextArea" rows={2} />
+                        </label>
+                        <label className="taskField">
+                          <span>{t("knowledge.rationale")}</span>
+                          <textarea value={detailRationale} onChange={(e) => setDetailRationale(e.target.value)} className="taskInput taskTextArea" rows={3} />
+                        </label>
+                      </>
+                    ) : null}
+                    {selectedDetail.type === "brief" ? (
+                      <>
+                        <label className="taskField">
+                          <span>{t("knowledge.summary")}</span>
+                          <textarea value={detailSummary} onChange={(e) => setDetailSummary(e.target.value)} className="taskInput taskTextArea" rows={2} />
+                        </label>
+                        <label className="taskField">
+                          <span>{t("knowledge.highlights")}</span>
+                          <textarea value={detailHighlights} onChange={(e) => setDetailHighlights(e.target.value)} className="taskInput taskTextArea" rows={3} />
+                        </label>
+                      </>
+                    ) : null}
+                    <div className="taskDetailFormActions">
+                      <button className="badge" onClick={onSaveDetail} disabled={loading}>{t("knowledge.save")}</button>
+                      <button className="badge" onClick={onArchiveSelected} disabled={loading}>{t("knowledge.archive")}</button>
+                      <button className="badge" onClick={onDeleteSelected} disabled={loading}>{t("knowledge.delete")}</button>
+                    </div>
+                  </div>
+
+                  <div className="knowledgeSection">
+                    <h3 className="changesGroupTitle">{t("knowledge.addEvidence")}</h3>
+                    <input
+                      value={detailSourceRef}
+                      onChange={(e) => setDetailSourceRef(e.target.value)}
+                      placeholder={t("knowledge.placeholderSourceRef")}
+                      className="taskInput"
+                    />
+                    <textarea
+                      value={detailExcerpt}
+                      onChange={(e) => setDetailExcerpt(e.target.value)}
+                      placeholder={t("knowledge.placeholderExcerpt")}
+                      rows={3}
+                      className="taskInput taskTextArea"
+                    />
+                    <div className="taskDetailFormActions">
+                      <button className="badge" onClick={onAppendEvidence} disabled={loading}>{t("knowledge.addEvidence")}</button>
+                    </div>
                   </div>
                 </>
               )}

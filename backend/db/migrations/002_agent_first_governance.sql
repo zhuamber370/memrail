@@ -84,6 +84,26 @@ ALTER TABLE notes ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40);
 ALTER TABLE notes ADD COLUMN IF NOT EXISTS status VARCHAR(20);
 UPDATE notes SET status = 'active' WHERE status IS NULL;
 
+CREATE TABLE IF NOT EXISTS knowledge_items (
+  id VARCHAR(40) PRIMARY KEY,
+  type VARCHAR(20) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  topic_id VARCHAR(40) REFERENCES topics(id) ON DELETE SET NULL,
+  tags_json JSONB NOT NULL DEFAULT '[]'::jsonb,
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  content_json JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS knowledge_evidences (
+  id VARCHAR(40) PRIMARY KEY,
+  item_id VARCHAR(40) NOT NULL REFERENCES knowledge_items(id) ON DELETE CASCADE,
+  source_ref TEXT NOT NULL,
+  excerpt TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 UPDATE tasks SET description = '' WHERE description IS NULL;
 UPDATE tasks SET acceptance_criteria = '' WHERE acceptance_criteria IS NULL;
 

@@ -12,6 +12,8 @@ CycleStatus = Literal["planned", "active", "closed"]
 TopicKind = Literal["domain", "project", "playbook", "decision", "issue"]
 TopicStatus = Literal["active", "watch", "archived"]
 NoteStatus = Literal["active", "archived"]
+KnowledgeType = Literal["playbook", "decision", "brief"]
+KnowledgeStatus = Literal["active", "archived"]
 
 
 class TaskCreate(BaseModel):
@@ -258,6 +260,107 @@ class NoteTopicSummaryItem(BaseModel):
 
 class NoteTopicSummaryOut(BaseModel):
     items: list[NoteTopicSummaryItem]
+
+
+class KnowledgeEvidenceIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    source_ref: str = Field(min_length=1)
+    excerpt: str = Field(min_length=1)
+
+
+class KnowledgeEvidenceOut(BaseModel):
+    id: str
+    item_id: str
+    source_ref: str
+    excerpt: str
+    created_at: datetime
+
+
+class KnowledgeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    type: KnowledgeType
+    title: str = Field(min_length=1, max_length=200)
+    topic_id: Optional[str] = Field(default=None, min_length=1)
+    tags: list[str] = Field(default_factory=list)
+    content: dict[str, Any]
+    evidences: list[KnowledgeEvidenceIn] = Field(min_length=1)
+
+
+class KnowledgePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    topic_id: Optional[str] = Field(default=None, min_length=1)
+    tags: Optional[list[str]] = None
+    status: Optional[KnowledgeStatus] = None
+    content: Optional[dict[str, Any]] = None
+
+
+class KnowledgeListItemOut(BaseModel):
+    id: str
+    type: KnowledgeType
+    title: str
+    topic_id: Optional[str]
+    tags: list[str]
+    status: KnowledgeStatus
+    evidence_count: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class KnowledgeDetailOut(BaseModel):
+    id: str
+    type: KnowledgeType
+    title: str
+    topic_id: Optional[str]
+    tags: list[str]
+    status: KnowledgeStatus
+    content: dict[str, Any]
+    evidence_count: int
+    evidences: list[KnowledgeEvidenceOut]
+    created_at: datetime
+    updated_at: datetime
+
+
+class KnowledgeListOut(BaseModel):
+    items: list[KnowledgeListItemOut]
+    page: int
+    page_size: int
+    total: int
+
+
+class KnowledgeMigrationCandidateOut(BaseModel):
+    note_id: str
+    title: str
+    topic_id: Optional[str]
+    tags: list[str]
+    inferred_type: KnowledgeType
+    content: dict[str, Any]
+    evidences: list[KnowledgeEvidenceIn]
+
+
+class KnowledgeMigrationCandidatesOut(BaseModel):
+    items: list[KnowledgeMigrationCandidateOut]
+    page: int
+    page_size: int
+    total: int
+
+
+class KnowledgeMigrationCommitIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    note_ids: list[str] = Field(min_length=1, max_length=20)
+
+
+class KnowledgeMigrationMapOut(BaseModel):
+    note_id: str
+    item_id: str
+
+
+class KnowledgeMigrationCommitOut(BaseModel):
+    migrated: int
+    skipped: int
+    failed: int
+    failures: list[dict[str, str]]
+    migrations: list[KnowledgeMigrationMapOut]
 
 
 class LinkCreate(BaseModel):

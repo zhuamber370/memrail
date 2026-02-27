@@ -115,6 +115,26 @@ CREATE TABLE IF NOT EXISTS note_sources (
   source_value TEXT NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS knowledge_items (
+  id VARCHAR(40) PRIMARY KEY,
+  type VARCHAR(20) NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  topic_id VARCHAR(40) REFERENCES topics(id) ON DELETE SET NULL,
+  tags_json JSON NOT NULL DEFAULT '[]',
+  status VARCHAR(20) NOT NULL DEFAULT 'active',
+  content_json JSON NOT NULL DEFAULT '{}'::json,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS knowledge_evidences (
+  id VARCHAR(40) PRIMARY KEY,
+  item_id VARCHAR(40) NOT NULL REFERENCES knowledge_items(id) ON DELETE CASCADE,
+  source_ref TEXT NOT NULL,
+  excerpt TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS links (
   id VARCHAR(40) PRIMARY KEY,
   from_type VARCHAR(20) NOT NULL,
