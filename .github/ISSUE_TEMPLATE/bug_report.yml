@@ -1,0 +1,41 @@
+name: Bug report
+description: Report a reproducible problem
+title: "bug: <short summary>"
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: A clear and concise description of the bug.
+      placeholder: "When I ..., Memrail ..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include minimal steps.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      placeholder: "I expected ..."
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit / version
+      description: Git SHA or release tag if known.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs / screenshots
+      description: Attach relevant logs or screenshots (use synthetic test data if possible).

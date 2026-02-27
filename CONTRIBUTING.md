@@ -1,22 +1,45 @@
 # Contributing
 
-Thanks for contributing to `memrail`.
+Thanks for contributing to **Memrail**.
+
+Memrail is an OpenClaw workflow command center where **agent proposals are governed by human review** (with audit + undo). Contributions that improve reliability, clarity, and contributor experience are especially welcome.
+
+## Quick start for contributors
+
+1) Read the dev setup guide: `docs/contributing/dev-setup.md`
+
+2) Run the stack locally:
+- Backend: `backend/README.md`
+- Frontend: `frontend/README.md`
+
+3) Pick a task:
+- Look for issues labeled **good first issue** / **help wanted**.
+- If you're not sure where to start, open an issue with your background (backend/frontend/full-stack) and we’ll point you to a small, high-signal change.
+
+## Where help is most valuable (early stage)
+
+- **Governed write pipeline**: dry-run → commit/reject → undo-last
+- **Changes review UX** (`/changes`): diff readability, safety checks, undo clarity
+- **Tasks route graph** (`/tasks`): node/edge operations, status, inspector UX
+- **Knowledge workspace** (`/knowledge`): CRUD, filters, category/status lifecycle
+- **Docs**: API surface accuracy, onboarding guides, screenshots using synthetic test data
 
 ## Before opening a PR
 
-1. Open an issue first for non-trivial changes.
-2. Keep diffs small and focused.
-3. Do not include secrets (`.env`, tokens, private keys).
-4. Keep behavior docs in sync with code.
-5. If tests insert data, clean test data before merge.
+- For non-trivial changes: open an issue first to align on scope.
+- Keep diffs small and focused.
+- Do not include secrets (`.env`, tokens, private keys).
+- Keep runtime docs in sync with code (README/docs).
+- If tests insert data, clean test data before merge.
 
 ## Local checks
 
 ### Backend
 
 ```bash
+cd backend
 python3 -m pytest -q
-python3 backend/scripts/cleanup_test_data.py
+python3 scripts/cleanup_test_data.py
 ```
 
 ### Frontend
@@ -28,7 +51,8 @@ npm run build
 
 ## PR expectations
 
-1. Explain what changed and why.
-2. List verification commands and actual results.
-3. Include screenshots for UI changes.
-4. Mention updated docs when behavior changed.
+Please include:
+- What changed + why
+- How you verified (commands + results)
+- Screenshots for UI changes
+- Any doc updates (if behavior changed)

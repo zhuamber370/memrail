@@ -145,6 +145,10 @@ openclaw skills info kms --json
 openclaw skills check --json
 ```
 
+## Contributing
+
+Contributions are welcome! See `CONTRIBUTING.md` and `docs/contributing/dev-setup.md`.
+
 ## Documentation Map
 
 Authoritative runtime docs:
