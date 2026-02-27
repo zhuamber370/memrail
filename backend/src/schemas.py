@@ -12,6 +12,8 @@ CycleStatus = Literal["planned", "active", "closed"]
 TopicKind = Literal["domain", "project", "playbook", "decision", "issue"]
 TopicStatus = Literal["active", "watch", "archived"]
 NoteStatus = Literal["active", "archived"]
+KnowledgeStatus = Literal["active", "archived"]
+KnowledgeCategory = Literal["ops_manual", "mechanism_spec", "decision_record"]
 
 
 class TaskCreate(BaseModel):
@@ -258,6 +260,38 @@ class NoteTopicSummaryItem(BaseModel):
 
 class NoteTopicSummaryOut(BaseModel):
     items: list[NoteTopicSummaryItem]
+
+
+class KnowledgeCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: str = Field(min_length=1, max_length=200)
+    body: str = Field(min_length=1)
+    category: Optional[KnowledgeCategory] = None
+
+
+class KnowledgePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
+    body: Optional[str] = Field(default=None, min_length=1)
+    category: Optional[KnowledgeCategory] = None
+    status: Optional[KnowledgeStatus] = None
+
+
+class KnowledgeOut(BaseModel):
+    id: str
+    title: str
+    body: str
+    category: KnowledgeCategory
+    status: KnowledgeStatus
+    created_at: datetime
+    updated_at: datetime
+
+
+class KnowledgeListOut(BaseModel):
+    items: list[KnowledgeOut]
+    page: int
+    page_size: int
+    total: int
 
 
 class LinkCreate(BaseModel):

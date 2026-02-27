@@ -47,6 +47,13 @@ python3 -m uvicorn src.app:app --reload --port 8000
 - `topics`: fixed taxonomy
 - `tasks`: task lifecycle + archive
 - `notes`: knowledge notes
+- `knowledge`: independent structured knowledge domain
+  - types: `playbook | decision | brief`
+  - every item requires at least one evidence record
+  - filters: type/topic/tag/query/status
+  - migration APIs:
+    - `GET /api/v1/knowledge/migration/candidates`
+    - `POST /api/v1/knowledge/migration/commit` (`note_ids` max 20 per request)
 - `journals`: append-only daily records
 - `changes`: governed write flow (`dry-run/commit/reject/undo`)
 - `ideas`: task-scoped idea entities
@@ -88,8 +95,10 @@ python3 -m pytest -q backend/tests/test_routes_api.py
 python3 backend/scripts/bootstrap_postgres.py
 python3 backend/scripts/cleanup_test_data.py
 python3 backend/scripts/migrate_notes_topic_status.py
+python3 backend/scripts/migrate_notes_to_knowledge.py
 ```
 
 - `bootstrap_postgres.py`: initialize PostgreSQL role/database.
 - `cleanup_test_data.py`: cleanup test-marked data.
 - `migrate_notes_topic_status.py`: historical data backfill helper.
+- `migrate_notes_to_knowledge.py`: notes -> knowledge migration tool (dry-run by default, `--apply` to write).

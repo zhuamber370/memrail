@@ -42,7 +42,10 @@ npm run build
     - `Delete` (leaf node only)
   - Branch relation type is rendered directly on DAG edges
 - `/knowledge`
-  - topic-based knowledge board
+  - independent structured knowledge workspace
+  - unified list with type/topic/tag filters
+  - typed forms for `playbook | decision | brief`
+  - evidence append/view panel
 - `/changes`
   - proposal review and commit/reject/undo
 

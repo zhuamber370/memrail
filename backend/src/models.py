@@ -63,6 +63,7 @@ class Note(Base):
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(String(40), nullable=False, default="mechanism_spec")
     tags_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     topic_id: Mapped[Optional[str]] = mapped_column(
         String(40), ForeignKey("topics.id", ondelete="SET NULL"), nullable=True
@@ -88,6 +89,43 @@ class NoteSource(Base):
     )
     source_type: Mapped[str] = mapped_column(String(20), nullable=False)
     source_value: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class KnowledgeItem(Base):
+    __tablename__ = "knowledge_items"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    type: Mapped[str] = mapped_column(String(20), nullable=False)
+    title: Mapped[str] = mapped_column(String(200), nullable=False)
+    topic_id: Mapped[Optional[str]] = mapped_column(
+        String(40), ForeignKey("topics.id", ondelete="SET NULL"), nullable=True
+    )
+    tags_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="active")
+    content_json: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class KnowledgeEvidence(Base):
+    __tablename__ = "knowledge_evidences"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    item_id: Mapped[str] = mapped_column(
+        String(40), ForeignKey("knowledge_items.id", ondelete="CASCADE"), nullable=False
+    )
+    source_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 class Link(Base):
