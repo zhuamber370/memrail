@@ -1,9 +1,30 @@
 # Memrail
 
-Memrail is a governed memory + task system for OpenClaw workflows.
+Memrail is the task + knowledge command center for OpenClaw workflows — where agent proposals are governed by human review (with audit + undo).
 
-Core principle:
-- **Agent proposes writes, human keeps final control.**
+## Why it exists
+OpenClaw-heavy workflows break when:
+- agent writes pollute memory / docs
+- changes are hard to review and roll back
+- tasks, knowledge, and execution drift across tools
+
+Memrail keeps your workflow **executable, governed, and traceable**.
+
+## What you get
+- Governed write pipeline: dry-run → commit/reject → undo-last
+- One-screen workspace: /tasks + /knowledge + /changes
+- Audit trail for every proposal and commit
+
+## Screenshots
+> Screenshots use **synthetic test data**.
+
+**Tasks dashboard**
+
+![Tasks dashboard (synthetic test data)](docs/assets/screenshots/tasks-dashboard.png)
+
+**Knowledge workspace**
+
+![Knowledge workspace (synthetic test data)](docs/assets/screenshots/knowledge-workspace.png)
 
 ## Current Scope (Synced 2026-02-27)
 
