@@ -12,6 +12,7 @@ from src.schemas import (
     RouteCreate,
     RouteEdgeCreate,
     RouteEdgeOut,
+    RouteEdgePatch,
     RouteGraphOut,
     RouteListOut,
     RouteNodeCreate,
@@ -122,6 +123,19 @@ def build_router(get_db_dep):
             return RouteGraphService(db).create_edge(route_id, payload)
         except ValueError as exc:
             _raise_from_code(str(exc))
+
+    @router.patch("/{route_id}/edges/{edge_id}", response_model=RouteEdgeOut)
+    def patch_route_edge(route_id: str, edge_id: str, payload: RouteEdgePatch, db: Session = Depends(get_db_dep)):
+        try:
+            updated = RouteGraphService(db).patch_edge(route_id, edge_id, payload)
+        except ValueError as exc:
+            _raise_from_code(str(exc))
+        if updated is None:
+            raise HTTPException(
+                status_code=404,
+                detail={"code": "ROUTE_EDGE_NOT_FOUND", "message": "route edge not found"},
+            )
+        return updated
 
     @router.delete("/{route_id}/edges/{edge_id}", status_code=204)
     def delete_route_edge(route_id: str, edge_id: str, db: Session = Depends(get_db_dep)):

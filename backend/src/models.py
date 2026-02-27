@@ -392,6 +392,7 @@ class RouteEdge(Base):
         String(40), ForeignKey("route_nodes.id", ondelete="CASCADE"), nullable=False
     )
     relation: Mapped[str] = mapped_column(String(20), nullable=False, default="refine")
+    description: Mapped[str] = mapped_column(Text, nullable=False, default="")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

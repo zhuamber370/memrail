@@ -530,6 +530,12 @@ class RouteEdgeCreate(BaseModel):
     from_node_id: str = Field(min_length=1)
     to_node_id: str = Field(min_length=1)
     relation: RouteEdgeRelation = "refine"
+    description: str = ""
+
+
+class RouteEdgePatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    description: Optional[str] = None
 
 
 class RouteEdgeOut(BaseModel):
@@ -539,6 +545,7 @@ class RouteEdgeOut(BaseModel):
     from_node_id: str
     to_node_id: str
     relation: RouteEdgeRelation
+    description: str
     created_at: datetime
 
 

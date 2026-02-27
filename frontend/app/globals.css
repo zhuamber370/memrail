@@ -786,6 +786,7 @@ a {
 }
 
 .taskStudioWorkspace {
+  position: relative;
   display: grid;
   gap: 10px;
   min-height: 0;
@@ -1021,20 +1022,68 @@ a {
   box-shadow: inset 0 0 0 2px #8d8d8d29;
 }
 
+.taskDagWorkspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+  align-items: stretch;
+}
+
+.taskDagSurface {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.taskDagToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.taskDagToolset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.taskDagZoomReadout {
+  min-width: 54px;
+  text-align: right;
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+}
+
 .taskDagViewport {
   border: 2px solid var(--line);
   border-radius: 10px;
   background:
-    linear-gradient(transparent 95%, #00000012 95%) 0 0 / 100% 30px repeat-y,
-    linear-gradient(90deg, transparent 95%, #00000010 95%) 0 0 / 30px 100% repeat-x,
+    linear-gradient(transparent 96%, #00000012 96%) 0 0 / 100% 24px repeat-y,
+    linear-gradient(90deg, transparent 96%, #00000010 96%) 0 0 / 24px 100% repeat-x,
     #fffdf8;
-  min-height: 440px;
-  max-height: 560px;
-  overflow: auto;
+  min-height: 420px;
+  height: 520px;
+  overflow: hidden;
+  position: relative;
+  cursor: grab;
+  touch-action: none;
+}
+
+.taskDagViewportPanning {
+  cursor: grabbing;
+}
+
+.taskDagStage {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
 }
 
 .taskDagCanvas {
   position: relative;
+  user-select: none;
 }
 
 .taskDagEdges {
@@ -1042,7 +1091,7 @@ a {
   inset: 0;
   width: 100%;
   height: 100%;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
 .taskDagEdge {
@@ -1077,9 +1126,22 @@ a {
   stroke: #c58100;
 }
 
+.taskDagEdgeSelected {
+  stroke-width: 3.5;
+  filter: drop-shadow(0 0 2px #2457d666);
+}
+
+.taskDagEdgeHit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 14;
+  vector-effect: non-scaling-stroke;
+  cursor: pointer;
+}
+
 .taskDagEdgeLabel {
   fill: #1f3658;
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 700;
   paint-order: stroke;
   stroke: #fffdf8;
@@ -1094,15 +1156,15 @@ a {
 .taskDagNode {
   position: absolute;
   border: 2px solid var(--line);
-  border-radius: 12px;
+  border-radius: 10px;
   background: #fff;
   text-align: left;
   color: inherit;
-  padding: 8px;
+  padding: 6px;
   cursor: pointer;
   display: grid;
   align-content: space-between;
-  gap: 8px;
+  gap: 6px;
   overflow: visible;
 }
 
@@ -1143,10 +1205,10 @@ a {
 }
 
 .taskDagNodeTitle {
-  margin-right: 26px;
+  margin-right: 20px;
   font-weight: 700;
-  font-size: 0.88rem;
-  line-height: 1.2;
+  font-size: 0.8rem;
+  line-height: 1.15;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -1156,23 +1218,23 @@ a {
 .taskDagNodeMeta {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px 8px;
-  font-size: 0.72rem;
+  gap: 3px 7px;
+  font-size: 0.66rem;
   color: var(--muted);
 }
 
 .taskDagNodeMenuTrigger {
   position: absolute;
-  top: 6px;
-  right: 6px;
+  top: 4px;
+  right: 4px;
   border: 1px solid #1f36582b;
   border-radius: 999px;
   background: #fff;
   color: inherit;
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 700;
   line-height: 1;
-  padding: 3px 7px;
+  padding: 2px 6px;
   cursor: pointer;
 }
 
@@ -1192,6 +1254,45 @@ a {
 .taskDagInlineMenu {
   display: grid;
   gap: 6px;
+}
+
+.taskDagInlineMenuSection {
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 6px;
+  display: grid;
+  gap: 6px;
+}
+
+.taskDagInlineMenuLabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.taskDagInlineStatusGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 4px;
+}
+
+.taskDagInlineStatusBtn {
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #fffdf8;
+  color: inherit;
+  text-align: left;
+  padding: 4px 6px;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+
+.taskDagInlineStatusBtnActive {
+  border-color: #2457d6;
+  box-shadow: inset 0 0 0 2px #2457d636;
 }
 
 .taskDagInlineMenuBtn {
@@ -1222,6 +1323,38 @@ a {
   display: flex;
   gap: 6px;
   justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.taskDagInspector {
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: #fffdf8;
+  padding: 10px;
+  display: grid;
+  gap: 10px;
+  align-content: start;
+}
+
+.taskDagInspector .taskSectionTitle {
+  margin: 0;
+}
+
+.taskDagInspectorMeta {
+  display: grid;
+  gap: 4px;
+}
+
+.taskDagInspectorLine {
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--ink-soft);
+}
+
+.taskDagInspectorActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
   flex-wrap: wrap;
 }
 
@@ -2046,6 +2179,18 @@ a {
 
   .taskExecCreateGrid {
     grid-template-columns: 1fr;
+  }
+
+  .taskDagWorkspace {
+    grid-template-columns: 1fr;
+  }
+
+  .taskDagToolbar {
+    flex-wrap: wrap;
+  }
+
+  .taskDagViewport {
+    height: 420px;
   }
 
   .taskDagInlinePanel {

@@ -75,6 +75,7 @@ export default function TasksPage() {
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [workspaceMode, setWorkspaceMode] = useState<"manage" | "studio">("manage");
+  const [studioDetailOpen, setStudioDetailOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -459,12 +460,14 @@ export default function TasksPage() {
   function onOpenStudio(taskId: string) {
     setSelectedTaskId(taskId);
     setWorkspaceMode("studio");
+    setStudioDetailOpen(false);
     setError("");
     setNotice("");
   }
 
   function onBackToManage() {
     setWorkspaceMode("manage");
+    setStudioDetailOpen(false);
     setError("");
     setNotice("");
   }
@@ -711,6 +714,14 @@ export default function TasksPage() {
             </div>
             <div className="taskStudioHeadActions">
               <span className="badge">{t(`tasks.statusValue.${selectedTask.status}`)}</span>
+              <button
+                className="badge"
+                onClick={() => setStudioDetailOpen((prev) => !prev)}
+                aria-expanded={studioDetailOpen}
+                aria-controls="task-studio-detail-drawer"
+              >
+                {studioDetailOpen ? t("tasks.closeDetail") : t("tasks.openDetail")}
+              </button>
               <button className="badge" onClick={() => onRefresh()} disabled={loading}>
                 {t("tasks.refresh")}
               </button>
@@ -721,10 +732,25 @@ export default function TasksPage() {
           {notice ? <p className="meta taskNoticeText">{notice}</p> : null}
 
           <div className="taskStudioWorkspace">
-            <section className="taskStudioDrawer taskStudioDrawerInline" aria-hidden={false}>
+            {studioDetailOpen ? (
+              <button
+                type="button"
+                className="taskStudioDrawerMask"
+                onClick={() => setStudioDetailOpen(false)}
+                aria-label={t("tasks.closeDetail")}
+              />
+            ) : null}
+            <section
+              id="task-studio-detail-drawer"
+              className={`taskStudioDrawer ${studioDetailOpen ? "taskStudioDrawerOpen" : ""}`}
+              aria-hidden={!studioDetailOpen}
+            >
               <div className="taskStudioDrawerBody">
                 <div className="taskStudioDrawerHead">
                   <h2 className="changesSubTitle">{t("tasks.detail")}</h2>
+                  <button className="badge" onClick={() => setStudioDetailOpen(false)}>
+                    {t("tasks.closeDetail")}
+                  </button>
                 </div>
 
                 {detailDraft ? (

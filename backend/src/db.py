@@ -145,6 +145,7 @@ def ensure_runtime_schema(engine) -> None:
         "ALTER TABLE routes ADD COLUMN IF NOT EXISTS task_id VARCHAR(40)",
         "ALTER TABLE routes ADD COLUMN IF NOT EXISTS parent_route_id VARCHAR(40)",
         "ALTER TABLE route_nodes ADD COLUMN IF NOT EXISTS parent_node_id VARCHAR(40)",
+        "ALTER TABLE route_edges ADD COLUMN IF NOT EXISTS description TEXT",
         "ALTER TABLE node_logs ADD COLUMN IF NOT EXISTS log_type VARCHAR(20)",
         "ALTER TABLE node_logs ADD COLUMN IF NOT EXISTS source_ref TEXT",
         "ALTER TABLE notes ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40)",
@@ -172,6 +173,7 @@ def ensure_runtime_schema(engine) -> None:
         """,
         "UPDATE tasks SET description = '' WHERE description IS NULL",
         "UPDATE tasks SET acceptance_criteria = '' WHERE acceptance_criteria IS NULL",
+        "UPDATE route_edges SET description = '' WHERE description IS NULL",
         "UPDATE node_logs SET log_type = 'note' WHERE log_type IS NULL",
         """
         INSERT INTO topics (id, name, name_en, name_zh, kind, status, summary)
@@ -306,6 +308,8 @@ def ensure_runtime_schema(engine) -> None:
         "ALTER TABLE tasks DROP COLUMN IF EXISTS project",
         "ALTER TABLE notes ALTER COLUMN status SET DEFAULT 'active'",
         "ALTER TABLE notes ALTER COLUMN status SET NOT NULL",
+        "ALTER TABLE route_edges ALTER COLUMN description SET DEFAULT ''",
+        "ALTER TABLE route_edges ALTER COLUMN description SET NOT NULL",
         "ALTER TABLE node_logs ALTER COLUMN log_type SET DEFAULT 'note'",
         "ALTER TABLE node_logs ALTER COLUMN log_type SET NOT NULL",
         """
@@ -485,8 +489,10 @@ def _ensure_runtime_schema_sqlite(engine) -> None:
         _sqlite_add_column_if_missing(conn, "routes", "task_id VARCHAR(40)")
         _sqlite_add_column_if_missing(conn, "routes", "parent_route_id VARCHAR(40)")
         _sqlite_add_column_if_missing(conn, "route_nodes", "parent_node_id VARCHAR(40)")
+        _sqlite_add_column_if_missing(conn, "route_edges", "description TEXT NOT NULL DEFAULT ''")
         _sqlite_add_column_if_missing(conn, "node_logs", "log_type VARCHAR(20) NOT NULL DEFAULT 'note'")
         _sqlite_add_column_if_missing(conn, "node_logs", "source_ref TEXT")
+        conn.execute(text("UPDATE route_edges SET description = '' WHERE description IS NULL"))
         conn.execute(text("UPDATE node_logs SET log_type = 'note' WHERE log_type IS NULL"))
         conn.execute(
             text(

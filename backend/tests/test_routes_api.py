@@ -328,10 +328,16 @@ def test_route_edges_are_inferred_by_node_type():
 
     refine = client.post(
         f"/api/v1/routes/{route_id}/edges",
-        json={"from_node_id": idea1_id, "to_node_id": idea2_id, "relation": "refine"},
+        json={
+            "from_node_id": idea1_id,
+            "to_node_id": idea2_id,
+            "relation": "refine",
+            "description": "refine under same branch",
+        },
     )
     assert refine.status_code == 201
     assert refine.json()["relation"] == "refine"
+    assert refine.json()["description"] == "refine under same branch"
 
     initiate = client.post(
         f"/api/v1/routes/{route_id}/edges",
@@ -506,3 +512,61 @@ def test_route_nodes_edges_and_logs():
     delete_again = client.delete(f"/api/v1/routes/{route1_id}/nodes/{n1_id}")
     assert delete_again.status_code == 404
     assert delete_again.json()["error"]["code"] == "ROUTE_NODE_NOT_FOUND"
+
+
+def test_patch_route_edge_description():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_edge_patch_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('edge_patch')}",
+            "goal": "edge description updates",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    idea = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "idea", "title": "Idea", "description": ""},
+    )
+    assert idea.status_code == 201
+    idea_id = idea.json()["id"]
+
+    goal = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "Goal", "description": ""},
+    )
+    assert goal.status_code == 201
+    goal_id = goal.json()["id"]
+
+    edge = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={"from_node_id": idea_id, "to_node_id": goal_id, "relation": "initiate"},
+    )
+    assert edge.status_code == 201
+    edge_id = edge.json()["id"]
+    assert edge.json()["description"] == ""
+
+    patched = client.patch(
+        f"/api/v1/routes/{route_id}/edges/{edge_id}",
+        json={"description": "handoff condition: KPI>=target"},
+    )
+    assert patched.status_code == 200
+    assert patched.json()["description"] == "handoff condition: KPI>=target"
+
+    graph = client.get(f"/api/v1/routes/{route_id}/graph")
+    assert graph.status_code == 200
+    graph_edge = next(item for item in graph.json()["edges"] if item["id"] == edge_id)
+    assert graph_edge["description"] == "handoff condition: KPI>=target"
+
+    not_found = client.patch(
+        f"/api/v1/routes/{route_id}/edges/red_missing",
+        json={"description": "x"},
+    )
+    assert not_found.status_code == 404
+    assert not_found.json()["error"]["code"] == "ROUTE_EDGE_NOT_FOUND"

@@ -11,6 +11,7 @@ from src.schemas import (
     NodeLogCreate,
     RouteCreate,
     RouteEdgeCreate,
+    RouteEdgePatch,
     RouteNodeCreate,
     RouteNodePatch,
     RoutePatch,
@@ -311,6 +312,7 @@ class RouteGraphService:
             from_node_id=payload.from_node_id,
             to_node_id=payload.to_node_id,
             relation=payload.relation,
+            description=payload.description or "",
         )
         self.db.add(edge)
         self.db.commit()
@@ -321,6 +323,34 @@ class RouteGraphService:
             actor_id="local",
             tool="api",
             action="create_route_edge",
+            target_type="route_edge",
+            target_id=edge.id,
+            source_refs=[f"route://{route_id}"],
+        )
+        return edge
+
+    def patch_edge(self, route_id: str, edge_id: str, payload: RouteEdgePatch) -> Optional[RouteEdge]:
+        self._ensure_route(route_id)
+        edge = self.db.scalar(select(RouteEdge).where(RouteEdge.id == edge_id, RouteEdge.route_id == route_id))
+        if edge is None:
+            return None
+
+        patch_data = payload.model_dump(exclude_unset=True)
+        if not patch_data:
+            raise ValueError("NO_PATCH_FIELDS")
+
+        if "description" in patch_data:
+            edge.description = patch_data["description"] or ""
+
+        self.db.add(edge)
+        self.db.commit()
+        self.db.refresh(edge)
+        log_audit_event(
+            self.db,
+            actor_type="user",
+            actor_id="local",
+            tool="api",
+            action="patch_route_edge",
             target_type="route_edge",
             target_id=edge.id,
             source_refs=[f"route://{route_id}"],
