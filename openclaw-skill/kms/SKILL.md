@@ -42,6 +42,55 @@ Use this skill when you need to read or write Memrail data.
 8. Task topic safety
 - For `propose_record_todo`, ensure `topic_id` is present (explicit or inferred/fallback).
 
+## Natural-Language Routing (MUST)
+
+1. User should not need API names
+- Interpret intent from natural language and choose actions automatically.
+- Do not ask user to specify endpoint/action unless disambiguation is strictly required.
+
+2. Task execution / DAG questions (highest priority)
+- If user asks about "当前节点 / DAG / 节点状态 / 分支关系 / 前后置 / 执行进度", use:
+  1) `get_task_execution_snapshot` first
+  2) then `get_route_graph` / `list_route_node_logs` only when extra detail is needed
+- Do not use `get_context_bundle` as the primary source for DAG answers.
+
+3. Resolve task target automatically
+- If user does not provide `task_id`, resolve via natural-language task query/title.
+- If multiple tasks match and cannot be safely resolved, return candidates and ask for disambiguation.
+
+4. Action priority
+- Prefer dedicated read actions over generic `api_get`.
+- `api_get` is last-resort fallback for uncovered read paths only.
+
+5. Read-first safety
+- For information requests, perform read actions only.
+- Never trigger `propose_*` / commit / reject / undo unless user explicitly asks to write.
+
+## Response Style (MUST)
+
+1. Natural-language first
+- Explain findings in business/task language, not database language.
+- Lead with the direct answer, then give key evidence.
+
+2. Hide technical internals by default
+- Do not mention API paths, action names, table/field names, or SQL-like wording unless user explicitly asks.
+- Do not dump raw JSON unless user explicitly asks for raw output.
+
+3. Translate system terms into user language
+- Convert status/enums to natural phrasing (e.g. `execute` -> "执行中", `waiting` -> "等待中", `done` -> "已完成").
+- Prefer "当前在做什么/下一步是什么/有什么阻塞" over raw identifiers.
+
+4. Structured but human
+- For task execution answers, use this order:
+  1) 当前进展（当前节点 + 状态）
+  2) 关键路径（前置/后置关系）
+  3) 风险或建议（如有）
+- Keep IDs and low-level metadata in a separate "如需我可展开" part.
+
+5. Ambiguity handling
+- If task/route target is ambiguous, ask one concise disambiguation question with top candidates.
+- Once clarified, continue with a natural-language summary.
+
 ## Read Actions
 
 - `get_context_bundle`
@@ -70,7 +119,7 @@ Use this skill when you need to read or write Memrail data.
 - `get_inbox`
 - `list_knowledge`
 - `get_knowledge`
-- `api_get` (generic GET for any `/api/v1/*` path using `path + params`)
+- `api_get` (fallback generic GET for uncovered `/api/v1/*` paths only)
 
 ## Write Actions
 

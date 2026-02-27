@@ -248,21 +248,27 @@ const skill = {
       },
     },
     get_task_execution_snapshot: {
-      description: "Get latest task execution snapshot including current node and previous step",
+      description:
+        "Natural-language task execution reader for current node, DAG state, dependencies and branch relations",
       parameters: {
         type: "object",
         properties: {
           task_id: { type: "string" },
+          task_query: { type: "string" },
+          task_title: { type: "string" },
+          q: { type: "string" },
           include_all_routes: { type: "boolean", default: true },
           include_logs: { type: "boolean", default: false },
           page_size: { type: "number", default: 100 },
         },
-        required: ["task_id"],
       },
       handler: async (args, context) => {
         const client = createKmsClient(context);
         return client.getTaskExecutionSnapshot({
           task_id: args.task_id,
+          task_query: args.task_query,
+          task_title: args.task_title,
+          q: args.q,
           include_all_routes: args.include_all_routes,
           include_logs: args.include_logs,
           page_size: args.page_size,
@@ -439,7 +445,7 @@ const skill = {
       },
     },
     api_get: {
-      description: "Generic read-through for any /api/v1/* endpoint",
+      description: "Fallback generic read-through for uncovered /api/v1/* endpoints",
       parameters: {
         type: "object",
         properties: {

@@ -340,15 +340,123 @@ function createKmsClient(context) {
     return get(normalizeApiPath(path), params || {});
   }
 
+  function pickTaskQuery(params) {
+    const candidates = [
+      params && params.task_query,
+      params && params.task_title,
+      params && params.q,
+      params && params.title,
+    ];
+    for (const value of candidates) {
+      const text = String(value || "").trim();
+      if (text) return text;
+    }
+    return "";
+  }
+
+  function taskStatusRank(status) {
+    if (status === "in_progress") return 0;
+    if (status === "todo") return 1;
+    if (status === "done") return 2;
+    if (status === "cancelled") return 3;
+    return 4;
+  }
+
+  function sortTaskCandidates(items) {
+    return [...items].sort((a, b) => {
+      const statusDiff = taskStatusRank(a && a.status) - taskStatusRank(b && b.status);
+      if (statusDiff !== 0) return statusDiff;
+      const timeA = Date.parse(String((a && a.updated_at) || "")) || 0;
+      const timeB = Date.parse(String((b && b.updated_at) || "")) || 0;
+      if (timeA !== timeB) return timeB - timeA;
+      return String((a && a.id) || "").localeCompare(String((b && b.id) || ""));
+    });
+  }
+
+  async function resolveTaskForExecution(params) {
+    const explicitTaskId = String((params && params.task_id) || "").trim();
+    if (explicitTaskId) {
+      return {
+        task_id: explicitTaskId,
+        needs_disambiguation: false,
+        resolution: {
+          mode: "task_id",
+          query: null,
+          selected_task: null,
+          candidates: [],
+        },
+      };
+    }
+
+    const query = pickTaskQuery(params);
+    if (!query) {
+      throw new Error("task_id is required; or provide task_query/task_title/q");
+    }
+
+    const listed = await listTasks({
+      page: 1,
+      page_size: 100,
+      archived: false,
+      q: query,
+    });
+    const items = Array.isArray(listed && listed.items) ? listed.items : [];
+    const normalizedQuery = normTitle(query);
+    const exactMatches = items.filter((item) => normTitle(item && item.title) === normalizedQuery);
+    const searchPool = exactMatches.length ? exactMatches : items;
+    const sorted = sortTaskCandidates(searchPool);
+    const selectedTask = sorted[0] || null;
+    const needsDisambiguation = !selectedTask || (exactMatches.length !== 1 && sorted.length > 1);
+
+    return {
+      task_id: needsDisambiguation ? null : selectedTask.id,
+      needs_disambiguation: needsDisambiguation,
+      resolution: {
+        mode: "task_query",
+        query,
+        matched_count: items.length,
+        exact_match_count: exactMatches.length,
+        selected_task: selectedTask
+          ? {
+              id: selectedTask.id,
+              title: selectedTask.title,
+              status: selectedTask.status,
+              updated_at: selectedTask.updated_at || null,
+            }
+          : null,
+        candidates: sorted.slice(0, 10).map((item) => ({
+          id: item.id,
+          title: item.title,
+          status: item.status,
+          updated_at: item.updated_at || null,
+        })),
+      },
+    };
+  }
+
   async function getTaskExecutionSnapshot(params) {
-    const taskId = params && params.task_id;
-    if (!taskId) throw new Error("task_id is required");
+    const resolvedTask = await resolveTaskForExecution(params || {});
+    const taskId = resolvedTask.task_id;
 
     const includeAllRoutes = params && Object.prototype.hasOwnProperty.call(params, "include_all_routes")
       ? Boolean(params.include_all_routes)
       : true;
     const includeLogs = Boolean(params && params.include_logs);
     const pageSize = Number(params && params.page_size) > 0 ? Number(params.page_size) : 100;
+
+    if (resolvedTask.needs_disambiguation || !taskId) {
+      return {
+        task_id: null,
+        fetched_at: new Date().toISOString(),
+        needs_disambiguation: true,
+        task_resolution: resolvedTask.resolution,
+        routes: [],
+        selected_route_id: null,
+        selected_route: null,
+        selected_route_graph: null,
+        selected_route_state: null,
+        route_snapshots: [],
+      };
+    }
 
     const routesPayload = await listRoutes({
       page: 1,
@@ -363,6 +471,8 @@ function createKmsClient(context) {
       return {
         task_id: taskId,
         fetched_at: new Date().toISOString(),
+        needs_disambiguation: false,
+        task_resolution: resolvedTask.resolution,
         routes: [],
         selected_route_id: null,
         selected_route: null,
@@ -420,6 +530,8 @@ function createKmsClient(context) {
     return {
       task_id: taskId,
       fetched_at: new Date().toISOString(),
+      needs_disambiguation: false,
+      task_resolution: resolvedTask.resolution,
       routes,
       selected_route_id: selectedRoute.id,
       selected_route: selectedRoute,
