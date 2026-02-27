@@ -1,125 +1,58 @@
 /* eslint-disable react/jsx-no-bind */
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../src/lib/api";
 import { useI18n } from "../../src/i18n";
 
-type KnowledgeType = "playbook" | "decision" | "brief";
 type KnowledgeStatus = "active" | "archived";
+type KnowledgeCategory = "ops_manual" | "mechanism_spec" | "decision_record";
 
-type Topic = {
+type KnowledgeItem = {
   id: string;
-  name: string;
-  name_en: string;
-  name_zh: string;
-  kind: string;
-  status: string;
-  summary: string;
-};
-type TopicList = { items: Topic[] };
-
-type KnowledgeListItem = {
-  id: string;
-  type: KnowledgeType;
   title: string;
-  topic_id: string | null;
-  tags: string[];
+  body: string;
+  category: KnowledgeCategory;
   status: KnowledgeStatus;
-  evidence_count: number;
   created_at?: string;
   updated_at?: string;
 };
-type KnowledgeList = { items: KnowledgeListItem[]; page: number; page_size: number; total: number };
 
-type KnowledgeEvidence = {
-  id: string;
-  item_id: string;
-  source_ref: string;
-  excerpt: string;
-  created_at?: string;
-};
-
-type KnowledgeDetail = KnowledgeListItem & {
-  content: Record<string, unknown>;
-  evidences: KnowledgeEvidence[];
+type KnowledgeList = {
+  items: KnowledgeItem[];
+  page: number;
+  page_size: number;
+  total: number;
 };
 
 export default function KnowledgePage() {
-  const { t, lang } = useI18n();
+  const { t } = useI18n();
 
-  const [topics, setTopics] = useState<Topic[]>([]);
-  const [items, setItems] = useState<KnowledgeListItem[]>([]);
+  const [items, setItems] = useState<KnowledgeItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedDetail, setSelectedDetail] = useState<KnowledgeDetail | null>(null);
+  const [selectedDetail, setSelectedDetail] = useState<KnowledgeItem | null>(null);
 
   const [statusFilter, setStatusFilter] = useState<KnowledgeStatus>("active");
-  const [typeFilter, setTypeFilter] = useState<KnowledgeType | "all">("all");
-  const [topicFilter, setTopicFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<KnowledgeCategory | "all">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [tagQuery, setTagQuery] = useState("");
 
-  const [createType, setCreateType] = useState<KnowledgeType>("playbook");
   const [createTitle, setCreateTitle] = useState("");
-  const [createTopicId, setCreateTopicId] = useState("");
-  const [createTags, setCreateTags] = useState("");
-  const [createSourceRef, setCreateSourceRef] = useState("ui://knowledge");
-  const [createExcerpt, setCreateExcerpt] = useState("");
-  const [createGoal, setCreateGoal] = useState("");
-  const [createSteps, setCreateSteps] = useState("");
-  const [createDecision, setCreateDecision] = useState("");
-  const [createRationale, setCreateRationale] = useState("");
-  const [createSummary, setCreateSummary] = useState("");
-  const [createHighlights, setCreateHighlights] = useState("");
+  const [createBody, setCreateBody] = useState("");
+  const [createCategory, setCreateCategory] = useState<KnowledgeCategory | "auto">("auto");
 
   const [detailTitle, setDetailTitle] = useState("");
-  const [detailTopicId, setDetailTopicId] = useState("");
-  const [detailTags, setDetailTags] = useState("");
-  const [detailGoal, setDetailGoal] = useState("");
-  const [detailSteps, setDetailSteps] = useState("");
-  const [detailDecision, setDetailDecision] = useState("");
-  const [detailRationale, setDetailRationale] = useState("");
-  const [detailSummary, setDetailSummary] = useState("");
-  const [detailHighlights, setDetailHighlights] = useState("");
-  const [detailSourceRef, setDetailSourceRef] = useState("ui://knowledge");
-  const [detailExcerpt, setDetailExcerpt] = useState("");
+  const [detailBody, setDetailBody] = useState("");
+  const [detailCategory, setDetailCategory] = useState<KnowledgeCategory>("mechanism_spec");
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const activeTopics = useMemo(() => topics.filter((topic) => topic.status === "active"), [topics]);
-
-  useEffect(() => {
-    void onInit();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   useEffect(() => {
     void onRefreshList();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusFilter, typeFilter, topicFilter, searchQuery, tagQuery]);
-
-  function localizeTopicName(topic?: Topic): string {
-    if (!topic) return t("knowledge.unclassified");
-    const target = lang === "zh" ? topic.name_zh : topic.name_en;
-    return target?.trim() || topic.name;
-  }
-
-  function parseTags(input: string): string[] {
-    return input
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
-
-  function parseLines(input: string): string[] {
-    return input
-      .split("\n")
-      .map((item) => item.trim())
-      .filter(Boolean);
-  }
+  }, [statusFilter, categoryFilter, searchQuery]);
 
   function formatTime(value?: string): string {
     if (!value) return "-";
@@ -130,134 +63,24 @@ export default function KnowledgePage() {
     }
   }
 
-  function typeLabel(type: KnowledgeType): string {
-    return t(`knowledge.type.${type}`);
+  function previewBody(body: string): string {
+    const text = body.trim().replace(/\s+/g, " ");
+    if (text.length <= 120) return text;
+    return `${text.slice(0, 117)}...`;
   }
 
-  function buildCreateContent(): Record<string, unknown> | null {
-    if (createType === "playbook") {
-      const steps = parseLines(createSteps);
-      if (!createGoal.trim() || !steps.length) return null;
-      return { goal: createGoal.trim(), steps };
-    }
-    if (createType === "decision") {
-      if (!createDecision.trim() || !createRationale.trim()) return null;
-      return { decision: createDecision.trim(), rationale: createRationale.trim() };
-    }
-    const highlights = parseLines(createHighlights);
-    if (!createSummary.trim() || !highlights.length) return null;
-    return { summary: createSummary.trim(), highlights };
+  function categoryLabel(category: KnowledgeCategory): string {
+    return t(`knowledge.category.${category}`);
   }
 
-  function buildDetailContent(type: KnowledgeType): Record<string, unknown> | null {
-    if (type === "playbook") {
-      const steps = parseLines(detailSteps);
-      if (!detailGoal.trim() || !steps.length) return null;
-      return { goal: detailGoal.trim(), steps };
-    }
-    if (type === "decision") {
-      if (!detailDecision.trim() || !detailRationale.trim()) return null;
-      return { decision: detailDecision.trim(), rationale: detailRationale.trim() };
-    }
-    const highlights = parseLines(detailHighlights);
-    if (!detailSummary.trim() || !highlights.length) return null;
-    return { summary: detailSummary.trim(), highlights };
-  }
-
-  function hydrateDetailForm(detail: KnowledgeDetail) {
+  function hydrateDetailForm(detail: KnowledgeItem) {
     setDetailTitle(detail.title);
-    setDetailTopicId(detail.topic_id ?? "");
-    setDetailTags(detail.tags.join(", "));
-    setDetailSourceRef("ui://knowledge");
-    setDetailExcerpt("");
-
-    const content = detail.content ?? {};
-    if (detail.type === "playbook") {
-      setDetailGoal(String(content.goal ?? ""));
-      setDetailSteps(Array.isArray(content.steps) ? (content.steps as string[]).join("\n") : "");
-      setDetailDecision("");
-      setDetailRationale("");
-      setDetailSummary("");
-      setDetailHighlights("");
-      return;
-    }
-    if (detail.type === "decision") {
-      setDetailDecision(String(content.decision ?? ""));
-      setDetailRationale(String(content.rationale ?? ""));
-      setDetailGoal("");
-      setDetailSteps("");
-      setDetailSummary("");
-      setDetailHighlights("");
-      return;
-    }
-    setDetailSummary(String(content.summary ?? ""));
-    setDetailHighlights(Array.isArray(content.highlights) ? (content.highlights as string[]).join("\n") : "");
-    setDetailGoal("");
-    setDetailSteps("");
-    setDetailDecision("");
-    setDetailRationale("");
-  }
-
-  function renderContentReadonly(detail: KnowledgeDetail) {
-    const content = detail.content ?? {};
-    if (detail.type === "playbook") {
-      const steps = Array.isArray(content.steps) ? (content.steps as string[]) : [];
-      return (
-        <div className="knowledgeSection">
-          <h3 className="changesGroupTitle">{t("knowledge.goal")}</h3>
-          <p className="changesLedgerText">{String(content.goal ?? "-")}</p>
-          <h3 className="changesGroupTitle" style={{ marginTop: 12 }}>{t("knowledge.steps")}</h3>
-          {steps.length ? (
-            steps.map((step, idx) => <p key={`${idx}:${step}`} className="changesLedgerText">{idx + 1}. {step}</p>)
-          ) : (
-            <p className="changesLedgerText">-</p>
-          )}
-        </div>
-      );
-    }
-    if (detail.type === "decision") {
-      return (
-        <div className="knowledgeSection">
-          <h3 className="changesGroupTitle">{t("knowledge.decision")}</h3>
-          <p className="changesLedgerText">{String(content.decision ?? "-")}</p>
-          <h3 className="changesGroupTitle" style={{ marginTop: 12 }}>{t("knowledge.rationale")}</h3>
-          <p className="changesLedgerText">{String(content.rationale ?? "-")}</p>
-        </div>
-      );
-    }
-    const highlights = Array.isArray(content.highlights) ? (content.highlights as string[]) : [];
-    return (
-      <div className="knowledgeSection">
-        <h3 className="changesGroupTitle">{t("knowledge.summary")}</h3>
-        <p className="changesLedgerText">{String(content.summary ?? "-")}</p>
-        <h3 className="changesGroupTitle" style={{ marginTop: 12 }}>{t("knowledge.highlights")}</h3>
-        {highlights.length ? (
-          highlights.map((line, idx) => <p key={`${idx}:${line}`} className="changesLedgerText">{idx + 1}. {line}</p>)
-        ) : (
-          <p className="changesLedgerText">-</p>
-        )}
-      </div>
-    );
-  }
-
-  async function onInit() {
-    setError("");
-    setLoading(true);
-    try {
-      const topicRes = await apiGet<TopicList>("/api/v1/topics");
-      const topicsActive = topicRes.items.filter((item) => item.status === "active");
-      setTopics(topicRes.items);
-      setCreateTopicId(topicsActive[0]?.id ?? "");
-      await onRefreshList();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
+    setDetailBody(detail.body);
+    setDetailCategory(detail.category);
   }
 
   async function onLoadDetail(itemId: string) {
-    const detail = await apiGet<KnowledgeDetail>(`/api/v1/knowledge/${itemId}`);
+    const detail = await apiGet<KnowledgeItem>(`/api/v1/knowledge/${itemId}`);
     setSelectedDetail(detail);
     hydrateDetailForm(detail);
   }
@@ -272,10 +95,8 @@ export default function KnowledgePage() {
         page_size: "100",
         status: statusFilter,
       });
-      if (typeFilter !== "all") params.set("type", typeFilter);
-      if (topicFilter) params.set("topic_id", topicFilter);
+      if (categoryFilter !== "all") params.set("category", categoryFilter);
       if (searchQuery.trim()) params.set("q", searchQuery.trim());
-      if (tagQuery.trim()) params.set("tag", tagQuery.trim());
 
       const listed = await apiGet<KnowledgeList>(`/api/v1/knowledge?${params.toString()}`);
       setItems(listed.items);
@@ -299,8 +120,7 @@ export default function KnowledgePage() {
   }
 
   async function onCreateKnowledge() {
-    const content = buildCreateContent();
-    if (!createTitle.trim() || !createSourceRef.trim() || !createExcerpt.trim() || !content) {
+    if (!createTitle.trim() || !createBody.trim()) {
       setError(t("knowledge.errValidation"));
       return;
     }
@@ -308,23 +128,14 @@ export default function KnowledgePage() {
     setNotice("");
     setLoading(true);
     try {
-      const created = await apiPost<KnowledgeDetail>("/api/v1/knowledge", {
-        type: createType,
+      const created = await apiPost<KnowledgeItem>("/api/v1/knowledge", {
         title: createTitle.trim(),
-        topic_id: createTopicId || null,
-        tags: parseTags(createTags),
-        content,
-        evidences: [{ source_ref: createSourceRef.trim(), excerpt: createExcerpt.trim() }],
+        body: createBody.trim(),
+        ...(createCategory === "auto" ? {} : { category: createCategory }),
       });
       setCreateTitle("");
-      setCreateTags("");
-      setCreateExcerpt("");
-      setCreateGoal("");
-      setCreateSteps("");
-      setCreateDecision("");
-      setCreateRationale("");
-      setCreateSummary("");
-      setCreateHighlights("");
+      setCreateBody("");
+      setCreateCategory("auto");
       setNotice(t("knowledge.noticeCreated"));
       await onRefreshList(created.id);
     } catch (e) {
@@ -336,8 +147,7 @@ export default function KnowledgePage() {
 
   async function onSaveDetail() {
     if (!selectedDetail || selectedDetail.status === "archived") return;
-    const content = buildDetailContent(selectedDetail.type);
-    if (!detailTitle.trim() || !content) {
+    if (!detailTitle.trim() || !detailBody.trim()) {
       setError(t("knowledge.errValidation"));
       return;
     }
@@ -345,11 +155,10 @@ export default function KnowledgePage() {
     setNotice("");
     setLoading(true);
     try {
-      await apiPatch<KnowledgeDetail>(`/api/v1/knowledge/${selectedDetail.id}`, {
+      await apiPatch<KnowledgeItem>(`/api/v1/knowledge/${selectedDetail.id}`, {
         title: detailTitle.trim(),
-        topic_id: detailTopicId || null,
-        tags: parseTags(detailTags),
-        content,
+        body: detailBody.trim(),
+        category: detailCategory,
       });
       setNotice(t("knowledge.noticeUpdated"));
       await onRefreshList(selectedDetail.id);
@@ -366,7 +175,7 @@ export default function KnowledgePage() {
     setNotice("");
     setLoading(true);
     try {
-      await apiPost<KnowledgeDetail>(`/api/v1/knowledge/${selectedDetail.id}/archive`, {});
+      await apiPost<KnowledgeItem>(`/api/v1/knowledge/${selectedDetail.id}/archive`, {});
       setNotice(t("knowledge.noticeArchived"));
       await onRefreshList(selectedDetail.id);
     } catch (e) {
@@ -393,30 +202,6 @@ export default function KnowledgePage() {
     }
   }
 
-  async function onAppendEvidence() {
-    if (!selectedDetail || selectedDetail.status === "archived") return;
-    if (!detailSourceRef.trim() || !detailExcerpt.trim()) {
-      setError(t("knowledge.errValidation"));
-      return;
-    }
-    setError("");
-    setNotice("");
-    setLoading(true);
-    try {
-      await apiPost<KnowledgeEvidence>(`/api/v1/knowledge/${selectedDetail.id}/evidences`, {
-        source_ref: detailSourceRef.trim(),
-        excerpt: detailExcerpt.trim(),
-      });
-      setDetailExcerpt("");
-      setNotice(t("knowledge.noticeEvidenceAdded"));
-      await onRefreshList(selectedDetail.id);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <section className="card knowledgeBoard">
       <div className="knowledgeHero">
@@ -431,25 +216,15 @@ export default function KnowledgePage() {
             placeholder={t("knowledge.placeholderSearch")}
             className="taskInput"
           />
-          <input
-            value={tagQuery}
-            onChange={(e) => setTagQuery(e.target.value)}
-            placeholder={t("knowledge.placeholderTag")}
+          <select
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value as KnowledgeCategory | "all")}
             className="taskInput"
-          />
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as KnowledgeType | "all")} className="taskInput">
-            <option value="all">{t("knowledge.typeAll")}</option>
-            <option value="playbook">{t("knowledge.type.playbook")}</option>
-            <option value="decision">{t("knowledge.type.decision")}</option>
-            <option value="brief">{t("knowledge.type.brief")}</option>
-          </select>
-          <select value={topicFilter} onChange={(e) => setTopicFilter(e.target.value)} className="taskInput">
-            <option value="">{t("knowledge.topicAll")}</option>
-            {activeTopics.map((topic) => (
-              <option key={topic.id} value={topic.id}>
-                {localizeTopicName(topic)}
-              </option>
-            ))}
+          >
+            <option value="all">{t("knowledge.categoryAll")}</option>
+            <option value="ops_manual">{t("knowledge.category.ops_manual")}</option>
+            <option value="mechanism_spec">{t("knowledge.category.mechanism_spec")}</option>
+            <option value="decision_record">{t("knowledge.category.decision_record")}</option>
           </select>
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as KnowledgeStatus)} className="taskInput">
             <option value="active">{t("knowledge.statusActive")}</option>
@@ -459,98 +234,29 @@ export default function KnowledgePage() {
       </div>
 
       <div className="knowledgeCreate">
-        <select value={createType} onChange={(e) => setCreateType(e.target.value as KnowledgeType)} className="taskInput">
-          <option value="playbook">{t("knowledge.type.playbook")}</option>
-          <option value="decision">{t("knowledge.type.decision")}</option>
-          <option value="brief">{t("knowledge.type.brief")}</option>
-        </select>
         <input
           value={createTitle}
           onChange={(e) => setCreateTitle(e.target.value)}
           placeholder={t("knowledge.placeholderTitle")}
           className="taskInput"
         />
-        <select value={createTopicId} onChange={(e) => setCreateTopicId(e.target.value)} className="taskInput">
-          <option value="">{t("knowledge.unclassified")}</option>
-          {activeTopics.map((topic) => (
-            <option key={topic.id} value={topic.id}>
-              {localizeTopicName(topic)}
-            </option>
-          ))}
-        </select>
-        <input
-          value={createTags}
-          onChange={(e) => setCreateTags(e.target.value)}
-          placeholder={t("knowledge.placeholderTags")}
-          className="taskInput"
-        />
-        <input
-          value={createSourceRef}
-          onChange={(e) => setCreateSourceRef(e.target.value)}
-          placeholder={t("knowledge.placeholderSourceRef")}
-          className="taskInput"
-        />
         <textarea
-          value={createExcerpt}
-          onChange={(e) => setCreateExcerpt(e.target.value)}
-          rows={2}
-          placeholder={t("knowledge.placeholderExcerpt")}
+          value={createBody}
+          onChange={(e) => setCreateBody(e.target.value)}
+          rows={4}
+          placeholder={t("knowledge.placeholderBody")}
           className="taskInput taskTextArea knowledgeCreateBody"
         />
-        {createType === "playbook" ? (
-          <>
-            <textarea
-              value={createGoal}
-              onChange={(e) => setCreateGoal(e.target.value)}
-              rows={2}
-              placeholder={t("knowledge.placeholderGoal")}
-              className="taskInput taskTextArea knowledgeCreateBody"
-            />
-            <textarea
-              value={createSteps}
-              onChange={(e) => setCreateSteps(e.target.value)}
-              rows={3}
-              placeholder={t("knowledge.placeholderSteps")}
-              className="taskInput taskTextArea knowledgeCreateBody"
-            />
-          </>
-        ) : null}
-        {createType === "decision" ? (
-          <>
-            <textarea
-              value={createDecision}
-              onChange={(e) => setCreateDecision(e.target.value)}
-              rows={2}
-              placeholder={t("knowledge.placeholderDecision")}
-              className="taskInput taskTextArea knowledgeCreateBody"
-            />
-            <textarea
-              value={createRationale}
-              onChange={(e) => setCreateRationale(e.target.value)}
-              rows={3}
-              placeholder={t("knowledge.placeholderRationale")}
-              className="taskInput taskTextArea knowledgeCreateBody"
-            />
-          </>
-        ) : null}
-        {createType === "brief" ? (
-          <>
-            <textarea
-              value={createSummary}
-              onChange={(e) => setCreateSummary(e.target.value)}
-              rows={2}
-              placeholder={t("knowledge.placeholderSummary")}
-              className="taskInput taskTextArea knowledgeCreateBody"
-            />
-            <textarea
-              value={createHighlights}
-              onChange={(e) => setCreateHighlights(e.target.value)}
-              rows={3}
-              placeholder={t("knowledge.placeholderHighlights")}
-              className="taskInput taskTextArea knowledgeCreateBody"
-            />
-          </>
-        ) : null}
+        <select
+          value={createCategory}
+          onChange={(e) => setCreateCategory(e.target.value as KnowledgeCategory | "auto")}
+          className="taskInput"
+        >
+          <option value="auto">{t("knowledge.categoryAuto")}</option>
+          <option value="ops_manual">{t("knowledge.category.ops_manual")}</option>
+          <option value="mechanism_spec">{t("knowledge.category.mechanism_spec")}</option>
+          <option value="decision_record">{t("knowledge.category.decision_record")}</option>
+        </select>
         <button className="badge" onClick={onCreateKnowledge} disabled={loading}>
           {t("knowledge.create")}
         </button>
@@ -569,15 +275,14 @@ export default function KnowledgePage() {
                   setSelectedId(item.id);
                   void onLoadDetail(item.id);
                 }}
-              >
+                >
                 <div className="knowledgeRowMain">
                   <div className="knowledgeTitle">
-                    <span className="badge" style={{ marginRight: 8 }}>{typeLabel(item.type)}</span>
+                    <span className="badge" style={{ marginRight: 8 }}>{categoryLabel(item.category)}</span>
                     {item.title}
                   </div>
                   <div className="knowledgeMeta">
-                    <span>{t("knowledge.tags")}: {item.tags.length ? item.tags.join(", ") : "-"}</span>
-                    <span>{t("knowledge.sourceCount")}: {item.evidence_count}</span>
+                    <span>{previewBody(item.body) || "-"}</span>
                     <span>{t("knowledge.updated")}: {formatTime(item.updated_at)}</span>
                   </div>
                 </div>
@@ -595,127 +300,56 @@ export default function KnowledgePage() {
               <div className="meta">{selectedDetail.id}</div>
               <div className="taskDetailGrid">
                 <div>
-                  <div className="changesSummaryKey">{t("knowledge.type")}</div>
-                  <div className="changesLedgerText">{typeLabel(selectedDetail.type)}</div>
-                </div>
-                <div>
                   <div className="changesSummaryKey">{t("knowledge.updated")}</div>
                   <div className="changesLedgerText">{formatTime(selectedDetail.updated_at)}</div>
                 </div>
                 <div>
-                  <div className="changesSummaryKey">{t("knowledge.sourceCount")}</div>
-                  <div className="changesLedgerText">{selectedDetail.evidence_count}</div>
+                  <div className="changesSummaryKey">{t("knowledge.category")}</div>
+                  <div className="changesLedgerText">{categoryLabel(selectedDetail.category)}</div>
                 </div>
-              </div>
-
-              {renderContentReadonly(selectedDetail)}
-
-              <div className="knowledgeSection">
-                <h3 className="changesGroupTitle">{t("knowledge.sources")}</h3>
-                {selectedDetail.evidences.length ? (
-                  selectedDetail.evidences.map((ev) => (
-                    <div key={ev.id} style={{ marginBottom: 8 }}>
-                      <p className="changesLedgerText">{ev.source_ref}</p>
-                      <p className="changesLedgerText">{ev.excerpt}</p>
-                    </div>
-                  ))
-                ) : (
-                  <p className="changesLedgerText">-</p>
-                )}
               </div>
 
               {selectedDetail.status === "archived" ? (
                 <>
+                  <p className="changesLedgerText" style={{ whiteSpace: "pre-wrap" }}>{selectedDetail.body}</p>
                   <p className="meta">{t("knowledge.readOnlyHint")}</p>
                   <div className="taskDetailFormActions" style={{ marginTop: 10 }}>
                     <button className="badge" onClick={onDeleteSelected} disabled={loading}>{t("knowledge.delete")}</button>
                   </div>
                 </>
               ) : (
-                <>
-                  <div className="knowledgeEdit">
-                    <label className="taskField">
-                      <span>{t("knowledge.titleField")}</span>
-                      <input value={detailTitle} onChange={(e) => setDetailTitle(e.target.value)} className="taskInput" />
-                    </label>
-                    <label className="taskField">
-                      <span>{t("knowledge.topic")}</span>
-                      <select value={detailTopicId} onChange={(e) => setDetailTopicId(e.target.value)} className="taskInput">
-                        <option value="">{t("knowledge.unclassified")}</option>
-                        {activeTopics.map((topic) => (
-                          <option key={topic.id} value={topic.id}>
-                            {localizeTopicName(topic)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="taskField">
-                      <span>{t("knowledge.tags")}</span>
-                      <input value={detailTags} onChange={(e) => setDetailTags(e.target.value)} className="taskInput" />
-                    </label>
-                    {selectedDetail.type === "playbook" ? (
-                      <>
-                        <label className="taskField">
-                          <span>{t("knowledge.goal")}</span>
-                          <textarea value={detailGoal} onChange={(e) => setDetailGoal(e.target.value)} className="taskInput taskTextArea" rows={2} />
-                        </label>
-                        <label className="taskField">
-                          <span>{t("knowledge.steps")}</span>
-                          <textarea value={detailSteps} onChange={(e) => setDetailSteps(e.target.value)} className="taskInput taskTextArea" rows={3} />
-                        </label>
-                      </>
-                    ) : null}
-                    {selectedDetail.type === "decision" ? (
-                      <>
-                        <label className="taskField">
-                          <span>{t("knowledge.decision")}</span>
-                          <textarea value={detailDecision} onChange={(e) => setDetailDecision(e.target.value)} className="taskInput taskTextArea" rows={2} />
-                        </label>
-                        <label className="taskField">
-                          <span>{t("knowledge.rationale")}</span>
-                          <textarea value={detailRationale} onChange={(e) => setDetailRationale(e.target.value)} className="taskInput taskTextArea" rows={3} />
-                        </label>
-                      </>
-                    ) : null}
-                    {selectedDetail.type === "brief" ? (
-                      <>
-                        <label className="taskField">
-                          <span>{t("knowledge.summary")}</span>
-                          <textarea value={detailSummary} onChange={(e) => setDetailSummary(e.target.value)} className="taskInput taskTextArea" rows={2} />
-                        </label>
-                        <label className="taskField">
-                          <span>{t("knowledge.highlights")}</span>
-                          <textarea value={detailHighlights} onChange={(e) => setDetailHighlights(e.target.value)} className="taskInput taskTextArea" rows={3} />
-                        </label>
-                      </>
-                    ) : null}
-                    <div className="taskDetailFormActions">
-                      <button className="badge" onClick={onSaveDetail} disabled={loading}>{t("knowledge.save")}</button>
-                      <button className="badge" onClick={onArchiveSelected} disabled={loading}>{t("knowledge.archive")}</button>
-                      <button className="badge" onClick={onDeleteSelected} disabled={loading}>{t("knowledge.delete")}</button>
-                    </div>
-                  </div>
-
-                  <div className="knowledgeSection">
-                    <h3 className="changesGroupTitle">{t("knowledge.addEvidence")}</h3>
-                    <input
-                      value={detailSourceRef}
-                      onChange={(e) => setDetailSourceRef(e.target.value)}
-                      placeholder={t("knowledge.placeholderSourceRef")}
-                      className="taskInput"
-                    />
+                <div className="knowledgeEdit">
+                  <label className="taskField">
+                    <span>{t("knowledge.titleField")}</span>
+                    <input value={detailTitle} onChange={(e) => setDetailTitle(e.target.value)} className="taskInput" />
+                  </label>
+                  <label className="taskField">
+                    <span>{t("knowledge.body")}</span>
                     <textarea
-                      value={detailExcerpt}
-                      onChange={(e) => setDetailExcerpt(e.target.value)}
-                      placeholder={t("knowledge.placeholderExcerpt")}
-                      rows={3}
+                      value={detailBody}
+                      onChange={(e) => setDetailBody(e.target.value)}
                       className="taskInput taskTextArea"
+                      rows={10}
                     />
-                    <div className="taskDetailFormActions">
-                      <button className="badge" onClick={onAppendEvidence} disabled={loading}>{t("knowledge.addEvidence")}</button>
-                    </div>
+                  </label>
+                  <label className="taskField">
+                    <span>{t("knowledge.category")}</span>
+                    <select
+                      value={detailCategory}
+                      onChange={(e) => setDetailCategory(e.target.value as KnowledgeCategory)}
+                      className="taskInput"
+                    >
+                      <option value="ops_manual">{t("knowledge.category.ops_manual")}</option>
+                      <option value="mechanism_spec">{t("knowledge.category.mechanism_spec")}</option>
+                      <option value="decision_record">{t("knowledge.category.decision_record")}</option>
+                    </select>
+                  </label>
+                  <div className="taskDetailFormActions">
+                    <button className="badge" onClick={onSaveDetail} disabled={loading}>{t("knowledge.save")}</button>
+                    <button className="badge" onClick={onArchiveSelected} disabled={loading}>{t("knowledge.archive")}</button>
+                    <button className="badge" onClick={onDeleteSelected} disabled={loading}>{t("knowledge.delete")}</button>
                   </div>
-                </>
+                </div>
               )}
             </div>
           ) : (

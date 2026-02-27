@@ -63,6 +63,7 @@ class Note(Base):
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
+    category: Mapped[str] = mapped_column(String(40), nullable=False, default="mechanism_spec")
     tags_json: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
     topic_id: Mapped[Optional[str]] = mapped_column(
         String(40), ForeignKey("topics.id", ondelete="SET NULL"), nullable=True

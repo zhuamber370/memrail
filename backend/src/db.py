@@ -149,7 +149,9 @@ def ensure_runtime_schema(engine) -> None:
         "ALTER TABLE node_logs ADD COLUMN IF NOT EXISTS source_ref TEXT",
         "ALTER TABLE notes ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40)",
         "ALTER TABLE notes ADD COLUMN IF NOT EXISTS status VARCHAR(20)",
+        "ALTER TABLE notes ADD COLUMN IF NOT EXISTS category VARCHAR(40)",
         "UPDATE notes SET status = 'active' WHERE status IS NULL",
+        "UPDATE notes SET category = 'mechanism_spec' WHERE category IS NULL",
         """
         UPDATE route_nodes
         SET status = CASE
@@ -306,6 +308,8 @@ def ensure_runtime_schema(engine) -> None:
         "ALTER TABLE tasks DROP COLUMN IF EXISTS project",
         "ALTER TABLE notes ALTER COLUMN status SET DEFAULT 'active'",
         "ALTER TABLE notes ALTER COLUMN status SET NOT NULL",
+        "ALTER TABLE notes ALTER COLUMN category SET DEFAULT 'mechanism_spec'",
+        "ALTER TABLE notes ALTER COLUMN category SET NOT NULL",
         "ALTER TABLE node_logs ALTER COLUMN log_type SET DEFAULT 'note'",
         "ALTER TABLE node_logs ALTER COLUMN log_type SET NOT NULL",
         """
@@ -487,7 +491,9 @@ def _ensure_runtime_schema_sqlite(engine) -> None:
         _sqlite_add_column_if_missing(conn, "route_nodes", "parent_node_id VARCHAR(40)")
         _sqlite_add_column_if_missing(conn, "node_logs", "log_type VARCHAR(20) NOT NULL DEFAULT 'note'")
         _sqlite_add_column_if_missing(conn, "node_logs", "source_ref TEXT")
+        _sqlite_add_column_if_missing(conn, "notes", "category VARCHAR(40) NOT NULL DEFAULT 'mechanism_spec'")
         conn.execute(text("UPDATE node_logs SET log_type = 'note' WHERE log_type IS NULL"))
+        conn.execute(text("UPDATE notes SET category = 'mechanism_spec' WHERE category IS NULL"))
         conn.execute(
             text(
                 """
