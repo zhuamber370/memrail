@@ -7,7 +7,7 @@ from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from src.models import Journal
+from src.models import Journal, JournalItem
 from src.schemas import JournalUpsertAppendIn
 from src.services.audit_service import log_audit_event
 
@@ -77,6 +77,18 @@ class JournalService:
 
     def get_by_date(self, journal_date: date) -> Optional[Journal]:
         return self.db.scalars(select(Journal).where(Journal.journal_date == journal_date)).first()
+
+    def list_items_by_journal_date(self, journal_date: date) -> list[JournalItem]:
+        journal = self.get_by_date(journal_date)
+        if journal is None:
+            return []
+        return list(
+            self.db.scalars(
+                select(JournalItem)
+                .where(JournalItem.journal_id == journal.id)
+                .order_by(JournalItem.created_at.desc(), JournalItem.id.desc())
+            )
+        )
 
     def _append_block(self, existing: str, addition: str) -> str:
         trimmed = existing.strip()

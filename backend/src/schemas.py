@@ -183,6 +183,24 @@ class JournalListOut(BaseModel):
     total: int
 
 
+class JournalItemOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    journal_id: str
+    kind: str
+    content: str
+    resolution: str
+    task_id: Optional[str]
+    topic_id: Optional[str]
+    ignore_reason: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class JournalItemListOut(BaseModel):
+    items: list[JournalItemOut]
+
+
 SourceType = Literal["text", "url", "doc_id", "message_id"]
 
 
@@ -197,6 +215,23 @@ class InboxOut(BaseModel):
     id: str
     status: str
     captured_at: datetime
+
+
+class InboxDetailOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    content: str
+    source: str
+    status: str
+    captured_at: datetime
+    updated_at: datetime
+
+
+class InboxListOut(BaseModel):
+    items: list[InboxDetailOut]
+    page: int
+    page_size: int
+    total: int
 
 
 class SourceItem(BaseModel):
@@ -238,6 +273,18 @@ class NoteListOut(BaseModel):
     page: int
     page_size: int
     total: int
+
+
+class NoteSourceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    note_id: str
+    source_type: SourceType
+    source_value: str
+
+
+class NoteSourceListOut(BaseModel):
+    items: list[NoteSourceOut]
 
 
 class NoteBatchClassifyIn(BaseModel):
@@ -313,6 +360,27 @@ class LinkOut(BaseModel):
     relation: str
 
 
+class LinkListOut(BaseModel):
+    items: list[LinkOut]
+    page: int
+    page_size: int
+    total: int
+
+
+class TaskSourceOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    task_id: str
+    source_kind: str
+    source_ref: str
+    excerpt: Optional[str]
+    created_at: datetime
+
+
+class TaskSourceListOut(BaseModel):
+    items: list[TaskSourceOut]
+
+
 class ActorRef(BaseModel):
     model_config = ConfigDict(extra="forbid")
     type: Literal["agent", "user"]
@@ -328,6 +396,25 @@ class ChangeActionIn(BaseModel):
         "patch_note",
         "upsert_journal_append",
         "link_entities",
+        "create_idea",
+        "patch_idea",
+        "promote_idea",
+        "create_route",
+        "patch_route",
+        "create_route_node",
+        "patch_route_node",
+        "delete_route_node",
+        "create_route_edge",
+        "patch_route_edge",
+        "delete_route_edge",
+        "append_route_node_log",
+        "create_knowledge",
+        "patch_knowledge",
+        "archive_knowledge",
+        "delete_knowledge",
+        "create_link",
+        "delete_link",
+        "capture_inbox",
     ]
     payload: dict[str, Any]
 

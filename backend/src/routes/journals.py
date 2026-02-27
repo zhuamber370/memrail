@@ -6,7 +6,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from src.schemas import JournalListOut, JournalOut, JournalUpsertAppendIn
+from src.schemas import JournalItemListOut, JournalListOut, JournalOut, JournalUpsertAppendIn
 from src.services.journal_service import JournalService
 
 
@@ -43,5 +43,13 @@ def build_router(get_db_dep):
         if not row:
             raise HTTPException(status_code=404, detail={"code": "JOURNAL_NOT_FOUND", "message": "journal not found"})
         return row
+
+    @router.get("/{journal_date}/items", response_model=JournalItemListOut)
+    def list_journal_items(journal_date: date, db: Session = Depends(get_db_dep)):
+        row = JournalService(db).get_by_date(journal_date)
+        if not row:
+            raise HTTPException(status_code=404, detail={"code": "JOURNAL_NOT_FOUND", "message": "journal not found"})
+        items = JournalService(db).list_items_by_journal_date(journal_date)
+        return {"items": items}
 
     return router

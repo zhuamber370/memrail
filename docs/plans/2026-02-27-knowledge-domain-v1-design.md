@@ -1,10 +1,11 @@
-> Documentation Status: Draft
+> Documentation Status: Historical Snapshot
 > Last updated: 2026-02-27
+> Note: Superseded by current runtime implementation (knowledge is note-backed in `/api/v1/knowledge`).
 
 # Knowledge Domain V1 Design (Agent-First, Independent Domain)
 
 Date: 2026-02-27  
-Status: Confirmed for implementation  
+Status: Historical (superseded design proposal)  
 Scope: Knowledge module only (no cross-module orchestration in this version)
 
 ## 1. Background

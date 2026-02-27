@@ -15,6 +15,7 @@ from src.schemas import (
     TaskListOut,
     TaskOut,
     TaskPatch,
+    TaskSourceListOut,
     TaskViewsSummaryOut,
 )
 from src.services.task_service import TaskService
@@ -98,6 +99,15 @@ def build_router(get_db_dep):
         if not updated:
             raise HTTPException(status_code=404, detail="task not found")
         return updated
+
+    @router.get("/{task_id}/sources", response_model=TaskSourceListOut)
+    def list_task_sources(task_id: str, db: Session = Depends(get_db_dep)):
+        try:
+            items = TaskService(db).list_sources(task_id)
+        except ValueError as exc:
+            code = str(exc)
+            raise HTTPException(status_code=404, detail={"code": code, "message": code.lower()}) from exc
+        return {"items": items}
 
     @router.get("/views/summary", response_model=TaskViewsSummaryOut)
     def task_views_summary(db: Session = Depends(get_db_dep)):

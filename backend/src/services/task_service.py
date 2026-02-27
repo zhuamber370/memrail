@@ -243,6 +243,17 @@ class TaskService:
         )
         return True
 
+    def list_sources(self, task_id: str) -> list[TaskSource]:
+        if self.db.get(Task, task_id) is None:
+            raise ValueError("TASK_NOT_FOUND")
+        return list(
+            self.db.scalars(
+                select(TaskSource)
+                .where(TaskSource.task_id == task_id)
+                .order_by(TaskSource.created_at.desc(), TaskSource.id.desc())
+            )
+        )
+
     def views_summary(self) -> dict[str, int]:
         today = datetime.now(timezone.utc).date()
         views = ["today", "overdue", "this_week", "backlog", "blocked", "done"]

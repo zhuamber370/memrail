@@ -1,14 +1,14 @@
-> Documentation Status: Historical Snapshot
-> Last synced: 2026-02-25
+> Documentation Status: Current
+> Last synced: 2026-02-27
 
-# OpenClaw x Memrail Setup Guide (v3, workspace skill flow)
+# OpenClaw x Memrail Setup Guide (workspace skill flow)
 
 ## Goal
 
 Use Memrail as the governed persistence layer for OpenClaw:
-- write/read tasks, journals, and knowledge through Memrail
-- avoid manual system-prompt paste and manual action wiring
-- enforce proposal-first governance (`dry-run -> commit/reject`)
+- read/write tasks, journals, notes, knowledge, and route data through Memrail
+- use proposal-first governance (`dry-run -> commit/reject`)
+- keep rollback available (`undo_last_commit`)
 
 ## Prerequisites
 
@@ -44,44 +44,56 @@ If `eligible=false`, check `KMS_BASE_URL` and `KMS_API_KEY`, then restart OpenCl
 
 ## Natural-language usage examples
 
-1. Record a todo
+1. Record a todo (proposal)
 ```text
 Record todo:
-Title=...
-Description=...
+Title=Ship API docs sync
+Description=Align README and backend docs
 Priority=P1
-Due=2026-02-28
-Category=top_fx_operations_delivery
+Due=2026-03-02
 ```
 
-2. Append a journal entry
+2. Append a journal entry (proposal)
 ```text
 Append journal:
-Date=2026-02-24
-Content=...
+Date=2026-02-27
+Content=Finished doc/runtime alignment and validated tests.
 ```
 
-3. Upsert knowledge
+3. Upsert note-style knowledge (proposal)
 ```text
 Record topic:
-Title=...
-Body increment=...
-Category=top_fx_product_strategy
-Tags=tag1,tag2
+Title=Release checklist conventions
+Body increment=Always run backend tests before merge.
+Tags=release,quality
 ```
 
-4. Read context
+4. Create structured knowledge record via knowledge API (proposal)
+```text
+Create knowledge:
+Title=Dry-run governance policy
+Body=All agent writes must go through dry-run first.
+Category=decision_record
+```
+
+5. Capture inbox item (proposal)
+```text
+Capture inbox:
+Content=Evaluate MCP integration timeline next sprint.
+```
+
+6. Read context
 ```text
 Get context:
 Intent=planning
 Window days=14
 ```
 
-5. Governance actions
+7. Governance actions
 ```text
 Commit proposal change_set_id=<id>
 Reject proposal change_set_id=<id>
-Undo last commit reason=...
+Undo last commit reason=<reason>
 ```
 
 ## Uninstall skill
@@ -94,6 +106,6 @@ bash scripts/uninstall_openclaw_kms_skill.sh
 ## Troubleshooting
 
 1. On write failures, inspect dry-run output and API error codes first.
-2. Keep `source` stable and traceable to reduce noisy duplicates.
+2. Use `reject_changes` for explicit user rejection.
 3. Use `undo_last_commit` for rollback.
-4. On explicit user rejection, call `reject_changes` to delete the proposal.
+4. If data seems missing, verify the corresponding read endpoint in `docs/guides/agent-api-surface.md`.

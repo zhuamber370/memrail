@@ -19,6 +19,18 @@ test("kms skill exposes comprehensive read actions", () => {
     "list_note_topic_summary",
     "list_routes",
     "list_route_node_logs",
+    "list_links",
+    "list_inbox",
+    "list_knowledge",
+    "list_journal_items",
+    "list_task_sources",
+    "list_note_sources",
+    "propose_create_idea",
+    "propose_create_route",
+    "propose_create_route_node",
+    "propose_create_knowledge",
+    "propose_create_link",
+    "propose_capture_inbox",
     "api_get",
   ];
 

@@ -1,7 +1,7 @@
 ---
 name: kms
 version: 1.0.0
-description: Memrail integration for tasks, journals, and knowledge with dry-run governance by default.
+description: Memrail integration for governed read/write access (tasks, journals, notes, knowledge, routes).
 metadata:
   openclaw:
     emoji: "🗂️"
@@ -13,39 +13,34 @@ metadata:
 
 # Memrail Skill
 
-Use this skill when you need to read or write Memrail data (tasks, journals, knowledge).
+Use this skill when you need to read or write Memrail data.
 
 ## Governance Rules
 
-1. Single source of truth:
-- Tasks, journals, and knowledge are read/written in Memrail only.
+1. Single source of truth
+- Tasks, journals, notes, knowledge, and route execution data are read/written in Memrail only.
 
-2. Explicit write trigger:
+2. Explicit write trigger
 - Write only when the user gives an explicit write command.
 
-3. Task classification is mandatory:
-- Every `propose_record_todo` must include `topic_id`.
-- If user does not provide topic, classify by task text/title keywords.
-- If uncertain, fallback to `top_fx_other`.
-- Never submit `create_task` proposal without `topic_id`.
+3. Dry-run first
+- All `propose_*` actions go through `POST /api/v1/changes/dry-run`.
+- Return proposal summary + `change_set_id` before any commit.
 
-4. Dry-run first:
-- Always call proposal actions first:
-  - `propose_record_todo`
-  - `propose_append_journal`
-  - `propose_upsert_knowledge`
-- Return proposal summary + `change_set_id`.
-
-5. Commit only after confirmation:
+4. Commit only after confirmation
 - Call `commit_changes` only after user confirmation.
-- If user rejects a proposal, call `reject_changes` to delete it.
 
-6. Undo support:
-- Use `undo_last_commit` if user asks rollback.
+5. Reject stale proposals
+- If user rejects a proposal, call `reject_changes`.
 
-7. Source and audit:
-- Every write proposal must include `source`, recommended format:
-  - `chat://openclaw/{thread_id}/{message_range}`
+6. Undo support
+- Use `undo_last_commit` when user requests rollback.
+
+7. Source traceability
+- Include `source`/`source_ref` whenever the target action supports it.
+
+8. Task topic safety
+- For `propose_record_todo`, ensure `topic_id` is present (explicit or inferred/fallback).
 
 ## Read Actions
 
@@ -67,6 +62,14 @@ Use this skill when you need to read or write Memrail data (tasks, journals, kno
 - `search_notes`
 - `list_journals`
 - `get_journal`
+- `list_journal_items`
+- `list_task_sources`
+- `list_note_sources`
+- `list_links`
+- `list_inbox`
+- `get_inbox`
+- `list_knowledge`
+- `get_knowledge`
 - `api_get` (generic GET for any `/api/v1/*` path using `path + params`)
 
 ## Write Actions
@@ -74,6 +77,25 @@ Use this skill when you need to read or write Memrail data (tasks, journals, kno
 - `propose_record_todo`
 - `propose_append_journal`
 - `propose_upsert_knowledge`
+- `propose_capture_inbox`
+- `propose_create_idea`
+- `propose_patch_idea`
+- `propose_promote_idea`
+- `propose_create_route`
+- `propose_patch_route`
+- `propose_create_route_node`
+- `propose_patch_route_node`
+- `propose_delete_route_node`
+- `propose_create_route_edge`
+- `propose_patch_route_edge`
+- `propose_delete_route_edge`
+- `propose_append_route_node_log`
+- `propose_create_knowledge`
+- `propose_patch_knowledge`
+- `propose_archive_knowledge`
+- `propose_delete_knowledge`
+- `propose_create_link`
+- `propose_delete_link`
 - `commit_changes`
 - `reject_changes`
 - `undo_last_commit`

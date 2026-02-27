@@ -29,25 +29,32 @@ Build check:
 npm run build
 ```
 
-## Main Pages (Current)
+## Main Pages (Synced 2026-02-27)
 
 - `/tasks`
   - Task Command Center
   - Search/filter/list/detail in one layout
-  - Task detail card is above DAG (not overlaying the graph)
-  - Execution canvas with node context menu (`...`) operations:
-    - `+ Add Step` inline panel (predecessor auto-locked to selected node)
+  - Task detail card above route graph
+  - Route canvas with node `...` operations:
+    - `+ Add Step`
     - `Set Status` (`waiting / execute / done`)
     - `Rename`
     - `Delete` (leaf node only)
-  - Branch relation type is rendered directly on DAG edges
+  - Edge relation labels rendered on graph
+
 - `/knowledge`
-  - independent structured knowledge workspace
-  - unified list with type/topic/tag filters
-  - typed forms for `playbook | decision | brief`
-  - evidence append/view panel
+  - Knowledge CRUD workspace backed by `/api/v1/knowledge`
+  - List + detail split view
+  - Filters:
+    - status (`active | archived`)
+    - category (`ops_manual | mechanism_spec | decision_record`)
+    - keyword search (`q`)
+  - Create supports category `auto` inference or explicit category
+  - Detail supports edit/archive/delete
+
 - `/changes`
-  - proposal review and commit/reject/undo
+  - Proposal review (diff + summary)
+  - Commit/reject and undo-last operations
 
 ## Task-scoped helper pages
 

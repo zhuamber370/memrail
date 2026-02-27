@@ -3,6 +3,7 @@ from __future__ import annotations
 import uuid
 from typing import Optional
 
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from src.models import Link
@@ -36,6 +37,39 @@ class LinkService:
             target_id=link.id,
         )
         return link
+
+    def list(
+        self,
+        *,
+        page: int,
+        page_size: int,
+        from_type: Optional[str] = None,
+        from_id: Optional[str] = None,
+        to_type: Optional[str] = None,
+        to_id: Optional[str] = None,
+        relation: Optional[str] = None,
+    ) -> tuple[list[Link], int]:
+        stmt = select(Link)
+        count_stmt = select(func.count()).select_from(Link)
+        if from_type:
+            stmt = stmt.where(Link.from_type == from_type)
+            count_stmt = count_stmt.where(Link.from_type == from_type)
+        if from_id:
+            stmt = stmt.where(Link.from_id == from_id)
+            count_stmt = count_stmt.where(Link.from_id == from_id)
+        if to_type:
+            stmt = stmt.where(Link.to_type == to_type)
+            count_stmt = count_stmt.where(Link.to_type == to_type)
+        if to_id:
+            stmt = stmt.where(Link.to_id == to_id)
+            count_stmt = count_stmt.where(Link.to_id == to_id)
+        if relation:
+            stmt = stmt.where(Link.relation == relation)
+            count_stmt = count_stmt.where(Link.relation == relation)
+        stmt = stmt.order_by(Link.created_at.desc()).offset((page - 1) * page_size).limit(page_size)
+        items = list(self.db.scalars(stmt))
+        total = int(self.db.scalar(count_stmt) or 0)
+        return items, total
 
     def delete(self, link_id: str) -> Optional[Link]:
         link = self.db.get(Link, link_id)

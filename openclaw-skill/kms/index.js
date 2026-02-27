@@ -317,6 +317,127 @@ const skill = {
         return client.getJournal(args.journal_date);
       },
     },
+    list_journal_items: {
+      description: "List journal items for a specific journal date",
+      parameters: {
+        type: "object",
+        properties: {
+          journal_date: { type: "string" },
+        },
+        required: ["journal_date"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listJournalItems(args.journal_date);
+      },
+    },
+    list_task_sources: {
+      description: "List source records of a task",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string" },
+        },
+        required: ["task_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listTaskSources(args.task_id);
+      },
+    },
+    list_note_sources: {
+      description: "List source records of a note",
+      parameters: {
+        type: "object",
+        properties: {
+          note_id: { type: "string" },
+        },
+        required: ["note_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listNoteSources(args.note_id);
+      },
+    },
+    list_links: {
+      description: "List entity links with optional filters",
+      parameters: {
+        type: "object",
+        properties: {
+          page: { type: "number", default: 1 },
+          page_size: { type: "number", default: 50 },
+          from_type: { type: "string" },
+          from_id: { type: "string" },
+          to_type: { type: "string" },
+          to_id: { type: "string" },
+          relation: { type: "string" },
+        },
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listLinks(args || {});
+      },
+    },
+    list_inbox: {
+      description: "List inbox items",
+      parameters: {
+        type: "object",
+        properties: {
+          page: { type: "number", default: 1 },
+          page_size: { type: "number", default: 50 },
+          status: { type: "string" },
+        },
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listInbox(args || {});
+      },
+    },
+    get_inbox: {
+      description: "Get one inbox item",
+      parameters: {
+        type: "object",
+        properties: {
+          inbox_id: { type: "string" },
+        },
+        required: ["inbox_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.getInbox(args.inbox_id);
+      },
+    },
+    list_knowledge: {
+      description: "List knowledge items",
+      parameters: {
+        type: "object",
+        properties: {
+          page: { type: "number", default: 1 },
+          page_size: { type: "number", default: 20 },
+          status: { type: "string", default: "active" },
+          category: { type: "string" },
+          q: { type: "string" },
+        },
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.listKnowledge(args || {});
+      },
+    },
+    get_knowledge: {
+      description: "Get one knowledge item",
+      parameters: {
+        type: "object",
+        properties: {
+          item_id: { type: "string" },
+        },
+        required: ["item_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.getKnowledge(args.item_id);
+      },
+    },
     api_get: {
       description: "Generic read-through for any /api/v1/* endpoint",
       parameters: {
@@ -389,6 +510,342 @@ const skill = {
       handler: async (args, context) => {
         const client = createKmsClient(context);
         return client.proposeUpsertKnowledge(args);
+      },
+    },
+    propose_capture_inbox: {
+      description: "Dry-run capture inbox item",
+      parameters: {
+        type: "object",
+        properties: {
+          content: { type: "string" },
+          source: { type: "string" },
+        },
+        required: ["content", "source"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeCaptureInbox(args);
+      },
+    },
+    propose_create_idea: {
+      description: "Dry-run create idea",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string" },
+          title: { type: "string" },
+          problem: { type: "string" },
+          hypothesis: { type: "string" },
+          status: { type: "string" },
+          topic_id: { type: "string" },
+          source: { type: "string" },
+        },
+        required: ["task_id", "title", "source"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeCreateIdea(args);
+      },
+    },
+    propose_patch_idea: {
+      description: "Dry-run patch idea",
+      parameters: {
+        type: "object",
+        properties: {
+          idea_id: { type: "string" },
+          title: { type: "string" },
+          problem: { type: "string" },
+          hypothesis: { type: "string" },
+          status: { type: "string" },
+          topic_id: { type: "string" },
+          source: { type: "string" },
+        },
+        required: ["idea_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposePatchIdea(args);
+      },
+    },
+    propose_promote_idea: {
+      description: "Dry-run promote idea to route node",
+      parameters: {
+        type: "object",
+        properties: {
+          idea_id: { type: "string" },
+          route_id: { type: "string" },
+          node_type: { type: "string", enum: ["goal", "idea"] },
+          title: { type: "string" },
+          description: { type: "string" },
+        },
+        required: ["idea_id", "route_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposePromoteIdea(args);
+      },
+    },
+    propose_create_route: {
+      description: "Dry-run create route",
+      parameters: {
+        type: "object",
+        properties: {
+          task_id: { type: "string" },
+          name: { type: "string" },
+          goal: { type: "string" },
+          status: { type: "string" },
+          priority: { type: "string" },
+          owner: { type: "string" },
+          parent_route_id: { type: "string" },
+        },
+        required: ["task_id", "name"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeCreateRoute(args);
+      },
+    },
+    propose_patch_route: {
+      description: "Dry-run patch route",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+          name: { type: "string" },
+          goal: { type: "string" },
+          status: { type: "string" },
+          priority: { type: "string" },
+          owner: { type: "string" },
+          parent_route_id: { type: "string" },
+        },
+        required: ["route_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposePatchRoute(args);
+      },
+    },
+    propose_create_route_node: {
+      description: "Dry-run create route node",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+          node_type: { type: "string", enum: ["start", "goal", "idea"] },
+          title: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["waiting", "execute", "done"] },
+          parent_node_id: { type: "string" },
+          order_hint: { type: "number" },
+          assignee_type: { type: "string", enum: ["human", "agent"] },
+          assignee_id: { type: "string" },
+        },
+        required: ["route_id", "node_type", "title"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeCreateRouteNode(args);
+      },
+    },
+    propose_patch_route_node: {
+      description: "Dry-run patch route node",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+          node_id: { type: "string" },
+          node_type: { type: "string", enum: ["start", "goal", "idea"] },
+          title: { type: "string" },
+          description: { type: "string" },
+          status: { type: "string", enum: ["waiting", "execute", "done"] },
+          parent_node_id: { type: "string" },
+          order_hint: { type: "number" },
+          assignee_type: { type: "string", enum: ["human", "agent"] },
+          assignee_id: { type: "string" },
+        },
+        required: ["route_id", "node_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposePatchRouteNode(args);
+      },
+    },
+    propose_delete_route_node: {
+      description: "Dry-run delete route node",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+          node_id: { type: "string" },
+        },
+        required: ["route_id", "node_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeDeleteRouteNode(args);
+      },
+    },
+    propose_create_route_edge: {
+      description: "Dry-run create route edge",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+          from_node_id: { type: "string" },
+          to_node_id: { type: "string" },
+          relation: { type: "string", enum: ["refine", "initiate", "handoff"] },
+          description: { type: "string" },
+        },
+        required: ["route_id", "from_node_id", "to_node_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeCreateRouteEdge(args);
+      },
+    },
+    propose_patch_route_edge: {
+      description: "Dry-run patch route edge",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+          edge_id: { type: "string" },
+          description: { type: "string" },
+        },
+        required: ["route_id", "edge_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposePatchRouteEdge(args);
+      },
+    },
+    propose_delete_route_edge: {
+      description: "Dry-run delete route edge",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+          edge_id: { type: "string" },
+        },
+        required: ["route_id", "edge_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeDeleteRouteEdge(args);
+      },
+    },
+    propose_append_route_node_log: {
+      description: "Dry-run append route node log",
+      parameters: {
+        type: "object",
+        properties: {
+          route_id: { type: "string" },
+          node_id: { type: "string" },
+          content: { type: "string" },
+          actor_type: { type: "string", enum: ["human", "agent"] },
+          actor_id: { type: "string" },
+          log_type: { type: "string", enum: ["note", "evidence", "decision", "summary"] },
+          source_ref: { type: "string" },
+        },
+        required: ["route_id", "node_id", "content"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeAppendRouteNodeLog(args);
+      },
+    },
+    propose_create_knowledge: {
+      description: "Dry-run create knowledge item",
+      parameters: {
+        type: "object",
+        properties: {
+          title: { type: "string" },
+          body: { type: "string" },
+          category: { type: "string", enum: ["ops_manual", "mechanism_spec", "decision_record"] },
+        },
+        required: ["title", "body"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeCreateKnowledge(args);
+      },
+    },
+    propose_patch_knowledge: {
+      description: "Dry-run patch knowledge item",
+      parameters: {
+        type: "object",
+        properties: {
+          item_id: { type: "string" },
+          title: { type: "string" },
+          body: { type: "string" },
+          category: { type: "string", enum: ["ops_manual", "mechanism_spec", "decision_record"] },
+          status: { type: "string", enum: ["active", "archived"] },
+        },
+        required: ["item_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposePatchKnowledge(args);
+      },
+    },
+    propose_archive_knowledge: {
+      description: "Dry-run archive knowledge item",
+      parameters: {
+        type: "object",
+        properties: {
+          item_id: { type: "string" },
+        },
+        required: ["item_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeArchiveKnowledge(args);
+      },
+    },
+    propose_delete_knowledge: {
+      description: "Dry-run delete knowledge item",
+      parameters: {
+        type: "object",
+        properties: {
+          item_id: { type: "string" },
+        },
+        required: ["item_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeDeleteKnowledge(args);
+      },
+    },
+    propose_create_link: {
+      description: "Dry-run create link",
+      parameters: {
+        type: "object",
+        properties: {
+          from_type: { type: "string", enum: ["note", "task"] },
+          from_id: { type: "string" },
+          to_type: { type: "string", enum: ["note", "task"] },
+          to_id: { type: "string" },
+          relation: { type: "string" },
+        },
+        required: ["from_type", "from_id", "to_type", "to_id", "relation"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeCreateLink(args);
+      },
+    },
+    propose_delete_link: {
+      description: "Dry-run delete link",
+      parameters: {
+        type: "object",
+        properties: {
+          link_id: { type: "string" },
+        },
+        required: ["link_id"],
+      },
+      handler: async (args, context) => {
+        const client = createKmsClient(context);
+        return client.proposeDeleteLink(args);
       },
     },
     commit_changes: {

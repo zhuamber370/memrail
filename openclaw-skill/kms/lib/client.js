@@ -280,6 +280,43 @@ function createKmsClient(context) {
     return get(`/api/v1/journals/${journalDate}`, {});
   }
 
+  async function listJournalItems(journalDate) {
+    if (!journalDate) throw new Error("journal_date is required");
+    return get(`/api/v1/journals/${journalDate}/items`, {});
+  }
+
+  async function listTaskSources(taskId) {
+    if (!taskId) throw new Error("task_id is required");
+    return get(`/api/v1/tasks/${taskId}/sources`, {});
+  }
+
+  async function listNoteSources(noteId) {
+    if (!noteId) throw new Error("note_id is required");
+    return get(`/api/v1/notes/${noteId}/sources`, {});
+  }
+
+  async function listLinks(params) {
+    return get("/api/v1/links", params || {});
+  }
+
+  async function listInbox(params) {
+    return get("/api/v1/inbox", params || {});
+  }
+
+  async function getInbox(inboxId) {
+    if (!inboxId) throw new Error("inbox_id is required");
+    return get(`/api/v1/inbox/${inboxId}`, {});
+  }
+
+  async function listKnowledge(params) {
+    return get("/api/v1/knowledge", params || {});
+  }
+
+  async function getKnowledge(itemId) {
+    if (!itemId) throw new Error("item_id is required");
+    return get(`/api/v1/knowledge/${itemId}`, {});
+  }
+
   async function getContextBundle(params) {
     return get("/api/v1/context/bundle", params || {});
   }
@@ -398,6 +435,14 @@ function createKmsClient(context) {
       actor: actor || { type: "agent", id: actorId },
       tool: tool || "openclaw-skill",
     });
+  }
+
+  async function proposeSingle(actionType, payload, args) {
+    return proposeChanges(
+      [{ type: actionType, payload }],
+      (args && args.actor) || { type: "agent", id: actorId },
+      (args && args.tool) || "openclaw-skill"
+    );
   }
 
   async function commitChanges(changeSetId, approvedBy, clientRequestId) {
@@ -550,6 +595,222 @@ function createKmsClient(context) {
     return proposeChanges([{ type: "append_note", payload: notePayload }], actor, tool);
   }
 
+  async function proposeCaptureInbox(args) {
+    if (!args.content) throw new Error("content is required");
+    if (!args.source) throw new Error("source is required");
+    return proposeSingle(
+      "capture_inbox",
+      {
+        content: args.content,
+        source: args.source,
+      },
+      args
+    );
+  }
+
+  async function proposeCreateIdea(args) {
+    if (!args.task_id) throw new Error("task_id is required");
+    if (!args.title) throw new Error("title is required");
+    if (!args.source) throw new Error("source is required");
+    const payload = {
+      task_id: args.task_id,
+      title: args.title,
+      problem: args.problem || "",
+      hypothesis: args.hypothesis || "",
+      status: args.status || "captured",
+      source: args.source,
+    };
+    if (args.topic_id) payload.topic_id = args.topic_id;
+    return proposeSingle("create_idea", payload, args);
+  }
+
+  async function proposePatchIdea(args) {
+    if (!args.idea_id) throw new Error("idea_id is required");
+    const payload = { idea_id: args.idea_id };
+    for (const key of ["title", "problem", "hypothesis", "status", "topic_id", "source"]) {
+      if (Object.prototype.hasOwnProperty.call(args, key)) payload[key] = args[key];
+    }
+    if (Object.keys(payload).length <= 1) throw new Error("at least one patch field is required");
+    return proposeSingle("patch_idea", payload, args);
+  }
+
+  async function proposePromoteIdea(args) {
+    if (!args.idea_id) throw new Error("idea_id is required");
+    if (!args.route_id) throw new Error("route_id is required");
+    const payload = {
+      idea_id: args.idea_id,
+      route_id: args.route_id,
+    };
+    if (args.node_type) payload.node_type = args.node_type;
+    if (args.title) payload.title = args.title;
+    if (Object.prototype.hasOwnProperty.call(args, "description")) payload.description = args.description;
+    return proposeSingle("promote_idea", payload, args);
+  }
+
+  async function proposeCreateRoute(args) {
+    if (!args.task_id) throw new Error("task_id is required");
+    if (!args.name) throw new Error("name is required");
+    const payload = {
+      task_id: args.task_id,
+      name: args.name,
+      goal: args.goal || "",
+      status: args.status || "candidate",
+    };
+    if (args.priority) payload.priority = args.priority;
+    if (args.owner) payload.owner = args.owner;
+    if (args.parent_route_id) payload.parent_route_id = args.parent_route_id;
+    return proposeSingle("create_route", payload, args);
+  }
+
+  async function proposePatchRoute(args) {
+    if (!args.route_id) throw new Error("route_id is required");
+    const payload = { route_id: args.route_id };
+    for (const key of ["name", "goal", "status", "priority", "owner", "parent_route_id"]) {
+      if (Object.prototype.hasOwnProperty.call(args, key)) payload[key] = args[key];
+    }
+    if (Object.keys(payload).length <= 1) throw new Error("at least one patch field is required");
+    return proposeSingle("patch_route", payload, args);
+  }
+
+  async function proposeCreateRouteNode(args) {
+    if (!args.route_id) throw new Error("route_id is required");
+    if (!args.node_type) throw new Error("node_type is required");
+    if (!args.title) throw new Error("title is required");
+    const payload = {
+      route_id: args.route_id,
+      node_type: args.node_type,
+      title: args.title,
+      description: args.description || "",
+      status: args.status || "waiting",
+      order_hint: Number.isFinite(args.order_hint) ? Number(args.order_hint) : 0,
+      assignee_type: args.assignee_type || "human",
+    };
+    if (args.parent_node_id) payload.parent_node_id = args.parent_node_id;
+    if (Object.prototype.hasOwnProperty.call(args, "assignee_id")) payload.assignee_id = args.assignee_id;
+    return proposeSingle("create_route_node", payload, args);
+  }
+
+  async function proposePatchRouteNode(args) {
+    if (!args.route_id) throw new Error("route_id is required");
+    if (!args.node_id) throw new Error("node_id is required");
+    const payload = { route_id: args.route_id, node_id: args.node_id };
+    for (const key of [
+      "node_type",
+      "title",
+      "description",
+      "status",
+      "parent_node_id",
+      "order_hint",
+      "assignee_type",
+      "assignee_id",
+    ]) {
+      if (Object.prototype.hasOwnProperty.call(args, key)) payload[key] = args[key];
+    }
+    if (Object.keys(payload).length <= 2) throw new Error("at least one patch field is required");
+    return proposeSingle("patch_route_node", payload, args);
+  }
+
+  async function proposeDeleteRouteNode(args) {
+    if (!args.route_id) throw new Error("route_id is required");
+    if (!args.node_id) throw new Error("node_id is required");
+    return proposeSingle("delete_route_node", { route_id: args.route_id, node_id: args.node_id }, args);
+  }
+
+  async function proposeCreateRouteEdge(args) {
+    if (!args.route_id) throw new Error("route_id is required");
+    if (!args.from_node_id) throw new Error("from_node_id is required");
+    if (!args.to_node_id) throw new Error("to_node_id is required");
+    const payload = {
+      route_id: args.route_id,
+      from_node_id: args.from_node_id,
+      to_node_id: args.to_node_id,
+      relation: args.relation || "refine",
+      description: args.description || "",
+    };
+    return proposeSingle("create_route_edge", payload, args);
+  }
+
+  async function proposePatchRouteEdge(args) {
+    if (!args.route_id) throw new Error("route_id is required");
+    if (!args.edge_id) throw new Error("edge_id is required");
+    const payload = { route_id: args.route_id, edge_id: args.edge_id };
+    if (Object.prototype.hasOwnProperty.call(args, "description")) payload.description = args.description;
+    if (Object.keys(payload).length <= 2) throw new Error("at least one patch field is required");
+    return proposeSingle("patch_route_edge", payload, args);
+  }
+
+  async function proposeDeleteRouteEdge(args) {
+    if (!args.route_id) throw new Error("route_id is required");
+    if (!args.edge_id) throw new Error("edge_id is required");
+    return proposeSingle("delete_route_edge", { route_id: args.route_id, edge_id: args.edge_id }, args);
+  }
+
+  async function proposeAppendRouteNodeLog(args) {
+    if (!args.route_id) throw new Error("route_id is required");
+    if (!args.node_id) throw new Error("node_id is required");
+    if (!args.content) throw new Error("content is required");
+    const payload = {
+      route_id: args.route_id,
+      node_id: args.node_id,
+      content: args.content,
+      actor_type: args.actor_type || "human",
+      actor_id: args.actor_id || "local",
+      log_type: args.log_type || "note",
+    };
+    if (Object.prototype.hasOwnProperty.call(args, "source_ref")) payload.source_ref = args.source_ref;
+    return proposeSingle("append_route_node_log", payload, args);
+  }
+
+  async function proposeCreateKnowledge(args) {
+    if (!args.title) throw new Error("title is required");
+    if (!args.body) throw new Error("body is required");
+    const payload = { title: args.title, body: args.body };
+    if (args.category) payload.category = args.category;
+    return proposeSingle("create_knowledge", payload, args);
+  }
+
+  async function proposePatchKnowledge(args) {
+    if (!args.item_id) throw new Error("item_id is required");
+    const payload = { item_id: args.item_id };
+    for (const key of ["title", "body", "category", "status"]) {
+      if (Object.prototype.hasOwnProperty.call(args, key)) payload[key] = args[key];
+    }
+    if (Object.keys(payload).length <= 1) throw new Error("at least one patch field is required");
+    return proposeSingle("patch_knowledge", payload, args);
+  }
+
+  async function proposeArchiveKnowledge(args) {
+    if (!args.item_id) throw new Error("item_id is required");
+    return proposeSingle("archive_knowledge", { item_id: args.item_id }, args);
+  }
+
+  async function proposeDeleteKnowledge(args) {
+    if (!args.item_id) throw new Error("item_id is required");
+    return proposeSingle("delete_knowledge", { item_id: args.item_id }, args);
+  }
+
+  async function proposeCreateLink(args) {
+    for (const key of ["from_type", "from_id", "to_type", "to_id", "relation"]) {
+      if (!args[key]) throw new Error(`${key} is required`);
+    }
+    return proposeSingle(
+      "create_link",
+      {
+        from_type: args.from_type,
+        from_id: args.from_id,
+        to_type: args.to_type,
+        to_id: args.to_id,
+        relation: args.relation,
+      },
+      args
+    );
+  }
+
+  async function proposeDeleteLink(args) {
+    if (!args.link_id) throw new Error("link_id is required");
+    return proposeSingle("delete_link", { link_id: args.link_id }, args);
+  }
+
   return {
     actorId,
     apiGet,
@@ -569,6 +830,14 @@ function createKmsClient(context) {
     listNoteTopicSummary,
     listJournals,
     getJournal,
+    listJournalItems,
+    listTaskSources,
+    listNoteSources,
+    listLinks,
+    listInbox,
+    getInbox,
+    listKnowledge,
+    getKnowledge,
     getContextBundle,
     proposeChanges,
     commitChanges,
@@ -577,6 +846,25 @@ function createKmsClient(context) {
     proposeRecordTodo,
     proposeAppendJournal,
     proposeUpsertKnowledge,
+    proposeCaptureInbox,
+    proposeCreateIdea,
+    proposePatchIdea,
+    proposePromoteIdea,
+    proposeCreateRoute,
+    proposePatchRoute,
+    proposeCreateRouteNode,
+    proposePatchRouteNode,
+    proposeDeleteRouteNode,
+    proposeCreateRouteEdge,
+    proposePatchRouteEdge,
+    proposeDeleteRouteEdge,
+    proposeAppendRouteNodeLog,
+    proposeCreateKnowledge,
+    proposePatchKnowledge,
+    proposeArchiveKnowledge,
+    proposeDeleteKnowledge,
+    proposeCreateLink,
+    proposeDeleteLink,
   };
 }
 

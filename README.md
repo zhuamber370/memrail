@@ -2,45 +2,39 @@
 
 Memrail is a governed memory + task system for OpenClaw workflows.
 
-It focuses on one core principle:
-- **Agent can propose writes, human keeps final control.**
+Core principle:
+- **Agent proposes writes, human keeps final control.**
 
-## Current Version (MVP)
+## Current Scope (Synced 2026-02-27)
 
 ### 1. Governed write pipeline
 - `dry-run -> commit/reject -> undo-last`
-- Full audit trace for write operations.
+- Batch-level diff, summary, and audit trace for write operations.
 
-### 2. Task Command Center (desktop-first)
-- `Tasks` page is the main execution workspace.
-- Supports search, filters, grouped list, and detail editing in one screen.
-- Task detail card is rendered above the execution graph (no overlay drawer).
-- Includes execution canvas (DAG-like graph) for idea/goal flow.
-- Node operations are context-menu driven (`...` on selected node):
-  - `+ Add Step` (inline panel near the selected node)
-  - `Set Status` (`waiting / execute / done`)
-  - `Rename`
-  - `Delete` (leaf node only, and non-start node)
-- Branch relation type (`refine/initiate/handoff`) is labeled directly on edges.
+### 2. Agent-readable data surface
+Backend exposes read APIs for:
+- `tasks`, `topics`, `cycles`
+- `notes`, `knowledge`, `links`, `inbox`
+- `journals` (+ journal items)
+- `ideas`, `routes` (+ graph and node logs)
+- `changes`, `audit`, `context`
 
-### 3. Knowledge domain (independent)
-- Structured knowledge objects for agent retrieval:
-  - `playbook`, `decision`, `brief`
-- Evidence is required for each knowledge item (`source_ref + excerpt`).
-- `/knowledge` uses unified list + type/topic/tag filters with typed detail forms.
-- Legacy `notes` are preserved for migration, but no longer the primary knowledge UI domain.
-- Migration support is built-in:
-  - `GET /api/v1/knowledge/migration/candidates`
-  - `POST /api/v1/knowledge/migration/commit` (max 20 note IDs per batch)
+### 3. Task Command Center (desktop-first)
+- `/tasks` is the main execution workspace.
+- Search/filter/list/detail in one screen.
+- Execution canvas (route graph) supports node/edge operations and relation labels.
 
-### 4. Change review inbox
-- Human review surface for proposed writes.
-- Commit/reject proposals and undo last commit.
+### 4. Knowledge workspace
+- `/knowledge` is a focused knowledge CRUD console.
+- Current categories:
+  - `ops_manual`
+  - `mechanism_spec`
+  - `decision_record`
+- Status lifecycle: `active | archived`.
 
-### 5. Task-scoped idea page
-- `/ideas` is a task-scoped tool.
-- It requires `task_id` context (opened from task workflow), not top-level nav.
-- Ideas can be promoted to `idea` or `goal` route nodes.
+### 5. Change review inbox
+- `/changes` is the human review surface for agent proposals.
+- Supports commit/reject and undo of last commit.
 
 ## Tech Stack
 - Backend: FastAPI + SQLAlchemy
@@ -132,12 +126,16 @@ openclaw skills check --json
 
 ## Documentation Map
 
-- **Authoritative current docs**:
-  - `README.md`
-  - `backend/README.md`
-  - `frontend/README.md`
-  - `docs/reports/mvp-release-notes.md`
-  - `docs/reports/mvp-e2e-checklist.md`
+Authoritative runtime docs:
+- `README.md`
+- `backend/README.md`
+- `frontend/README.md`
+- `openclaw-skill/kms/SKILL.md`
+- `docs/guides/agent-api-surface.md`
+- `docs/reports/mvp-release-notes.md`
+- `docs/reports/mvp-e2e-checklist.md`
+
+Historical design/planning docs live under `docs/plans/` and are not treated as runtime contracts.
 
 ## Security
 

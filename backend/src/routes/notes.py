@@ -12,6 +12,7 @@ from src.schemas import (
     NoteListOut,
     NoteOut,
     NotePatch,
+    NoteSourceListOut,
     NoteTopicSummaryOut,
 )
 from src.services.note_service import NoteService
@@ -63,6 +64,15 @@ def build_router(get_db_dep):
         if not deleted:
             raise HTTPException(status_code=404, detail={"code": "NOTE_NOT_FOUND", "message": "note not found"})
         return Response(status_code=204)
+
+    @router.get("/{note_id}/sources", response_model=NoteSourceListOut)
+    def list_note_sources(note_id: str, db: Session = Depends(get_db_dep)):
+        try:
+            items = NoteService(db).list_sources(note_id)
+        except ValueError as exc:
+            code = str(exc)
+            raise HTTPException(status_code=404, detail={"code": code, "message": code.lower()}) from exc
+        return {"items": items}
 
     @router.post("/batch-classify", response_model=NoteBatchClassifyOut)
     def batch_classify(payload: NoteBatchClassifyIn, db: Session = Depends(get_db_dep)):

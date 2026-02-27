@@ -181,6 +181,17 @@ class NoteService:
         )
         return True
 
+    def list_sources(self, note_id: str) -> list[NoteSource]:
+        if self.db.get(Note, note_id) is None:
+            raise ValueError("NOTE_NOT_FOUND")
+        return list(
+            self.db.scalars(
+                select(NoteSource)
+                .where(NoteSource.note_id == note_id)
+                .order_by(NoteSource.id.asc())
+            )
+        )
+
     def batch_classify(self, note_ids: list[str], topic_id: str) -> dict:
         self._validate_topic(topic_id)
         unique_ids = list(dict.fromkeys(note_ids))
