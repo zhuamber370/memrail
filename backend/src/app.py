@@ -47,6 +47,8 @@ def create_app(
             "http://localhost:3000",
             "http://127.0.0.1:3000",
         ],
+        # Keep local dev safe while allowing parallel Next.js ports (3001/3002/...).
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
