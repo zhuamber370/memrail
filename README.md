@@ -31,6 +31,84 @@ F --> H[Audit trail]
 H --> I[Undo / rollback (if needed)]
 ```
 
+## Dry-run quickstart (diff preview)
+
+This is the core loop: **dry-run → diff preview → (human) approve → commit**.
+
+### 0) Prereq
+Start backend + frontend (see **Quickstart** below). Then verify:
+
+```bash
+curl -sS http://127.0.0.1:8000/health
+```
+
+### 1) Create a proposal (dry-run) — get diff preview
+
+```bash
+curl -sS -X POST http://127.0.0.1:8000/api/v1/changes/dry-run \
+  -H "Content-Type: application/json" \
+  -d '{
+    "tool": "cli",
+    "actor": { "type": "user", "id": "local" },
+    "actions": [
+      {
+        "type": "create_knowledge",
+        "payload": {
+          "title": "Memrail dry-run demo",
+          "body": "Hello from dry-run. This will only be written after commit.",
+          "category": "mechanism_spec"
+        }
+      }
+    ]
+  }'
+```
+
+**Expected output (example)**
+
+```json
+{
+  "change_set_id": "chg_...",
+  "status": "proposed",
+  "summary": { "knowledge_create": 1, "creates": 1, "updates": 0 },
+  "diff_items": [
+    {
+      "entity": "knowledge",
+      "action": "create",
+      "fields": ["title", "body", "category"],
+      "text": "create_knowledge: title, body, category"
+    }
+  ]
+}
+```
+
+> To reject: simply do not commit this `change_set_id` (or reject it in `/changes` UI).
+
+### 2) Commit the proposal (human approval)
+
+Replace `CHG_ID` with the `change_set_id` returned above:
+
+```bash
+CHG_ID="chg_..."  # <-- replace me
+
+curl -sS -X POST "http://127.0.0.1:8000/api/v1/changes/${CHG_ID}/commit" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "approved_by": { "type": "user", "id": "local" },
+    "client_request_id": "readme-dryrun-quickstart"
+  }'
+```
+
+**Expected output (example)**
+
+```json
+{
+  "commit_id": "cmt_...",
+  "change_set_id": "chg_...",
+  "status": "committed",
+  "committed_at": "..."
+}
+```
+
 ## Start here
 - **Try it locally**: see **Quickstart** below
 - **Use with OpenClaw**: install the `kms` skill (see **OpenClaw Skill** below)
