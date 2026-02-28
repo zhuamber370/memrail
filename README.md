@@ -14,6 +14,7 @@ Quick links:
 - Run full stack: [Quickstart (Local)](#quickstart-local)
 - Integrate with OpenClaw: [INTEGRATION.md](INTEGRATION.md)
 - Runtime/API contract: [docs/guides/agent-api-surface.md](docs/guides/agent-api-surface.md)
+- Production controls: [Safe-to-Write Checklist](docs/guides/safe-to-write-checklist.md)
 
 ## Why Memrail
 
@@ -178,6 +179,7 @@ Integration references:
 ## Docs and Proof
 
 - Full docs index: [docs/README.md](docs/README.md)
+- Safe-to-Write checklist: [docs/guides/safe-to-write-checklist.md](docs/guides/safe-to-write-checklist.md)
 - Runtime/API contract: [docs/guides/agent-api-surface.md](docs/guides/agent-api-surface.md)
 - Proof pack: [docs/proof/README.md](docs/proof/README.md)
 

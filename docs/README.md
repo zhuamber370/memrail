@@ -5,6 +5,7 @@ This is the documentation entrypoint for Memrail.
 ## Start Here
 
 - Product overview and quickstart: [../README.md](../README.md)
+- Safe-to-Write checklist: [guides/safe-to-write-checklist.md](guides/safe-to-write-checklist.md)
 - Contributor onboarding: [../CONTRIBUTING.md](../CONTRIBUTING.md)
 - Integration guide (OpenClaw-first): [../INTEGRATION.md](../INTEGRATION.md)
 
