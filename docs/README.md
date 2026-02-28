@@ -24,6 +24,12 @@ Use these as source of truth for current behavior:
 - Audit events sample: [proof/audit-events-proof.json](proof/audit-events-proof.json)
 - Human reject incident sample: [proof/incident-human-reject.md](proof/incident-human-reject.md)
 
+## Marketing
+
+- Marketing operating system: [marketing/README.md](marketing/README.md)
+- Current launch plan: [marketing/launch-plan-2026-03.md](marketing/launch-plan-2026-03.md)
+- Publish drafts (approval required): [marketing/drafts/](marketing/drafts/)
+
 ## Reports
 
 - MVP release notes: [reports/mvp-release-notes.md](reports/mvp-release-notes.md)
