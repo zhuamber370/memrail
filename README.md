@@ -119,6 +119,13 @@ curl -sS -X POST "http://127.0.0.1:8000/api/v1/changes/${CHG_ID}/commit" \
 
 ![Changes UI: committed](docs/assets/screenshots/changes-ui-committed.png)
 
+## Proof pack (verifiable artifacts)
+
+- `docs/proof/dry-run-response.json` (proposal + diff)
+- `docs/proof/commit-response.json` (commit result)
+- `docs/proof/audit-events-proof.json` (audit trail)
+- `docs/proof/incident-human-reject.md` (rejection scenario)
+
 ## Start here
 - **Try it locally**: see **Quickstart** below
 - **Use with OpenClaw**: install the `kms` skill (see **OpenClaw Skill** below)
