@@ -145,6 +145,32 @@ openclaw skills info kms --json
 openclaw skills check --json
 ```
 
+### How to ask (examples)
+
+The `kms` skill routes **natural-language requests** to Memrail reads/writes.
+
+- **Reads are safe by default**.
+- **Writes require an explicit write intent**, and follow: **dry-run → confirm → commit**.
+
+#### Read examples (no writes)
+
+- "What is the current progress of task 'Agent-first SaaS'? What's the current node and its status?"
+- "Show me the route graph for task 'Agent-first SaaS' and the next steps on the critical path."
+- "List the most recently updated knowledge items (active)."
+- "Search knowledge for 'governed proposals' and summarize the top 3 results."
+
+#### Write examples (will propose a change first)
+
+- "Record this TODO in Memrail: 'Add README how-to-ask examples', priority P1, topic 'Memrail'."
+- "Create a knowledge note (decision_record): title 'Memrail positioning v0', body: ..."
+- "Create a route under task 'Agent-first SaaS': Start → Plan → Implement → Review → Done."
+
+#### Confirm / reject / undo
+
+- "Confirm and commit the proposal."
+- "Reject the proposal." 
+- "Undo the last commit."
+
 ## Contributing
 
 Contributions are welcome! See `CONTRIBUTING.md` and `docs/contributing/dev-setup.md`.
