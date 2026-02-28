@@ -1,0 +1,32 @@
+{
+  "items": [
+    {
+      "event_id": "aud_26ba3a12a066",
+      "occurred_at": "2026-02-28T08:34:51.172173+00:00",
+      "actor": {
+        "type": "user",
+        "id": "local"
+      },
+      "tool": "proof",
+      "action": "changes_apply_action",
+      "target": {
+        "type": "knowledge",
+        "id": "nte_715a84f02ff4"
+      },
+      "source_refs": [],
+      "before_hash": null,
+      "after_hash": null,
+      "metadata": {
+        "request_id": "proof-pack",
+        "change_set_id": "chg_91e96f176a3d",
+        "commit_id": "cmt_aea22e519d24",
+        "action_id": "cha_8bb9fef6b15a",
+        "action_index": 1,
+        "action_type": "create_knowledge"
+      }
+    }
+  ],
+  "page": 1,
+  "page_size": 20,
+  "total": 1
+}
