@@ -1,6 +1,8 @@
 # Memrail
 
-Memrail is the task + knowledge command center for OpenClaw workflows — where agent proposals are governed by human review (with audit + undo).
+Memrail is **OpenClaw’s governed memory & change-governance infrastructure** — a PR-like review layer for agent writes.
+
+Every write becomes a proposal: **dry-run → diff preview → human approve/reject → commit**, with full **audit trail** and **undo**.
 
 ## Why it exists
 OpenClaw-heavy workflows break when:
@@ -15,36 +17,24 @@ Memrail keeps your workflow **executable, governed, and traceable**.
 - One-screen workspace: /tasks + /knowledge + /changes
 - Audit trail for every proposal and commit
 
-## Start here
+## Governance Flow (PR-like changes)
 
+```mermaid
+flowchart LR
+A[Agent / Skill proposes change] --> B[Memrail dry-run]
+B --> C[Diff preview]
+C --> D{Human review}
+D -- Reject --> E[Reject + audit log]
+D -- Approve --> F[Commit]
+F --> G[Writes applied (tasks / notes / knowledge)]
+F --> H[Audit trail]
+H --> I[Undo / rollback (if needed)]
+```
+
+## Start here
 - **Try it locally**: see **Quickstart** below
 - **Use with OpenClaw**: install the `kms` skill (see **OpenClaw Skill** below)
 - **New contributors**: start with <https://github.com/zhuamber370/memrail/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22>
-
-## How to ask (OpenClaw kms skill)
-
-Memrail ships with an OpenClaw skill (`kms`) that routes **natural-language requests** to governed reads/writes.
-
-- **Reads are safe by default**.
-- **Writes require explicit intent** and follow: **dry-run → confirm → commit**.
-
-**Read (no writes)**
-- "What is the current progress of task 'Agent-first SaaS'? What's the current node and its status?"
-- "Show me the route graph for task 'Agent-first SaaS' and the next steps on the critical path."
-- "List the most recently updated knowledge items (active)."
-- "Search knowledge for 'governed proposals' and summarize the top 3 results."
-
-**Write (will propose a change first)**
-- "Record this TODO in Memrail: 'Add README how-to-ask examples', priority P1, topic 'Memrail'."
-- "Create a knowledge note (decision_record): title 'Memrail positioning v0', body: ..."
-- "Create a route under task 'Agent-first SaaS': Start → Plan → Implement → Review → Done."
-
-**Confirm / reject / undo**
-- "Confirm and commit the proposal."
-- "Reject the proposal." 
-- "Undo the last commit."
-
-(Details: `openclaw-skill/kms/SKILL.md`)
 
 ## Screenshots
 > Screenshots use **synthetic test data**.
@@ -175,6 +165,31 @@ Check:
 openclaw skills info kms --json
 openclaw skills check --json
 ```
+
+### How to ask (OpenClaw kms skill)
+
+Memrail ships with an OpenClaw skill (`kms`) that routes **natural-language requests** to governed reads/writes.
+
+- **Reads are safe by default**.
+- **Writes require explicit intent** and follow: **dry-run → confirm → commit**.
+
+**Read (no writes)**
+- "What is the current progress of task 'Agent-first SaaS'? What's the current node and its status?"
+- "Show me the route graph for task 'Agent-first SaaS' and the next steps on the critical path."
+- "List the most recently updated knowledge items (active)."
+- "Search knowledge for 'governed proposals' and summarize the top 3 results."
+
+**Write (will propose a change first)**
+- "Record this TODO in Memrail: 'Add README how-to-ask examples', priority P1, topic 'Memrail'."
+- "Create a knowledge note (decision_record): title 'Memrail positioning v0', body: ..."
+- "Create a route under task 'Agent-first SaaS': Start → Plan → Implement → Review → Done."
+
+**Confirm / reject / undo**
+- "Confirm and commit the proposal."
+- "Reject the proposal."
+- "Undo the last commit."
+
+(Details: `openclaw-skill/kms/SKILL.md`)
 
 ## Contributing
 
