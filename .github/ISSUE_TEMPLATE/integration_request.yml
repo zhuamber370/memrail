@@ -1,0 +1,82 @@
+name: Integration Request
+description: Request help integrating Memrail as a governed memory / change-governance layer (OpenClaw-first)
+title: "[integration] <short summary>"
+labels: ["integration"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for integrating Memrail!
+
+        Memrail is designed as a PR-like governance layer for agent writes:
+        **dry-run → diff preview → human approve/reject → commit → audit (+ undo)**
+
+  - type: dropdown
+    id: integration_type
+    attributes:
+      label: What are you integrating?
+      options:
+        - OpenClaw UI
+        - OpenClaw skill
+        - Route / workflow automation
+        - Other (describe below)
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: target_surface
+    attributes:
+      label: What do you want to govern?
+      options:
+        - label: tasks
+        - label: knowledge
+        - label: notes
+        - label: routes
+        - label: inbox
+
+  - type: dropdown
+    id: approval_mode
+    attributes:
+      label: Preferred approval mode
+      options:
+        - Human review in /changes (default)
+        - Human review + policies (semi-auto)
+        - Policies only (auto-approve)
+    validations:
+      required: true
+
+  - type: textarea
+    id: desired_diff
+    attributes:
+      label: What should the diff look like?
+      description: Fields you need to display, how you want it grouped, any red flags to highlight.
+      placeholder: |
+        Example:
+        - Show title/body/category for knowledge
+        - Highlight large body changes
+        - Require source for certain categories
+
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Your workflow
+      description: Describe what writes happen and where you want Memrail in the loop.
+      placeholder: |
+        Example:
+        1) Agent drafts a knowledge note
+        2) Memrail dry-run returns diff
+        3) Human approves in /changes
+        4) Commit applied and logged
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: OS, Memrail version/commit, OpenClaw version, logs (if any).
+      placeholder: |
+        - OS:
+        - Memrail version/commit:
+        - OpenClaw version:
+        - Logs:
