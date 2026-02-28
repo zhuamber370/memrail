@@ -15,6 +15,12 @@ Memrail keeps your workflow **executable, governed, and traceable**.
 - One-screen workspace: /tasks + /knowledge + /changes
 - Audit trail for every proposal and commit
 
+## Start here
+
+- **Try it locally**: see **Quickstart** below
+- **Use with OpenClaw**: install the `kms` skill (see **OpenClaw Skill** below)
+- **New contributors**: start with <https://github.com/zhuamber370/memrail/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22>
+
 ## How to ask (OpenClaw kms skill)
 
 Memrail ships with an OpenClaw skill (`kms`) that routes **natural-language requests** to governed reads/writes.
@@ -22,19 +28,12 @@ Memrail ships with an OpenClaw skill (`kms`) that routes **natural-language requ
 - **Reads are safe by default**.
 - **Writes require explicit intent** and follow: **dry-run → confirm → commit**.
 
-**Read (no writes)**
-- "What is the current progress of task 'Agent-first SaaS'? What's the current node and its status?"
-- "Show me the route graph for task 'Agent-first SaaS' and the next steps on the critical path."
-- "Search knowledge for 'governed proposals' and summarize the top 3 results."
+Copy/paste examples:
+- Read: "What's the current node + status of task 'Agent-first SaaS'?"
+- Write: "Record this TODO in Memrail: 'Add README how-to-ask examples', priority P1, topic 'Memrail'."
+- Confirm / reject / undo: "Confirm and commit the proposal." / "Reject the proposal." / "Undo the last commit."
 
-**Write (will propose a change first)**
-- "Record this TODO in Memrail: 'Add README how-to-ask examples', priority P1, topic 'Memrail'."
-- "Create a knowledge note (decision_record): title 'Memrail positioning v0', body: ..."
-
-**Confirm / reject / undo**
-- "Confirm and commit the proposal."
-- "Reject the proposal."
-- "Undo the last commit."
+(Details: `openclaw-skill/kms/SKILL.md`)
 
 ## Screenshots
 > Screenshots use **synthetic test data**.
@@ -166,13 +165,12 @@ openclaw skills info kms --json
 openclaw skills check --json
 ```
 
-### How to ask (examples)
-
-See **How to ask (OpenClaw kms skill)** near the top of this README.
-
 ## Contributing
 
 Contributions are welcome! See `CONTRIBUTING.md` and `docs/contributing/dev-setup.md`.
+
+Start here:
+- Good first issues: <https://github.com/zhuamber370/memrail/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22>
 
 If you want to contribute but are unsure where to start, open an issue (or comment on an existing one) and maintainers can point you to a small, high-signal first change.
 
