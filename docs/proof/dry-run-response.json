@@ -1,0 +1,51 @@
+{
+  "change_set_id": "chg_91e96f176a3d",
+  "summary": {
+    "creates": 1,
+    "updates": 0,
+    "duplicate_candidates": 0,
+    "task_create": 0,
+    "task_update": 0,
+    "note_append": 0,
+    "note_patch": 0,
+    "journal_upsert": 0,
+    "idea_create": 0,
+    "idea_patch": 0,
+    "idea_promote": 0,
+    "route_create": 0,
+    "route_patch": 0,
+    "route_node_create": 0,
+    "route_node_patch": 0,
+    "route_node_delete": 0,
+    "route_edge_create": 0,
+    "route_edge_patch": 0,
+    "route_edge_delete": 0,
+    "route_node_log_append": 0,
+    "knowledge_create": 1,
+    "knowledge_patch": 0,
+    "knowledge_archive": 0,
+    "knowledge_delete": 0,
+    "link_create": 0,
+    "link_delete": 0,
+    "inbox_capture": 0,
+    "field_title": 1,
+    "field_body": 1,
+    "field_category": 1
+  },
+  "diff": [
+    "create_knowledge: title, body, category"
+  ],
+  "diff_items": [
+    {
+      "entity": "knowledge",
+      "action": "create",
+      "fields": [
+        "title",
+        "body",
+        "category"
+      ],
+      "text": "create_knowledge: title, body, category"
+    }
+  ],
+  "status": "proposed"
+}
