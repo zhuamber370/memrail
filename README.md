@@ -177,6 +177,25 @@ Contributions are welcome! See `CONTRIBUTING.md` and `docs/contributing/dev-setu
 
 If you want to contribute but are unsure where to start, open an issue (or comment on an existing one) and maintainers can point you to a small, high-signal first change.
 
+### How to file a good issue (examples)
+
+Good issues help maintainers reproduce quickly and help contributors pick up work.
+
+**Bug report**
+- What happened: "When I click **Commit**, the page returns 500 and the proposal stays in Pending."
+- Steps to reproduce:
+  1. Start backend + frontend locally
+  2. Create a proposal via `/changes` (dry-run)
+  3. Click **Commit**
+- Expected: "Commit succeeds and proposal is marked as committed."
+- Environment: OS, browser, repo commit SHA
+- Attachments: logs and screenshots (use synthetic test data)
+
+**Feature request**
+- Problem: "Reviewing large diffs in `/changes` is hard to scan."
+- Proposal: "Add a collapsed view + expand per item."
+- Acceptance criteria: "With 50+ lines, I can expand/collapse sections and still commit/reject safely."
+
 ## Documentation Map
 
 Authoritative runtime docs:
