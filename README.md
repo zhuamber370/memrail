@@ -149,6 +149,8 @@ openclaw skills check --json
 
 Contributions are welcome! See `CONTRIBUTING.md` and `docs/contributing/dev-setup.md`.
 
+If you want to contribute but are unsure where to start, open an issue (or comment on an existing one) and maintainers can point you to a small, high-signal first change.
+
 ## Documentation Map
 
 Authoritative runtime docs:

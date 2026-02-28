@@ -6,6 +6,8 @@ Memrail is an OpenClaw workflow command center where **agent proposals are gover
 
 ## Quick start for contributors
 
+If you want to contribute but feel blocked, comment on the relevant issue — maintainers can point you to the best starting files / components.
+
 1) Read the dev setup guide: `docs/contributing/dev-setup.md`
 
 2) Run the stack locally:
