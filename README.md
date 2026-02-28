@@ -109,6 +109,16 @@ curl -sS -X POST "http://127.0.0.1:8000/api/v1/changes/${CHG_ID}/commit" \
 }
 ```
 
+## UI demo (Changes inbox)
+
+1) Create a proposal (dry-run)
+2) Review diff in `/changes`
+3) Human approves and commits
+
+![Changes UI: dry-run diff preview](docs/assets/screenshots/changes-ui-dryrun.png)
+
+![Changes UI: committed](docs/assets/screenshots/changes-ui-committed.png)
+
 ## Start here
 - **Try it locally**: see **Quickstart** below
 - **Use with OpenClaw**: install the `kms` skill (see **OpenClaw Skill** below)
