@@ -28,10 +28,21 @@ Memrail ships with an OpenClaw skill (`kms`) that routes **natural-language requ
 - **Reads are safe by default**.
 - **Writes require explicit intent** and follow: **dry-run → confirm → commit**.
 
-Copy/paste examples:
-- Read: "What's the current node + status of task 'Agent-first SaaS'?"
-- Write: "Record this TODO in Memrail: 'Add README how-to-ask examples', priority P1, topic 'Memrail'."
-- Confirm / reject / undo: "Confirm and commit the proposal." / "Reject the proposal." / "Undo the last commit."
+**Read (no writes)**
+- "What is the current progress of task 'Agent-first SaaS'? What's the current node and its status?"
+- "Show me the route graph for task 'Agent-first SaaS' and the next steps on the critical path."
+- "List the most recently updated knowledge items (active)."
+- "Search knowledge for 'governed proposals' and summarize the top 3 results."
+
+**Write (will propose a change first)**
+- "Record this TODO in Memrail: 'Add README how-to-ask examples', priority P1, topic 'Memrail'."
+- "Create a knowledge note (decision_record): title 'Memrail positioning v0', body: ..."
+- "Create a route under task 'Agent-first SaaS': Start → Plan → Implement → Review → Done."
+
+**Confirm / reject / undo**
+- "Confirm and commit the proposal."
+- "Reject the proposal." 
+- "Undo the last commit."
 
 (Details: `openclaw-skill/kms/SKILL.md`)
 
