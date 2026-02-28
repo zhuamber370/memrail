@@ -63,7 +63,10 @@ bash scripts/install_openclaw_kms_skill.sh
 
 ## Need help integrating?
 
-Open an **Integration Request** issue (template included) and provide:
+Open an **Integration Request** issue (template included):
+- https://github.com/zhuamber370/memrail/issues/new?template=integration_request.yml
+
+Please include:
 
 - Your target workflow (what is writing what)
 - Where you want human approval to happen
