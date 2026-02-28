@@ -122,6 +122,7 @@ curl -sS -X POST "http://127.0.0.1:8000/api/v1/changes/${CHG_ID}/commit" \
 ## Start here
 - **Try it locally**: see **Quickstart** below
 - **Use with OpenClaw**: install the `kms` skill (see **OpenClaw Skill** below)
+- **Integrate (OpenClaw-first)**: see `INTEGRATION.md` and open an **Integration Request** issue
 - **New contributors**: start with <https://github.com/zhuamber370/memrail/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22>
 
 ## Screenshots
