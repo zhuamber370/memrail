@@ -899,8 +899,10 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     }
   }
 
+  const isExecutionSparse = !flows.length || !dagNodes.positioned.length;
+
   return (
-    <section className="taskExecPanel taskExecPanelV3">
+    <section className={`taskExecPanel taskExecPanelV3${isExecutionSparse ? " taskExecPanelSparse" : ""}`}>
       <div className="taskExecFlowBar">
         <span className="meta">{t("tasks.execution.title")}</span>
       </div>

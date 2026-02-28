@@ -789,7 +789,7 @@ a {
   position: relative;
   display: grid;
   gap: 10px;
-  min-height: 0;
+  min-height: clamp(420px, 56vh, 560px);
   overflow: visible;
 }
 
@@ -937,6 +937,11 @@ a {
   background:
     radial-gradient(880px 200px at 0% -28%, #e9f3ff 0%, transparent 66%),
     #fff;
+}
+
+.taskExecPanelSparse {
+  min-height: clamp(360px, 48vh, 500px);
+  align-content: start;
 }
 
 .taskExecStatusLine {
@@ -2097,6 +2102,10 @@ a {
   }
 
   .taskStudioWorkspace {
+    min-height: 0;
+  }
+
+  .taskExecPanelSparse {
     min-height: 0;
   }
 
