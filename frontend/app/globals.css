@@ -1363,6 +1363,64 @@ a {
   flex-wrap: wrap;
 }
 
+.taskDagLogComposer {
+  display: grid;
+  gap: 6px;
+}
+
+.taskDagLogList {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.taskDagLogItem {
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.taskDagLogHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.72rem;
+}
+
+.taskDagLogActor {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.taskDagLogTime {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+}
+
+.taskDagLogContent {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.taskDagLogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.taskDagLogEditInput {
+  min-height: 72px;
+}
+
 .taskExecFlowBar {
   display: flex;
   justify-content: space-between;

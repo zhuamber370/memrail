@@ -32,6 +32,7 @@ type Step = {
   node_type: StepType;
   status: StepStatus;
   order_hint: number;
+  has_logs: boolean;
 };
 
 type StepEdge = {
@@ -40,12 +41,29 @@ type StepEdge = {
   to_node_id: string;
   relation: StepEdgeRelation;
   description: string;
+  has_logs: boolean;
 };
 
 type FlowGraphOut = {
   route_id: string;
   nodes: Step[];
   edges: StepEdge[];
+};
+
+type EntityLog = {
+  id: string;
+  route_id: string;
+  entity_type: "route_node" | "route_edge";
+  entity_id: string;
+  actor_type: "human" | "agent";
+  actor_id: string;
+  content: string;
+  created_at: string;
+  updated_at: string;
+};
+
+type EntityLogListOut = {
+  items: EntityLog[];
 };
 
 type DagNodeLayout = {
@@ -149,7 +167,11 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
   const [pan, setPan] = useState({ x: DAG_VIEW_PADDING, y: DAG_VIEW_PADDING });
   const [isPanning, setIsPanning] = useState(false);
   const [shouldAutoFitDag, setShouldAutoFitDag] = useState(true);
-  const [inspectorDescriptionDraft, setInspectorDescriptionDraft] = useState("");
+  const [entityLogs, setEntityLogs] = useState<EntityLog[]>([]);
+  const [newLogDraft, setNewLogDraft] = useState("");
+  const [editingLogId, setEditingLogId] = useState("");
+  const [editingLogDraft, setEditingLogDraft] = useState("");
+  const [loadingInspectorLogs, setLoadingInspectorLogs] = useState(false);
 
   const dagViewportRef = useRef<HTMLDivElement | null>(null);
   const nodeMenuPanelRef = useRef<HTMLDivElement | null>(null);
@@ -228,16 +250,13 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     return null;
   }, [selectedEdgeWithContext, selectedStep]);
 
-  const inspectorPersistedDescription = useMemo(() => {
-    if (!inspectorTarget) return "";
-    if (inspectorTarget.kind === "edge") return inspectorTarget.edge.description ?? "";
-    return inspectorTarget.node.description ?? "";
-  }, [inspectorTarget]);
-
-  const inspectorDescriptionDirty = useMemo(
-    () => inspectorDescriptionDraft !== inspectorPersistedDescription,
-    [inspectorDescriptionDraft, inspectorPersistedDescription]
-  );
+  const inspectorLogsBasePath = useMemo(() => {
+    if (!selectedFlowId || !inspectorTarget) return "";
+    if (inspectorTarget.kind === "edge") {
+      return `/api/v1/routes/${selectedFlowId}/edges/${inspectorTarget.edge.id}/logs`;
+    }
+    return `/api/v1/routes/${selectedFlowId}/nodes/${inspectorTarget.node.id}/logs`;
+  }, [inspectorTarget, selectedFlowId]);
 
   const createStepStatuses = useMemo(
     () => createStatusOptions(newStepType),
@@ -583,6 +602,24 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     }
   }
 
+  async function loadInspectorLogs(logBasePath: string) {
+    if (!logBasePath) {
+      setEntityLogs([]);
+      return;
+    }
+    setLoadingInspectorLogs(true);
+    setError("");
+    try {
+      const result = await apiGet<EntityLogListOut>(logBasePath);
+      setEntityLogs(result.items);
+    } catch (e) {
+      setError((e as Error).message);
+      setEntityLogs([]);
+    } finally {
+      setLoadingInspectorLogs(false);
+    }
+  }
+
   useEffect(() => {
     void loadFlows();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -649,8 +686,19 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
   }, [edges, selectedEdgeId]);
 
   useEffect(() => {
-    setInspectorDescriptionDraft(inspectorPersistedDescription);
-  }, [inspectorPersistedDescription, inspectorTargetKey]);
+    if (!inspectorTarget || !inspectorLogsBasePath) {
+      setEntityLogs([]);
+      setNewLogDraft("");
+      setEditingLogId("");
+      setEditingLogDraft("");
+      return;
+    }
+    setNewLogDraft("");
+    setEditingLogId("");
+    setEditingLogDraft("");
+    void loadInspectorLogs(inspectorLogsBasePath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inspectorLogsBasePath, inspectorTargetKey]);
 
   useEffect(() => {
     if (!shouldAutoFitDag || !dagNodes.positioned.length) return;
@@ -877,20 +925,59 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     }
   }
 
-  async function onSaveInspectorDescription() {
-    if (!selectedFlowId || !inspectorTarget || !inspectorDescriptionDirty) return;
+  async function onAppendInspectorLog() {
+    if (!selectedFlowId || !inspectorLogsBasePath || !newLogDraft.trim()) return;
     setSavingInspector(true);
     setError("");
     try {
-      if (inspectorTarget.kind === "edge") {
-        await apiPatch(`/api/v1/routes/${selectedFlowId}/edges/${inspectorTarget.edge.id}`, {
-          description: inspectorDescriptionDraft
-        });
-      } else {
-        await apiPatch(`/api/v1/routes/${selectedFlowId}/nodes/${inspectorTarget.node.id}`, {
-          description: inspectorDescriptionDraft
-        });
+      await apiPost(inspectorLogsBasePath, {
+        content: newLogDraft.trim(),
+        actor_type: "human",
+        actor_id: "local"
+      });
+      setNewLogDraft("");
+      await loadInspectorLogs(inspectorLogsBasePath);
+      await loadGraph(selectedFlowId);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingInspector(false);
+    }
+  }
+
+  function onStartEditInspectorLog(log: EntityLog) {
+    setEditingLogId(log.id);
+    setEditingLogDraft(log.content);
+  }
+
+  async function onSaveInspectorLog(logId: string) {
+    if (!selectedFlowId || !inspectorLogsBasePath || !editingLogDraft.trim()) return;
+    setSavingInspector(true);
+    setError("");
+    try {
+      await apiPatch(`${inspectorLogsBasePath}/${logId}`, { content: editingLogDraft.trim() });
+      setEditingLogId("");
+      setEditingLogDraft("");
+      await loadInspectorLogs(inspectorLogsBasePath);
+      await loadGraph(selectedFlowId);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setSavingInspector(false);
+    }
+  }
+
+  async function onDeleteInspectorLog(logId: string) {
+    if (!selectedFlowId || !inspectorLogsBasePath) return;
+    setSavingInspector(true);
+    setError("");
+    try {
+      await apiDelete(`${inspectorLogsBasePath}/${logId}`);
+      if (editingLogId === logId) {
+        setEditingLogId("");
+        setEditingLogDraft("");
       }
+      await loadInspectorLogs(inspectorLogsBasePath);
       await loadGraph(selectedFlowId);
     } catch (e) {
       setError((e as Error).message);
@@ -1251,35 +1338,104 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                           </p>
                         </div>
                       )}
-                      <label className="taskField">
-                        <span>{t("tasks.execution.descriptionLabel")}</span>
-                        <textarea
-                          className="taskInput taskTextArea"
-                          value={inspectorDescriptionDraft}
-                          onChange={(event) => setInspectorDescriptionDraft(event.target.value)}
-                          placeholder={
-                            inspectorTarget.kind === "edge"
-                              ? t("tasks.execution.descriptionPlaceholderEdge")
-                              : t("tasks.execution.descriptionPlaceholderNode")
-                          }
-                        />
-                      </label>
-                      <div className="taskDagInspectorActions">
-                        <button
-                          className="badge"
-                          onClick={onSaveInspectorDescription}
-                          disabled={savingInspector || !inspectorDescriptionDirty}
-                        >
-                          {t("tasks.execution.saveDescription")}
-                        </button>
-                        <button
-                          className="badge"
-                          onClick={() => setInspectorDescriptionDraft(inspectorPersistedDescription)}
-                          disabled={savingInspector || !inspectorDescriptionDirty}
-                        >
-                          {t("tasks.resetDetail")}
-                        </button>
+                      <div className="taskDagLogComposer">
+                        <label className="taskField">
+                          <span>{t("tasks.execution.logs")}</span>
+                          <textarea
+                            className="taskInput taskTextArea"
+                            value={newLogDraft}
+                            onChange={(event) => setNewLogDraft(event.target.value)}
+                            placeholder={
+                              inspectorTarget.kind === "edge"
+                                ? t("tasks.execution.logPlaceholderEdge")
+                                : t("tasks.execution.logPlaceholderNode")
+                            }
+                          />
+                        </label>
+                        <div className="taskDagInspectorActions">
+                          <button
+                            className="badge"
+                            onClick={onAppendInspectorLog}
+                            disabled={savingInspector || !newLogDraft.trim()}
+                          >
+                            {t("tasks.execution.addLog")}
+                          </button>
+                        </div>
                       </div>
+                      {loadingInspectorLogs ? (
+                        <p className="meta">{t("tasks.execution.loadingLogs")}</p>
+                      ) : entityLogs.length ? (
+                        <div className="taskDagLogList">
+                          {entityLogs.map((log) => {
+                            const isEditing = editingLogId === log.id;
+                            return (
+                              <article key={log.id} className="taskDagLogItem">
+                                <div className="taskDagLogHeader">
+                                  <span className="taskDagLogActor">{log.actor_id}</span>
+                                  <time className="taskDagLogTime">
+                                    {new Date(log.updated_at || log.created_at).toLocaleString()}
+                                  </time>
+                                </div>
+                                {isEditing ? (
+                                  <textarea
+                                    className="taskInput taskTextArea taskDagLogEditInput"
+                                    value={editingLogDraft}
+                                    onChange={(event) => setEditingLogDraft(event.target.value)}
+                                  />
+                                ) : (
+                                  <p className="taskDagLogContent">{log.content}</p>
+                                )}
+                                <div className="taskDagLogActions">
+                                  {isEditing ? (
+                                    <>
+                                      <button
+                                        className="badge"
+                                        onClick={() => {
+                                          void onSaveInspectorLog(log.id);
+                                        }}
+                                        disabled={savingInspector || !editingLogDraft.trim()}
+                                      >
+                                        {t("tasks.execution.saveLog")}
+                                      </button>
+                                      <button
+                                        className="badge"
+                                        onClick={() => {
+                                          setEditingLogId("");
+                                          setEditingLogDraft("");
+                                        }}
+                                        disabled={savingInspector}
+                                      >
+                                        {t("tasks.cancel")}
+                                      </button>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <button
+                                        className="badge"
+                                        onClick={() => onStartEditInspectorLog(log)}
+                                        disabled={savingInspector}
+                                      >
+                                        {t("tasks.execution.editLog")}
+                                      </button>
+                                      <button
+                                        className="badge"
+                                        onClick={() => {
+                                          void onDeleteInspectorLog(log.id);
+                                        }}
+                                        disabled={savingInspector}
+                                      >
+                                        {t("tasks.delete")}
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="meta">{t("tasks.execution.noLogs")}</p>
+                      )}
                     </>
                   ) : (
                     <p className="meta">{t("tasks.execution.inspectorEmpty")}</p>
