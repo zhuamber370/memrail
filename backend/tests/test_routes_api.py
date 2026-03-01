@@ -292,6 +292,82 @@ def test_append_typed_node_log():
     assert item["source_ref"] == "https://example.com/report"
 
 
+def test_node_log_compatibility_get_still_readable():
+    client = make_client()
+    task_id = create_test_task(client, prefix="node_log_compat_get_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('node_log_compat_get')}",
+            "goal": "node log compatibility",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    node = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "Compat Node", "description": ""},
+    )
+    assert node.status_code == 201
+    node_id = node.json()["id"]
+
+    created = client.post(
+        f"/api/v1/routes/{route_id}/nodes/{node_id}/logs",
+        json={
+            "content": f"compat-log-{uniq('entry')}",
+            "log_type": "evidence",
+            "source_ref": "https://example.com/compat",
+            "actor_type": "human",
+            "actor_id": "tester",
+        },
+    )
+    assert created.status_code == 201
+
+    listed = client.get(f"/api/v1/routes/{route_id}/nodes/{node_id}/logs")
+    assert listed.status_code == 200
+    item = next(row for row in listed.json()["items"] if row["id"] == created.json()["id"])
+    assert item["log_type"] == "evidence"
+    assert item["source_ref"] == "https://example.com/compat"
+
+
+def test_node_log_compatibility_snapshot_include_logs_survives_fetch_error():
+    import sys
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[2]
+    if str(repo_root) not in sys.path:
+        sys.path.append(str(repo_root))
+    from skill.openclaw_skill import KmsClient
+
+    client = KmsClient(base_url="http://localhost:8000", api_key="dummy")
+    client.list_routes = lambda **_: {  # type: ignore[method-assign]
+        "items": [{"id": "rte_active", "status": "active"}]
+    }
+    client.get_route_graph = lambda _route_id: {  # type: ignore[method-assign]
+        "nodes": [
+            {"id": "n1", "node_type": "goal", "status": "execute"},
+            {"id": "n2", "node_type": "goal", "status": "waiting"},
+        ],
+        "edges": [],
+    }
+
+    def _get_node_logs(_route_id: str, node_id: str):
+        if node_id == "n1":
+            raise RuntimeError("temporary node log failure")
+        return {"items": [{"id": "nlg_ok", "content": "ok"}]}
+
+    client.get_node_logs = _get_node_logs  # type: ignore[method-assign]
+
+    snapshot = client.get_task_execution_snapshot(task_id="tsk_snapshot", include_logs=True)
+    selected = snapshot["route_snapshots"][0]["node_logs"]
+    assert selected["n1"] == []
+    assert selected["n2"][0]["id"] == "nlg_ok"
+
+
 def test_route_edge_logs_crud_placeholder_fails_initially():
     client = make_client()
     task_id = create_test_task(client, prefix="route_edge_log_placeholder_task")
