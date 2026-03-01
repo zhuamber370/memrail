@@ -314,9 +314,10 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
       computeLevel(node.id);
     }
 
+    const levelByNodeId = levelMemo;
     const levelMap = new Map<number, Step[]>();
     for (const node of graphNodes) {
-      const level = levelMemo.get(node.id) ?? 0;
+      const level = levelByNodeId.get(node.id) ?? 0;
       levelMap.set(level, [...(levelMap.get(level) ?? []), node]);
     }
 
@@ -343,24 +344,50 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
       dependentsByStepId.set(edge.from_node_id, [...(dependentsByStepId.get(edge.from_node_id) ?? []), edge.to_node_id]);
     }
 
-    const sortByAnchors = (
-      nodes: Step[],
-      anchorRows: Map<string, number>,
-      anchorIdsForNode: (nodeId: string) => string[]
-    ) => {
-      return [...nodes].sort((left, right) => {
-        const leftRows = anchorIdsForNode(left.id)
+    const edgesByLevelPair = new Map<string, Array<{ fromNodeId: string; toNodeId: string }>>();
+    for (const edge of edges) {
+      const fromLevel = levelByNodeId.get(edge.from_node_id);
+      const toLevel = levelByNodeId.get(edge.to_node_id);
+      if (fromLevel === undefined || toLevel === undefined || fromLevel >= toLevel) continue;
+      const key = `${fromLevel}->${toLevel}`;
+      const current = edgesByLevelPair.get(key);
+      if (current) {
+        current.push({ fromNodeId: edge.from_node_id, toNodeId: edge.to_node_id });
+      } else {
+        edgesByLevelPair.set(key, [{ fromNodeId: edge.from_node_id, toNodeId: edge.to_node_id }]);
+      }
+    }
+
+    const mean = (items: number[]): number => items.reduce((acc, value) => acc + value, 0) / items.length;
+
+    const buildOrderByNodeId = () => {
+      const orderMap = new Map<string, number>();
+      let cursor = 0;
+      levels.forEach(({ nodes }) => {
+        nodes.forEach((node) => {
+          orderMap.set(node.id, cursor);
+          cursor += 1;
+        });
+      });
+      return orderMap;
+    };
+
+    const sortLevelByAnchors = (levelIndex: number, anchorIdsForNode: (nodeId: string) => string[]) => {
+      if (levelIndex < 0 || levelIndex >= levels.length) return;
+      const anchorRows = buildOrderByNodeId();
+      levels[levelIndex].nodes = [...levels[levelIndex].nodes].sort((left, right) => {
+        const leftAnchors = anchorIdsForNode(left.id)
           .map((nodeId) => anchorRows.get(nodeId))
           .filter((value): value is number => value !== undefined);
-        const rightRows = anchorIdsForNode(right.id)
+        const rightAnchors = anchorIdsForNode(right.id)
           .map((nodeId) => anchorRows.get(nodeId))
           .filter((value): value is number => value !== undefined);
 
-        const leftScore = leftRows.length ? leftRows.reduce((acc, value) => acc + value, 0) / leftRows.length : Number.NaN;
-        const rightScore = rightRows.length ? rightRows.reduce((acc, value) => acc + value, 0) / rightRows.length : Number.NaN;
-
+        const leftScore = leftAnchors.length ? mean(leftAnchors) : Number.NaN;
+        const rightScore = rightAnchors.length ? mean(rightAnchors) : Number.NaN;
         const leftHasScore = Number.isFinite(leftScore);
         const rightHasScore = Number.isFinite(rightScore);
+
         if (leftHasScore && rightHasScore && leftScore !== rightScore) return leftScore - rightScore;
         if (leftHasScore && !rightHasScore) return -1;
         if (!leftHasScore && rightHasScore) return 1;
@@ -369,44 +396,146 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
       });
     };
 
-    for (let sweep = 0; sweep < 2; sweep += 1) {
-      for (let levelIndex = 1; levelIndex < levels.length; levelIndex += 1) {
-        const parentRows = new Map<string, number>();
-        for (let parentLevelIndex = 0; parentLevelIndex < levelIndex; parentLevelIndex += 1) {
-          levels[parentLevelIndex].nodes.forEach((node, rowIndex) => {
-            parentRows.set(node.id, rowIndex);
-          });
+    const countCrossingsBetween = (leftLevelIndex: number, rightLevelIndex: number): number => {
+      if (leftLevelIndex < 0 || rightLevelIndex >= levels.length || leftLevelIndex >= rightLevelIndex) return 0;
+      const leftLevel = levels[leftLevelIndex];
+      const rightLevel = levels[rightLevelIndex];
+      const connections = edgesByLevelPair.get(`${leftLevel.level}->${rightLevel.level}`) ?? [];
+      if (connections.length < 2) return 0;
+
+      const leftOrder = new Map<string, number>();
+      leftLevel.nodes.forEach((node, index) => leftOrder.set(node.id, index));
+      const rightOrder = new Map<string, number>();
+      rightLevel.nodes.forEach((node, index) => rightOrder.set(node.id, index));
+
+      const routed = connections
+        .map((connection) => {
+          const fromOrder = leftOrder.get(connection.fromNodeId);
+          const toOrder = rightOrder.get(connection.toNodeId);
+          if (fromOrder === undefined || toOrder === undefined) return null;
+          return { fromOrder, toOrder };
+        })
+        .filter((item): item is { fromOrder: number; toOrder: number } => item !== null)
+        .sort((a, b) => a.fromOrder - b.fromOrder || a.toOrder - b.toOrder);
+
+      let crossings = 0;
+      for (let leftIndex = 0; leftIndex < routed.length; leftIndex += 1) {
+        for (let rightIndex = leftIndex + 1; rightIndex < routed.length; rightIndex += 1) {
+          if (routed[leftIndex].fromOrder === routed[rightIndex].fromOrder) continue;
+          if (routed[leftIndex].toOrder > routed[rightIndex].toOrder) crossings += 1;
         }
-        levels[levelIndex].nodes = sortByAnchors(
-          levels[levelIndex].nodes,
-          parentRows,
-          (nodeId) => dependenciesByStepId.get(nodeId) ?? []
+      }
+      return crossings;
+    };
+
+    const countLocalCrossings = (levelIndex: number): number => {
+      return countCrossingsBetween(levelIndex - 1, levelIndex) + countCrossingsBetween(levelIndex, levelIndex + 1);
+    };
+
+    const improveCrossingsBySwap = (levelIndex: number) => {
+      if (levelIndex <= 0 || levelIndex >= levels.length) return;
+      let changed = true;
+      while (changed) {
+        changed = false;
+        for (let index = 0; index < levels[levelIndex].nodes.length - 1; index += 1) {
+          const before = countLocalCrossings(levelIndex);
+          const nodes = levels[levelIndex].nodes;
+          [nodes[index], nodes[index + 1]] = [nodes[index + 1], nodes[index]];
+          const after = countLocalCrossings(levelIndex);
+          if (after < before) {
+            changed = true;
+          } else {
+            [nodes[index], nodes[index + 1]] = [nodes[index + 1], nodes[index]];
+          }
+        }
+      }
+    };
+
+    for (let sweep = 0; sweep < 6; sweep += 1) {
+      for (let levelIndex = 1; levelIndex < levels.length; levelIndex += 1) {
+        const currentLevelValue = levels[levelIndex].level;
+        sortLevelByAnchors(levelIndex, (nodeId) =>
+          (dependenciesByStepId.get(nodeId) ?? []).filter(
+            (parentId) => (levelByNodeId.get(parentId) ?? Number.NEGATIVE_INFINITY) < currentLevelValue
+          )
         );
+        improveCrossingsBySwap(levelIndex);
       }
 
       for (let levelIndex = levels.length - 2; levelIndex >= 0; levelIndex -= 1) {
-        const childRows = new Map<string, number>();
-        for (let childLevelIndex = levelIndex + 1; childLevelIndex < levels.length; childLevelIndex += 1) {
-          levels[childLevelIndex].nodes.forEach((node, rowIndex) => {
-            childRows.set(node.id, rowIndex);
-          });
-        }
-        levels[levelIndex].nodes = sortByAnchors(
-          levels[levelIndex].nodes,
-          childRows,
-          (nodeId) => dependentsByStepId.get(nodeId) ?? []
+        const currentLevelValue = levels[levelIndex].level;
+        sortLevelByAnchors(levelIndex, (nodeId) =>
+          (dependentsByStepId.get(nodeId) ?? []).filter(
+            (childId) => (levelByNodeId.get(childId) ?? Number.POSITIVE_INFINITY) > currentLevelValue
+          )
         );
+        improveCrossingsBySwap(levelIndex);
       }
     }
+
+    const nodeRowById = new Map<string, number>();
+    const centerByLevelIndex = new Map<number, number>();
+
+    const assignRowsForLevel = (levelIndex: number, centerRow: number) => {
+      const nodes = levels[levelIndex].nodes;
+      const startRow = centerRow - (nodes.length - 1) / 2;
+      nodes.forEach((node, offset) => {
+        nodeRowById.set(node.id, startRow + offset);
+      });
+      centerByLevelIndex.set(levelIndex, centerRow);
+    };
+
+    for (let levelIndex = 0; levelIndex < levels.length; levelIndex += 1) {
+      const nodes = levels[levelIndex].nodes;
+      const parentRows = nodes
+        .flatMap((node) => dependenciesByStepId.get(node.id) ?? [])
+        .map((parentId) => nodeRowById.get(parentId))
+        .filter((value): value is number => value !== undefined);
+      const centerRow =
+        parentRows.length > 0
+          ? mean(parentRows)
+          : centerByLevelIndex.get(levelIndex - 1) ?? 0;
+      assignRowsForLevel(levelIndex, centerRow);
+    }
+
+    for (let smoothSweep = 0; smoothSweep < 2; smoothSweep += 1) {
+      for (let levelIndex = levels.length - 2; levelIndex >= 0; levelIndex -= 1) {
+        const nodes = levels[levelIndex].nodes;
+        const childRows = nodes
+          .flatMap((node) => dependentsByStepId.get(node.id) ?? [])
+          .map((childId) => nodeRowById.get(childId))
+          .filter((value): value is number => value !== undefined);
+        if (!childRows.length) continue;
+        const currentCenter = centerByLevelIndex.get(levelIndex) ?? 0;
+        assignRowsForLevel(levelIndex, (currentCenter + mean(childRows)) / 2);
+      }
+
+      for (let levelIndex = 1; levelIndex < levels.length; levelIndex += 1) {
+        const nodes = levels[levelIndex].nodes;
+        const parentRows = nodes
+          .flatMap((node) => dependenciesByStepId.get(node.id) ?? [])
+          .map((parentId) => nodeRowById.get(parentId))
+          .filter((value): value is number => value !== undefined);
+        if (!parentRows.length) continue;
+        const currentCenter = centerByLevelIndex.get(levelIndex) ?? 0;
+        assignRowsForLevel(levelIndex, (currentCenter + mean(parentRows)) / 2);
+      }
+    }
+
+    const positionedRows = [...nodeRowById.values()];
+    const minRow = Math.min(...positionedRows);
+    const maxRow = Math.max(...positionedRows);
+    const rowOffset = minRow < 0 ? -minRow : 0;
 
     const positioned: DagNodeLayout[] = [];
     for (const { level, nodes } of levels) {
       nodes.forEach((node, index) => {
+        const row = (nodeRowById.get(node.id) ?? index) + rowOffset;
         positioned.push({
           node,
           level,
           x: DAG_PADDING_X + level * (DAG_NODE_WIDTH + DAG_COLUMN_GAP),
-          y: DAG_PADDING_Y + index * (DAG_NODE_HEIGHT + DAG_ROW_GAP)
+          y: DAG_PADDING_Y + row * (DAG_NODE_HEIGHT + DAG_ROW_GAP)
         });
       });
     }
@@ -415,13 +544,13 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     positioned.forEach((item) => positionedById.set(item.node.id, item));
 
     const maxLevel = Math.max(...positioned.map((item) => item.level), 0);
-    const maxRows = Math.max(...levels.map((item) => item.nodes.length), 1);
+    const rowSpan = maxRow - minRow;
 
     return {
       positioned,
       positionedById,
       width: DAG_PADDING_X * 2 + (maxLevel + 1) * DAG_NODE_WIDTH + maxLevel * DAG_COLUMN_GAP,
-      height: DAG_PADDING_Y * 2 + maxRows * DAG_NODE_HEIGHT + (maxRows - 1) * DAG_ROW_GAP
+      height: Math.ceil(DAG_PADDING_Y * 2 + DAG_NODE_HEIGHT + Math.max(rowSpan, 0) * (DAG_NODE_HEIGHT + DAG_ROW_GAP))
     };
   }, [sortedSteps, dependenciesByStepId, stepById, edges]);
 
