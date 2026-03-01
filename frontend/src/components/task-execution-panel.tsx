@@ -2,6 +2,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import dagre from "@dagrejs/dagre";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import { useI18n } from "../i18n";
@@ -200,14 +201,6 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     return map;
   }, [sortedSteps]);
 
-  const dependenciesByStepId = useMemo(() => {
-    const map = new Map<string, string[]>();
-    for (const edge of edges) {
-      map.set(edge.to_node_id, [...(map.get(edge.to_node_id) ?? []), edge.from_node_id]);
-    }
-    return map;
-  }, [edges]);
-
   const startNode = useMemo(
     () => sortedSteps.find((step) => step.node_type === "start") ?? null,
     [sortedSteps]
@@ -285,274 +278,87 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
       };
     }
 
-    const nodeIdSet = new Set(graphNodes.map((item) => item.id));
-    const levelMemo = new Map<string, number>();
+    const layoutGraph = new dagre.graphlib.Graph();
+    layoutGraph.setGraph({
+      rankdir: "LR",
+      ranksep: DAG_COLUMN_GAP + Math.round(DAG_NODE_WIDTH / 2),
+      nodesep: DAG_ROW_GAP + Math.round(DAG_NODE_HEIGHT / 2),
+      edgesep: Math.max(18, DAG_ROW_GAP * 2),
+      marginx: DAG_PADDING_X,
+      marginy: DAG_PADDING_Y,
+      ranker: "network-simplex",
+      acyclicer: "greedy"
+    });
+    layoutGraph.setDefaultEdgeLabel(() => ({}));
 
-    const computeLevel = (nodeId: string, trail = new Set<string>()): number => {
-      if (levelMemo.has(nodeId)) return levelMemo.get(nodeId) as number;
-      if (trail.has(nodeId)) return 0;
-      trail.add(nodeId);
-      const node = stepById.get(nodeId);
-      if (!node || node.node_type === "start") {
-        levelMemo.set(nodeId, 0);
-        trail.delete(nodeId);
-        return 0;
-      }
-      const parents = (dependenciesByStepId.get(nodeId) ?? []).filter((candidateId) => nodeIdSet.has(candidateId));
-      if (!parents.length) {
-        levelMemo.set(nodeId, 0);
-        trail.delete(nodeId);
-        return 0;
-      }
-      const level = Math.max(...parents.map((parentId) => computeLevel(parentId, trail))) + 1;
-      levelMemo.set(nodeId, level);
-      trail.delete(nodeId);
-      return level;
-    };
-
-    for (const node of graphNodes) {
-      computeLevel(node.id);
-    }
-
-    const levelByNodeId = levelMemo;
-    const levelMap = new Map<number, Step[]>();
-    for (const node of graphNodes) {
-      const level = levelByNodeId.get(node.id) ?? 0;
-      levelMap.set(level, [...(levelMap.get(level) ?? []), node]);
-    }
-
-    const levels = [...levelMap.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .map(([level, levelNodes]) => {
-        const sorted = [...levelNodes].sort(
-          (a, b) => a.order_hint - b.order_hint || a.title.localeCompare(b.title)
-        );
-        return { level, nodes: sorted };
-      });
-
-    const baseOrder = new Map<string, number>();
-    let baseOrderCursor = 0;
-    levels.forEach(({ nodes }) => {
-      nodes.forEach((node) => {
-        baseOrder.set(node.id, baseOrderCursor);
-        baseOrderCursor += 1;
+    graphNodes.forEach((node) => {
+      layoutGraph.setNode(node.id, {
+        width: DAG_NODE_WIDTH,
+        height: DAG_NODE_HEIGHT
       });
     });
 
-    const dependentsByStepId = new Map<string, string[]>();
     for (const edge of edges) {
-      dependentsByStepId.set(edge.from_node_id, [...(dependentsByStepId.get(edge.from_node_id) ?? []), edge.to_node_id]);
-    }
-
-    const edgesByLevelPair = new Map<string, Array<{ fromNodeId: string; toNodeId: string }>>();
-    for (const edge of edges) {
-      const fromLevel = levelByNodeId.get(edge.from_node_id);
-      const toLevel = levelByNodeId.get(edge.to_node_id);
-      if (fromLevel === undefined || toLevel === undefined || fromLevel >= toLevel) continue;
-      const key = `${fromLevel}->${toLevel}`;
-      const current = edgesByLevelPair.get(key);
-      if (current) {
-        current.push({ fromNodeId: edge.from_node_id, toNodeId: edge.to_node_id });
-      } else {
-        edgesByLevelPair.set(key, [{ fromNodeId: edge.from_node_id, toNodeId: edge.to_node_id }]);
-      }
-    }
-
-    const mean = (items: number[]): number => items.reduce((acc, value) => acc + value, 0) / items.length;
-
-    const buildOrderByNodeId = () => {
-      const orderMap = new Map<string, number>();
-      let cursor = 0;
-      levels.forEach(({ nodes }) => {
-        nodes.forEach((node) => {
-          orderMap.set(node.id, cursor);
-          cursor += 1;
-        });
+      if (!stepById.has(edge.from_node_id) || !stepById.has(edge.to_node_id)) continue;
+      layoutGraph.setEdge(edge.from_node_id, edge.to_node_id, {
+        minlen: 1,
+        weight: edge.relation === "initiate" ? 3 : edge.relation === "handoff" ? 2 : 1
       });
-      return orderMap;
-    };
-
-    const sortLevelByAnchors = (levelIndex: number, anchorIdsForNode: (nodeId: string) => string[]) => {
-      if (levelIndex < 0 || levelIndex >= levels.length) return;
-      const anchorRows = buildOrderByNodeId();
-      levels[levelIndex].nodes = [...levels[levelIndex].nodes].sort((left, right) => {
-        const leftAnchors = anchorIdsForNode(left.id)
-          .map((nodeId) => anchorRows.get(nodeId))
-          .filter((value): value is number => value !== undefined);
-        const rightAnchors = anchorIdsForNode(right.id)
-          .map((nodeId) => anchorRows.get(nodeId))
-          .filter((value): value is number => value !== undefined);
-
-        const leftScore = leftAnchors.length ? mean(leftAnchors) : Number.NaN;
-        const rightScore = rightAnchors.length ? mean(rightAnchors) : Number.NaN;
-        const leftHasScore = Number.isFinite(leftScore);
-        const rightHasScore = Number.isFinite(rightScore);
-
-        if (leftHasScore && rightHasScore && leftScore !== rightScore) return leftScore - rightScore;
-        if (leftHasScore && !rightHasScore) return -1;
-        if (!leftHasScore && rightHasScore) return 1;
-
-        return (baseOrder.get(left.id) ?? 0) - (baseOrder.get(right.id) ?? 0);
-      });
-    };
-
-    const countCrossingsBetween = (leftLevelIndex: number, rightLevelIndex: number): number => {
-      if (leftLevelIndex < 0 || rightLevelIndex >= levels.length || leftLevelIndex >= rightLevelIndex) return 0;
-      const leftLevel = levels[leftLevelIndex];
-      const rightLevel = levels[rightLevelIndex];
-      const connections = edgesByLevelPair.get(`${leftLevel.level}->${rightLevel.level}`) ?? [];
-      if (connections.length < 2) return 0;
-
-      const leftOrder = new Map<string, number>();
-      leftLevel.nodes.forEach((node, index) => leftOrder.set(node.id, index));
-      const rightOrder = new Map<string, number>();
-      rightLevel.nodes.forEach((node, index) => rightOrder.set(node.id, index));
-
-      const routed = connections
-        .map((connection) => {
-          const fromOrder = leftOrder.get(connection.fromNodeId);
-          const toOrder = rightOrder.get(connection.toNodeId);
-          if (fromOrder === undefined || toOrder === undefined) return null;
-          return { fromOrder, toOrder };
-        })
-        .filter((item): item is { fromOrder: number; toOrder: number } => item !== null)
-        .sort((a, b) => a.fromOrder - b.fromOrder || a.toOrder - b.toOrder);
-
-      let crossings = 0;
-      for (let leftIndex = 0; leftIndex < routed.length; leftIndex += 1) {
-        for (let rightIndex = leftIndex + 1; rightIndex < routed.length; rightIndex += 1) {
-          if (routed[leftIndex].fromOrder === routed[rightIndex].fromOrder) continue;
-          if (routed[leftIndex].toOrder > routed[rightIndex].toOrder) crossings += 1;
-        }
-      }
-      return crossings;
-    };
-
-    const countLocalCrossings = (levelIndex: number): number => {
-      return countCrossingsBetween(levelIndex - 1, levelIndex) + countCrossingsBetween(levelIndex, levelIndex + 1);
-    };
-
-    const improveCrossingsBySwap = (levelIndex: number) => {
-      if (levelIndex <= 0 || levelIndex >= levels.length) return;
-      let changed = true;
-      while (changed) {
-        changed = false;
-        for (let index = 0; index < levels[levelIndex].nodes.length - 1; index += 1) {
-          const before = countLocalCrossings(levelIndex);
-          const nodes = levels[levelIndex].nodes;
-          [nodes[index], nodes[index + 1]] = [nodes[index + 1], nodes[index]];
-          const after = countLocalCrossings(levelIndex);
-          if (after < before) {
-            changed = true;
-          } else {
-            [nodes[index], nodes[index + 1]] = [nodes[index + 1], nodes[index]];
-          }
-        }
-      }
-    };
-
-    for (let sweep = 0; sweep < 6; sweep += 1) {
-      for (let levelIndex = 1; levelIndex < levels.length; levelIndex += 1) {
-        const currentLevelValue = levels[levelIndex].level;
-        sortLevelByAnchors(levelIndex, (nodeId) =>
-          (dependenciesByStepId.get(nodeId) ?? []).filter(
-            (parentId) => (levelByNodeId.get(parentId) ?? Number.NEGATIVE_INFINITY) < currentLevelValue
-          )
-        );
-        improveCrossingsBySwap(levelIndex);
-      }
-
-      for (let levelIndex = levels.length - 2; levelIndex >= 0; levelIndex -= 1) {
-        const currentLevelValue = levels[levelIndex].level;
-        sortLevelByAnchors(levelIndex, (nodeId) =>
-          (dependentsByStepId.get(nodeId) ?? []).filter(
-            (childId) => (levelByNodeId.get(childId) ?? Number.POSITIVE_INFINITY) > currentLevelValue
-          )
-        );
-        improveCrossingsBySwap(levelIndex);
-      }
     }
 
-    const nodeRowById = new Map<string, number>();
-    const centerByLevelIndex = new Map<number, number>();
+    dagre.layout(layoutGraph);
 
-    const assignRowsForLevel = (levelIndex: number, centerRow: number) => {
-      const nodes = levels[levelIndex].nodes;
-      const startRow = centerRow - (nodes.length - 1) / 2;
-      nodes.forEach((node, offset) => {
-        nodeRowById.set(node.id, startRow + offset);
-      });
-      centerByLevelIndex.set(levelIndex, centerRow);
-    };
-
-    for (let levelIndex = 0; levelIndex < levels.length; levelIndex += 1) {
-      const nodes = levels[levelIndex].nodes;
-      const parentRows = nodes
-        .flatMap((node) => dependenciesByStepId.get(node.id) ?? [])
-        .map((parentId) => nodeRowById.get(parentId))
-        .filter((value): value is number => value !== undefined);
-      const centerRow =
-        parentRows.length > 0
-          ? mean(parentRows)
-          : centerByLevelIndex.get(levelIndex - 1) ?? 0;
-      assignRowsForLevel(levelIndex, centerRow);
-    }
-
-    for (let smoothSweep = 0; smoothSweep < 2; smoothSweep += 1) {
-      for (let levelIndex = levels.length - 2; levelIndex >= 0; levelIndex -= 1) {
-        const nodes = levels[levelIndex].nodes;
-        const childRows = nodes
-          .flatMap((node) => dependentsByStepId.get(node.id) ?? [])
-          .map((childId) => nodeRowById.get(childId))
-          .filter((value): value is number => value !== undefined);
-        if (!childRows.length) continue;
-        const currentCenter = centerByLevelIndex.get(levelIndex) ?? 0;
-        assignRowsForLevel(levelIndex, (currentCenter + mean(childRows)) / 2);
-      }
-
-      for (let levelIndex = 1; levelIndex < levels.length; levelIndex += 1) {
-        const nodes = levels[levelIndex].nodes;
-        const parentRows = nodes
-          .flatMap((node) => dependenciesByStepId.get(node.id) ?? [])
-          .map((parentId) => nodeRowById.get(parentId))
-          .filter((value): value is number => value !== undefined);
-        if (!parentRows.length) continue;
-        const currentCenter = centerByLevelIndex.get(levelIndex) ?? 0;
-        assignRowsForLevel(levelIndex, (currentCenter + mean(parentRows)) / 2);
-      }
-    }
-
-    const positionedRows = [...nodeRowById.values()];
-    const minRow = Math.min(...positionedRows);
-    const maxRow = Math.max(...positionedRows);
-    const rowOffset = minRow < 0 ? -minRow : 0;
-
-    const positioned: DagNodeLayout[] = [];
-    for (const { level, nodes } of levels) {
-      nodes.forEach((node, index) => {
-        const row = (nodeRowById.get(node.id) ?? index) + rowOffset;
-        positioned.push({
+    const positioned = graphNodes.map((node, index) => {
+      const layoutNode = layoutGraph.node(node.id) as { x: number; y: number; rank?: number } | undefined;
+      if (!layoutNode) {
+        return {
           node,
-          level,
-          x: DAG_PADDING_X + level * (DAG_NODE_WIDTH + DAG_COLUMN_GAP),
-          y: DAG_PADDING_Y + row * (DAG_NODE_HEIGHT + DAG_ROW_GAP)
-        });
+          level: 0,
+          x: DAG_PADDING_X,
+          y: DAG_PADDING_Y + index * (DAG_NODE_HEIGHT + DAG_ROW_GAP)
+        };
+      }
+      return {
+        node,
+        level: typeof layoutNode.rank === "number" ? layoutNode.rank : 0,
+        x: Math.round(layoutNode.x - DAG_NODE_WIDTH / 2),
+        y: Math.round(layoutNode.y - DAG_NODE_HEIGHT / 2)
+      };
+    });
+
+    positioned.sort(
+      (left, right) =>
+        left.level - right.level ||
+        left.y - right.y ||
+        left.node.order_hint - right.node.order_hint ||
+        left.node.title.localeCompare(right.node.title)
+    );
+
+    const minX = Math.min(...positioned.map((item) => item.x), DAG_PADDING_X);
+    const minY = Math.min(...positioned.map((item) => item.y), DAG_PADDING_Y);
+    const shiftX = minX < DAG_PADDING_X ? DAG_PADDING_X - minX : 0;
+    const shiftY = minY < DAG_PADDING_Y ? DAG_PADDING_Y - minY : 0;
+    if (shiftX || shiftY) {
+      positioned.forEach((item) => {
+        item.x += shiftX;
+        item.y += shiftY;
       });
     }
 
     const positionedById = new Map<string, DagNodeLayout>();
     positioned.forEach((item) => positionedById.set(item.node.id, item));
 
-    const maxLevel = Math.max(...positioned.map((item) => item.level), 0);
-    const rowSpan = maxRow - minRow;
+    const layoutBounds = layoutGraph.graph() as { width?: number; height?: number } | undefined;
+    const maxRight = Math.max(...positioned.map((item) => item.x + DAG_NODE_WIDTH), DAG_PADDING_X + DAG_NODE_WIDTH);
+    const maxBottom = Math.max(...positioned.map((item) => item.y + DAG_NODE_HEIGHT), DAG_PADDING_Y + DAG_NODE_HEIGHT);
 
     return {
       positioned,
       positionedById,
-      width: DAG_PADDING_X * 2 + (maxLevel + 1) * DAG_NODE_WIDTH + maxLevel * DAG_COLUMN_GAP,
-      height: Math.ceil(DAG_PADDING_Y * 2 + DAG_NODE_HEIGHT + Math.max(rowSpan, 0) * (DAG_NODE_HEIGHT + DAG_ROW_GAP))
+      width: Math.ceil(Math.max((layoutBounds?.width ?? 0) + DAG_PADDING_X * 2, maxRight + DAG_PADDING_X)),
+      height: Math.ceil(Math.max((layoutBounds?.height ?? 0) + DAG_PADDING_Y * 2, maxBottom + DAG_PADDING_Y))
     };
-  }, [sortedSteps, dependenciesByStepId, stepById, edges]);
+  }, [sortedSteps, stepById, edges]);
 
   const dagEdges = useMemo(() => {
     const rendered: Array<StepEdge & { toStatus: StepStatus }> = [];

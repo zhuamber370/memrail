@@ -15,6 +15,7 @@
   - search + filter + grouped list + detail in one screen
   - task detail above execution graph
   - route graph keeps pure edge connections without relation labels
+  - DAG auto-layout migrated to `@dagrejs/dagre` layered engine for more stable branch alignment
   - selected-node `...` menu supports:
     - inline add step
     - set status (`waiting/execute/done`)

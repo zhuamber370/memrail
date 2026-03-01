@@ -21,11 +21,26 @@
   - 去掉边日志入口与边选中交互
   - 仅保留节点之间的连接线展示
 - idea 页面发起执行链路时，节点类型固定为 `goal`
+- DAG 布局引擎升级：
+  - 从自研层级排布切换到 `@dagrejs/dagre`
+  - 使用分层布局（LR）与交叉最小化策略，改善分支节点错位和视觉压迫问题
+  - 同步调整节点坐标与画布边界计算，提升自动适配稳定性
 
 ## 本次收尾同步（2026-03-01）
 - 同步 `docs/reports/mvp-release-notes.md` 到最新交付状态
 - 补充本文件作为本轮实现变更日志
 - 计划文档补充执行完成记录（见计划文档末尾）
+- 补充 GitHub 提交变更摘要（见下文）
+
+## GitHub 变更日志（本次 push）
+- `feat(frontend): optimize DAG layout to reduce edge crossings`
+- `chore(frontend): adopt @dagrejs/dagre for production DAG auto-layout`
+- 主要涉及文件：
+  - `frontend/src/components/task-execution-panel.tsx`
+  - `frontend/package.json`
+  - `frontend/package-lock.json`
+  - `docs/reports/mvp-release-notes.md`
+  - `docs/reports/2026-03-01-dag-entity-log-changelog.md`
 
 ## 验证记录
 - 前端构建：`cd frontend && npm run build`
