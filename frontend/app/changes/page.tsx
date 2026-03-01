@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { apiDelete, apiGet, apiPost } from "../../src/lib/api";
+import { formatDateTime } from "../../src/lib/datetime";
 import { useI18n } from "../../src/i18n";
 
 type ChangeListItem = {
@@ -95,7 +96,7 @@ function prettyFieldKey(key: string): string {
 }
 
 export default function ChangesPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   const [list, setList] = useState<ChangeListItem[]>([]);
   const [selectedId, setSelectedId] = useState<string>("");
@@ -288,7 +289,7 @@ export default function ChangesPage() {
                 <span>{t("changes.proposalCount")}: {item.actions_count}</span>
                 <span>{t("changes.proposalActor")}: {item.actor.type}:{item.actor.id}</span>
                 <span>{t("changes.proposalTool")}: {item.tool}</span>
-                <span>{t("changes.proposalCreatedAt")}: {new Date(item.created_at).toLocaleString()}</span>
+                <span>{t("changes.proposalCreatedAt")}: {formatDateTime(item.created_at, lang)}</span>
               </div>
             </button>
           ))}
@@ -315,7 +316,7 @@ export default function ChangesPage() {
                   </div>
                   <div>
                     <div className="changesSummaryKey">{t("changes.proposalCreatedAt")}</div>
-                    <div className="changesLedgerText">{new Date(detail.created_at).toLocaleString()}</div>
+                    <div className="changesLedgerText">{formatDateTime(detail.created_at, lang)}</div>
                   </div>
                 </div>
               </div>
@@ -393,7 +394,7 @@ export default function ChangesPage() {
                           <span className="changesFieldChip">
                             idx: {(item.metadata?.action_index as number | undefined) ?? "-"}
                           </span>
-                          <span className="changesFieldChip">{new Date(item.occurred_at).toLocaleString()}</span>
+                          <span className="changesFieldChip">{formatDateTime(item.occurred_at, lang)}</span>
                         </div>
                       </article>
                     ))}

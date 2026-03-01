@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dagre from "@dagrejs/dagre";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
+import { formatDateTime } from "../lib/datetime";
 import { useI18n } from "../i18n";
 
 type FlowStatus = "candidate" | "active" | "parked" | "completed" | "cancelled";
@@ -147,7 +148,7 @@ function normalizeStepForDag(step: RawStep): Step {
 }
 
 export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; onTaskStarted?: (status: TaskStatus) => void }) {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   const [flows, setFlows] = useState<Flow[]>([]);
   const [selectedFlowId, setSelectedFlowId] = useState("");
@@ -1212,7 +1213,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                                 <div className="taskDagLogHeader">
                                   <span className="taskDagLogActor">{log.actor_id}</span>
                                   <time className="taskDagLogTime">
-                                    {new Date(log.updated_at || log.created_at).toLocaleString()}
+                                    {formatDateTime(log.updated_at || log.created_at, lang)}
                                   </time>
                                 </div>
                                 {isEditing ? (
