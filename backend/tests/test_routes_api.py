@@ -330,6 +330,42 @@ def test_route_edge_logs_crud_placeholder_fails_initially():
     assert listed.status_code == 200
 
 
+def test_entity_log_response_shape():
+    client = make_client()
+    task_id = create_test_task(client, prefix="entity_log_shape_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('entity_log_shape')}",
+            "goal": "entity log response shape",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    node = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "Shape Node", "description": ""},
+    )
+    assert node.status_code == 201
+    node_id = node.json()["id"]
+
+    appended = client.post(
+        f"/api/v1/routes/{route_id}/nodes/{node_id}/logs",
+        json={"content": f"shape_{uniq('log')}", "actor_type": "human", "actor_id": "tester"},
+    )
+    assert appended.status_code == 201
+    body = appended.json()
+    assert "entity_type" in body
+    assert "entity_id" in body
+    assert "updated_at" in body
+    assert body["entity_type"] == "route_node"
+    assert body["entity_id"] == node_id
+
+
 def test_route_edges_are_inferred_by_node_type():
     client = make_client()
     task_id = create_test_task(client, prefix="route_edge_relations_task")
