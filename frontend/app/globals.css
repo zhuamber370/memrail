@@ -1154,6 +1154,16 @@ a {
   pointer-events: none;
 }
 
+.taskDagEdgeLogBadge {
+  fill: #7a4a00;
+  font-size: 9px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fff8d7;
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
 .taskDagComposerHint {
   margin: 0;
 }
@@ -1220,6 +1230,10 @@ a {
   overflow: hidden;
 }
 
+.taskDagNodeHasLogs .taskDagNodeTitle {
+  margin-left: 32px;
+}
+
 .taskDagNodeMeta {
   display: flex;
   flex-wrap: wrap;
@@ -1243,76 +1257,112 @@ a {
   cursor: pointer;
 }
 
+.taskDagLogBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  border: 1px solid #c58100;
+  border-radius: 999px;
+  background: #fff8d7;
+  color: #7a4a00;
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 5px;
+}
+
 .taskDagInlinePanel {
   position: absolute;
   z-index: 3;
-  width: 304px;
+  width: 248px;
   border: 2px solid var(--line);
-  border-radius: 10px;
-  background: #fff;
-  padding: 8px;
+  border-radius: 12px;
+  background: #fffdf8;
+  padding: 7px;
   display: grid;
-  gap: 8px;
-  box-shadow: 0 8px 20px #00000012;
+  gap: 7px;
+  box-shadow:
+    0 10px 20px #0000001a,
+    inset 0 0 0 1px #ffffffb8;
 }
 
 .taskDagInlineMenu {
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .taskDagInlineMenuSection {
   border: 2px solid var(--line);
-  border-radius: 8px;
+  border-radius: 9px;
   background: #fff;
-  padding: 6px;
+  padding: 6px 7px;
   display: grid;
-  gap: 6px;
+  gap: 5px;
 }
 
 .taskDagInlineMenuLabel {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 700;
   color: var(--ink-soft);
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
 }
 
 .taskDagInlineStatusGrid {
   display: grid;
-  grid-template-columns: 1fr;
-  gap: 4px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
 }
 
 .taskDagInlineStatusBtn {
   border: 2px solid var(--line);
   border-radius: 8px;
-  background: #fffdf8;
+  background: #fff;
   color: inherit;
-  text-align: left;
-  padding: 4px 6px;
+  text-align: center;
+  padding: 3px 4px;
   cursor: pointer;
-  font-size: 0.78rem;
+  font-size: 0.7rem;
+  line-height: 1.15;
+  min-height: 32px;
+}
+
+.taskDagInlineStatusBtnWaiting {
+  border-color: #c58100;
+  box-shadow: inset 0 0 0 2px #c5810020;
+}
+
+.taskDagInlineStatusBtnExecute {
+  border-color: #2457d6;
+  box-shadow: inset 0 0 0 2px #2457d620;
+}
+
+.taskDagInlineStatusBtnDone {
+  border-color: #157347;
+  box-shadow: inset 0 0 0 2px #15734720;
 }
 
 .taskDagInlineStatusBtnActive {
-  border-color: #2457d6;
-  box-shadow: inset 0 0 0 2px #2457d636;
+  box-shadow:
+    inset 0 0 0 2px #2457d65e,
+    0 0 0 1px #2457d633;
 }
 
 .taskDagInlineMenuBtn {
   border: 2px solid var(--line);
-  border-radius: 8px;
-  background: #fffdf8;
+  border-radius: 9px;
+  background: #fff;
   color: inherit;
   text-align: left;
-  padding: 6px 8px;
+  padding: 5px 8px;
   cursor: pointer;
+  font-size: 0.9rem;
+  line-height: 1.2;
 }
 
 .taskDagInlineEditor {
   display: grid;
-  gap: 8px;
+  gap: 7px;
 }
 
 .taskDagInlineEditor .taskSectionTitle {
@@ -1321,12 +1371,12 @@ a {
 
 .taskDagInlineForm {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .taskDagInlineActions {
   display: flex;
-  gap: 6px;
+  gap: 5px;
   justify-content: flex-end;
   flex-wrap: wrap;
 }
@@ -1361,6 +1411,64 @@ a {
   justify-content: flex-end;
   gap: 6px;
   flex-wrap: wrap;
+}
+
+.taskDagLogComposer {
+  display: grid;
+  gap: 6px;
+}
+
+.taskDagLogList {
+  display: grid;
+  gap: 8px;
+  max-height: 280px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.taskDagLogItem {
+  border: 2px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px;
+  display: grid;
+  gap: 6px;
+}
+
+.taskDagLogHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 0.72rem;
+}
+
+.taskDagLogActor {
+  color: var(--ink-soft);
+  font-weight: 700;
+}
+
+.taskDagLogTime {
+  color: var(--muted);
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+}
+
+.taskDagLogContent {
+  margin: 0;
+  white-space: pre-wrap;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.taskDagLogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.taskDagLogEditInput {
+  min-height: 72px;
 }
 
 .taskExecFlowBar {
@@ -2203,7 +2311,7 @@ a {
   }
 
   .taskDagInlinePanel {
-    width: 260px;
+    width: 236px;
   }
 
   .taskExecLayout {

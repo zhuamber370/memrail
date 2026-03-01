@@ -135,6 +135,24 @@ def ensure_runtime_schema(engine) -> None:
           updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         )
         """,
+        """
+        CREATE TABLE IF NOT EXISTS entity_logs (
+          id VARCHAR(40) PRIMARY KEY,
+          route_id VARCHAR(40) NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+          entity_type VARCHAR(20) NOT NULL,
+          entity_id VARCHAR(40) NOT NULL,
+          actor_type VARCHAR(20) NOT NULL DEFAULT 'human',
+          actor_id VARCHAR(80) NOT NULL DEFAULT 'local',
+          content TEXT NOT NULL,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        )
+        """,
+        """
+        CREATE INDEX IF NOT EXISTS ix_entity_logs_route_entity
+        ON entity_logs (route_id, entity_type, entity_id, created_at DESC)
+        """,
+        "CREATE INDEX IF NOT EXISTS ix_entity_logs_route_id ON entity_logs (route_id)",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS description TEXT",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS acceptance_criteria TEXT",
         "ALTER TABLE tasks ADD COLUMN IF NOT EXISTS topic_id VARCHAR(40)",
@@ -395,6 +413,19 @@ def ensure_runtime_schema(engine) -> None:
         END $$;
         """,
         """
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint
+            WHERE conname = 'chk_entity_logs_entity_type'
+          ) THEN
+            ALTER TABLE entity_logs
+              ADD CONSTRAINT chk_entity_logs_entity_type
+              CHECK (entity_type IN ('route_node', 'route_edge'));
+          END IF;
+        END $$;
+        """,
+        """
         CREATE TABLE IF NOT EXISTS task_sources (
           id VARCHAR(40) PRIMARY KEY,
           task_id VARCHAR(40) NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
@@ -489,6 +520,33 @@ def _ensure_runtime_schema_sqlite(engine) -> None:
         """,
     ]
     with engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                CREATE TABLE IF NOT EXISTS entity_logs (
+                  id VARCHAR(40) PRIMARY KEY,
+                  route_id VARCHAR(40) NOT NULL REFERENCES routes(id) ON DELETE CASCADE,
+                  entity_type VARCHAR(20) NOT NULL,
+                  entity_id VARCHAR(40) NOT NULL,
+                  actor_type VARCHAR(20) NOT NULL DEFAULT 'human',
+                  actor_id VARCHAR(80) NOT NULL DEFAULT 'local',
+                  content TEXT NOT NULL,
+                  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                  CHECK (entity_type IN ('route_node', 'route_edge'))
+                )
+                """
+            )
+        )
+        conn.execute(
+            text(
+                """
+                CREATE INDEX IF NOT EXISTS ix_entity_logs_route_entity
+                ON entity_logs (route_id, entity_type, entity_id, created_at DESC)
+                """
+            )
+        )
+        conn.execute(text("CREATE INDEX IF NOT EXISTS ix_entity_logs_route_id ON entity_logs (route_id)"))
         _sqlite_add_column_if_missing(conn, "ideas", "task_id VARCHAR(40)")
         _sqlite_add_column_if_missing(conn, "routes", "task_id VARCHAR(40)")
         _sqlite_add_column_if_missing(conn, "routes", "parent_route_id VARCHAR(40)")

@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { TaskExecutionPanel } from "../../src/components/task-execution-panel";
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../src/lib/api";
+import { formatDateTime, localeFromLang } from "../../src/lib/datetime";
 import { useI18n } from "../../src/i18n";
 
 type TaskStatus = "todo" | "in_progress" | "done" | "cancelled";
@@ -449,12 +450,7 @@ export default function TasksPage() {
   }
 
   function formatTime(value?: string) {
-    if (!value) return "-";
-    try {
-      return new Date(value).toLocaleString();
-    } catch {
-      return value;
-    }
+    return formatDateTime(value, lang);
   }
 
   function onOpenStudio(taskId: string) {
@@ -515,7 +511,13 @@ export default function TasksPage() {
               <option value="P2">P2</option>
               <option value="P3">P3</option>
             </select>
-            <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className="taskInput" />
+            <input
+              type="date"
+              value={due}
+              onChange={(e) => setDue(e.target.value)}
+              className="taskInput"
+              lang={localeFromLang(lang)}
+            />
             <button className="badge" onClick={onCreate} disabled={!title.trim() || !createTopicId || loading}>
               {t("tasks.create")}
             </button>
@@ -817,6 +819,7 @@ export default function TasksPage() {
                             onChange={(e) => setDetailDraft((prev) => (prev ? { ...prev, due: e.target.value } : prev))}
                             className="taskInput"
                             disabled={isArchivedView}
+                            lang={localeFromLang(lang)}
                           />
                         </label>
 

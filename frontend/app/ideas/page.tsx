@@ -4,10 +4,11 @@
 import { useEffect, useMemo, useState } from "react";
 
 import { apiGet, apiPatch, apiPost } from "../../src/lib/api";
+import { formatDateTime } from "../../src/lib/datetime";
 import { useI18n } from "../../src/i18n";
 
 type IdeaStatus = "captured" | "triage" | "discovery" | "ready" | "rejected";
-type RouteNodeType = "goal" | "idea";
+type RouteNodeType = "goal";
 
 type Idea = {
   id: string;
@@ -40,10 +41,10 @@ type RouteListOut = {
 };
 
 const IDEA_STATUSES: IdeaStatus[] = ["captured", "triage", "discovery", "ready", "rejected"];
-const NODE_TYPES: RouteNodeType[] = ["goal", "idea"];
+const NODE_TYPES: RouteNodeType[] = ["goal"];
 
 export default function IdeasPage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [taskId, setTaskId] = useState("");
 
   const [title, setTitle] = useState("");
@@ -279,7 +280,7 @@ export default function IdeasPage() {
                   <div className="ideasRowTitle">{idea.title}</div>
                   <div className="taskMetaLine">
                     <span>{statusLabel(idea.status)}</span>
-                    <span>{new Date(idea.updated_at).toLocaleString()}</span>
+                    <span>{formatDateTime(idea.updated_at, lang)}</span>
                   </div>
                 </button>
               ))
@@ -321,7 +322,7 @@ export default function IdeasPage() {
               </div>
               <div className="taskMetaLine">
                 <span>
-                  {t("ideas.updated")}: {new Date(selectedIdea.updated_at).toLocaleString()}
+                  {t("ideas.updated")}: {formatDateTime(selectedIdea.updated_at, lang)}
                 </span>
               </div>
 

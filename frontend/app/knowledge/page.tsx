@@ -4,6 +4,7 @@
 import { useEffect, useState } from "react";
 
 import { apiDelete, apiGet, apiPatch, apiPost } from "../../src/lib/api";
+import { formatDateTime } from "../../src/lib/datetime";
 import { useI18n } from "../../src/i18n";
 
 type KnowledgeStatus = "active" | "archived";
@@ -27,7 +28,7 @@ type KnowledgeList = {
 };
 
 export default function KnowledgePage() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
 
   const [items, setItems] = useState<KnowledgeItem[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -55,12 +56,7 @@ export default function KnowledgePage() {
   }, [statusFilter, categoryFilter, searchQuery]);
 
   function formatTime(value?: string): string {
-    if (!value) return "-";
-    try {
-      return new Date(value).toLocaleString();
-    } catch {
-      return value;
-    }
+    return formatDateTime(value, lang);
   }
 
   function previewBody(body: string): string {

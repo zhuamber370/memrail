@@ -114,6 +114,18 @@ class KmsClient:
     def get_node_logs(self, route_id: str, node_id: str):
         return self._get(f"/api/v1/routes/{route_id}/nodes/{node_id}/logs")
 
+    def _safe_get_node_logs(self, route_id: str, node_id: str) -> list[dict[str, Any]]:
+        try:
+            logs = self.get_node_logs(route_id, node_id)
+        except Exception:
+            return []
+        if not isinstance(logs, dict):
+            return []
+        items = logs.get("items")
+        if not isinstance(items, list):
+            return []
+        return items
+
     def get_task_execution_snapshot(
         self,
         *,
@@ -149,8 +161,7 @@ class KmsClient:
                 node_id = node.get("id")
                 if not node_id:
                     continue
-                logs = self.get_node_logs(selected_route["id"], node_id)
-                selected_logs[node_id] = logs.get("items", [])
+                selected_logs[node_id] = self._safe_get_node_logs(selected_route["id"], node_id)
 
         route_snapshots: list[dict[str, Any]] = [
             {
@@ -179,8 +190,7 @@ class KmsClient:
                         node_id = node.get("id")
                         if not node_id:
                             continue
-                        logs = self.get_node_logs(route_id, node_id)
-                        node_logs[node_id] = logs.get("items", [])
+                        node_logs[node_id] = self._safe_get_node_logs(route_id, node_id)
                     snapshot["node_logs"] = node_logs
                 route_snapshots.append(snapshot)
 

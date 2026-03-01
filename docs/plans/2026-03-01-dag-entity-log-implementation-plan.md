@@ -453,3 +453,24 @@ git commit -m "docs: add DAG entity log verification notes"
 4. Frequent commits: 每个 Task 至少一个独立 commit。
 5. Skills 建议：`@test-driven-development`、`@verification-before-completion`、`@requesting-code-review`。
 
+## Execution Sync (2026-03-01)
+
+### Task completion status
+- [x] Task 1: 后端 Schema 与模型落地（EntityLog）
+- [x] Task 2: Pydantic Schema 与统一日志 DTO
+- [x] Task 3: RouteGraphService 统一日志服务实现
+- [x] Task 4: Routes API 增加边日志与日志编辑删除接口
+- [x] Task 5: Graph 输出 `has_logs` 字段
+- [x] Task 6: 前端 Inspector 切换到统一日志面板
+- [x] Task 7: DAG 徽标与交互收敛
+- [x] Task 8: 兼容层与文档更新
+- [x] Task 9: 端到端验证与收尾
+
+### Final adjustments in this sync
+1. DAG 中“等待中的执行，把想法部分去掉”已收敛为仅保留 `goal` 执行节点入口。
+2. “新增步骤”交互已精简为仅保留标题与状态，不再提供目标类型选择。
+3. 边线显示移除线上判断、关系标签与日志入口，仅保留连接关系展示。
+
+### Verification commands
+- `cd frontend && npm run build`
+- `cd backend && pytest tests/test_routes_api.py -q`

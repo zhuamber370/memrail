@@ -519,6 +519,7 @@ RouteNodeType = Literal["start", "goal", "idea"]
 RouteNodeStatus = Literal["waiting", "execute", "done"]
 RouteAssigneeType = Literal["human", "agent"]
 RouteEdgeRelation = Literal["refine", "initiate", "handoff"]
+EntityType = Literal["route_node", "route_edge"]
 NodeLogType = Literal["note", "evidence", "decision", "summary"]
 
 
@@ -642,6 +643,7 @@ class RouteNodeOut(BaseModel):
     order_hint: int
     assignee_type: RouteAssigneeType
     assignee_id: Optional[str]
+    has_logs: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -667,6 +669,7 @@ class RouteEdgeOut(BaseModel):
     to_node_id: str
     relation: RouteEdgeRelation
     description: str
+    has_logs: bool = False
     created_at: datetime
 
 
@@ -689,16 +692,48 @@ class NodeLogOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: str
     node_id: str
+    entity_type: Literal["route_node"] = "route_node"
+    entity_id: str = Field(validation_alias="node_id")
     actor_type: RouteAssigneeType
     actor_id: str
     content: str
     log_type: NodeLogType
     source_ref: Optional[str]
     created_at: datetime
+    updated_at: datetime = Field(validation_alias="created_at")
 
 
 class NodeLogListOut(BaseModel):
     items: list[NodeLogOut]
+
+
+class EntityLogCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content: str = Field(min_length=1)
+    actor_type: RouteAssigneeType = "human"
+    actor_id: str = Field(default="local", min_length=1)
+
+
+class EntityLogPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    content: str = Field(min_length=1)
+
+
+class EntityLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: str
+    route_id: str
+    entity_type: EntityType
+    entity_id: str
+    actor_type: RouteAssigneeType
+    actor_id: str
+    content: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class EntityLogListOut(BaseModel):
+    items: list[EntityLogOut]
 
 
 class IdeaPromoteIn(BaseModel):

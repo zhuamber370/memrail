@@ -42,7 +42,7 @@ export KMS_API_KEY="<your_api_key>"
 python3 -m uvicorn src.app:app --reload --port 8000
 ```
 
-## API Surface (Synced 2026-02-27)
+## API Surface (Synced 2026-03-01)
 
 ### Core domains
 - `topics`
@@ -108,8 +108,14 @@ python3 -m uvicorn src.app:app --reload --port 8000
   - `PATCH /api/v1/routes/{route_id}/edges/{edge_id}`
   - `DELETE /api/v1/routes/{route_id}/edges/{edge_id}`
   - `GET /api/v1/routes/{route_id}/graph`
+  - `PATCH /api/v1/routes/{route_id}/nodes/{node_id}/logs/{log_id}`
+  - `DELETE /api/v1/routes/{route_id}/nodes/{node_id}/logs/{log_id}`
   - `POST /api/v1/routes/{route_id}/nodes/{node_id}/logs`
   - `GET /api/v1/routes/{route_id}/nodes/{node_id}/logs`
+  - `POST /api/v1/routes/{route_id}/edges/{edge_id}/logs`
+  - `GET /api/v1/routes/{route_id}/edges/{edge_id}/logs`
+  - `PATCH /api/v1/routes/{route_id}/edges/{edge_id}/logs/{log_id}`
+  - `DELETE /api/v1/routes/{route_id}/edges/{edge_id}/logs/{log_id}`
 
 ### Governance / audit / context
 - `changes`
@@ -158,6 +164,7 @@ python3 -m uvicorn src.app:app --reload --port 8000
 
 - `knowledge` API currently persists into the `notes` table (`category: ops_manual | mechanism_spec | decision_record`).
 - `knowledge_items`/`knowledge_evidences` tables may exist in schema history, but runtime knowledge CRUD is currently note-backed.
+- Route graph logs now use unified `entity_logs` storage (`entity_type + entity_id`), while legacy node log responses remain readable for compatibility.
 
 ## Tests
 
