@@ -289,6 +289,47 @@ def test_append_typed_node_log():
     assert item["source_ref"] == "https://example.com/report"
 
 
+def test_route_edge_logs_crud_placeholder_fails_initially():
+    client = make_client()
+    task_id = create_test_task(client, prefix="route_edge_log_placeholder_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('edge_log_placeholder')}",
+            "goal": "edge logs placeholder",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    from_node = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "idea", "title": "From", "description": ""},
+    )
+    assert from_node.status_code == 201
+    from_node_id = from_node.json()["id"]
+
+    to_node = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "To", "description": ""},
+    )
+    assert to_node.status_code == 201
+    to_node_id = to_node.json()["id"]
+
+    edge = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={"from_node_id": from_node_id, "to_node_id": to_node_id, "relation": "initiate"},
+    )
+    assert edge.status_code == 201
+    edge_id = edge.json()["id"]
+
+    listed = client.get(f"/api/v1/routes/{route_id}/edges/{edge_id}/logs")
+    assert listed.status_code == 200
+
+
 def test_route_edges_are_inferred_by_node_type():
     client = make_client()
     task_id = create_test_task(client, prefix="route_edge_relations_task")
