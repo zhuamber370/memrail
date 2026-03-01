@@ -15,6 +15,17 @@ Quick links:
 - Integrate with OpenClaw: [INTEGRATION.md](INTEGRATION.md)
 - Runtime/API contract: [docs/guides/agent-api-surface.md](docs/guides/agent-api-surface.md)
 - Production controls: [Safe-to-Write Checklist](docs/guides/safe-to-write-checklist.md)
+- Operator feedback thread: [GitHub Discussion #20](https://github.com/zhuamber370/memrail/discussions/20)
+
+## 5-Minute Evaluation Path
+
+If you need to assess write safety quickly:
+
+1. Run the [60-Second Dry-Run Demo](#60-second-dry-run-demo).
+2. Open `/changes` and review one proposed diff.
+3. Commit once, then run an undo to verify rollback + audit behavior.
+
+If you run agents in production, please share your checklist in [Discussion #20](https://github.com/zhuamber370/memrail/discussions/20).
 
 ## Why Memrail
 
@@ -182,6 +193,15 @@ Integration references:
 - Safe-to-Write checklist: [docs/guides/safe-to-write-checklist.md](docs/guides/safe-to-write-checklist.md)
 - Runtime/API contract: [docs/guides/agent-api-surface.md](docs/guides/agent-api-surface.md)
 - Proof pack: [docs/proof/README.md](docs/proof/README.md)
+
+## Operator Feedback Thread
+
+We are collecting production feedback for governed agent writes:
+- Discussion: [What is your minimum safe-to-write checklist for production AI agents?](https://github.com/zhuamber370/memrail/discussions/20)
+- Focus questions:
+  1. Which approval/audit fields are non-negotiable before commit?
+  2. Where should approval happen in practice (app layer, queue boundary, CI gate, or elsewhere)?
+  3. Which failure mode is most important to defend first?
 
 ## Contributing
 
