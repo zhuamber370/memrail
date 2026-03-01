@@ -7,7 +7,8 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "../lib/api";
 import { useI18n } from "../i18n";
 
 type FlowStatus = "candidate" | "active" | "parked" | "completed" | "cancelled";
-type StepType = "start" | "goal" | "idea";
+type RawStepType = "start" | "goal" | "idea";
+type StepType = "start" | "goal";
 type EditableStepType = Exclude<StepType, "start">;
 type StepStatus = "waiting" | "execute" | "done";
 type StepEdgeRelation = "refine" | "initiate" | "handoff";
@@ -25,15 +26,17 @@ type FlowListOut = {
   items: Flow[];
 };
 
-type Step = {
+type RawStep = {
   id: string;
   title: string;
   description: string;
-  node_type: StepType;
+  node_type: RawStepType;
   status: StepStatus;
   order_hint: number;
   has_logs: boolean;
 };
+
+type Step = Omit<RawStep, "node_type"> & { node_type: StepType };
 
 type StepEdge = {
   id: string;
@@ -46,7 +49,7 @@ type StepEdge = {
 
 type FlowGraphOut = {
   route_id: string;
-  nodes: Step[];
+  nodes: RawStep[];
   edges: StepEdge[];
 };
 
@@ -79,7 +82,7 @@ const DAG_COLUMN_GAP = 58;
 const DAG_ROW_GAP = 12;
 const DAG_PADDING_X = 16;
 const DAG_PADDING_Y = 14;
-const EDITABLE_NODE_TYPES: EditableStepType[] = ["goal", "idea"];
+const EDITABLE_NODE_TYPES: EditableStepType[] = ["goal"];
 const DAG_ACTION_PANEL_WIDTH = 304;
 const DAG_MIN_ZOOM = 0.48;
 const DAG_MAX_ZOOM = 1.8;
@@ -113,29 +116,33 @@ function mapNodeClass(step: Step, selected: boolean): string {
   return classes.join(" ");
 }
 
-function createStatusOptions(_nodeType: EditableStepType): StepStatus[] {
-  return ["waiting", "execute", "done"];
-}
-
-function defaultCreateStatus(_nodeType: EditableStepType): StepStatus {
-  return "waiting";
-}
-
 function nodeStatusOptions(nodeType: StepType): StepStatus[] {
   if (nodeType === "start") return ["done"];
   return ["waiting", "execute", "done"];
 }
 
-function inferEdgeRelation(predecessorType: StepType | null, nextType: EditableStepType): CreatableEdgeRelation | null {
-  const normalizedPredecessor = predecessorType === "start" ? "idea" : predecessorType;
-  if (!normalizedPredecessor) return null;
-  if (normalizedPredecessor === "idea" && nextType === "idea") return "refine";
-  if (normalizedPredecessor === "idea" && nextType === "goal") return "initiate";
+function inferEdgeRelation(predecessorType: StepType | null): CreatableEdgeRelation | null {
+  if (!predecessorType) return null;
+  if (predecessorType === "start") return "initiate";
   return "handoff";
 }
 
 function startStepStatus(_nodeType: EditableStepType): StepStatus {
   return "execute";
+}
+
+function normalizeStepForDag(step: RawStep): Step {
+  if (step.node_type === "idea") {
+    return {
+      ...step,
+      node_type: "goal",
+      status: "waiting"
+    };
+  }
+  return {
+    ...step,
+    node_type: step.node_type
+  };
 }
 
 export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; onTaskStarted?: (status: TaskStatus) => void }) {
@@ -146,12 +153,10 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
   const [steps, setSteps] = useState<Step[]>([]);
   const [edges, setEdges] = useState<StepEdge[]>([]);
   const [selectedStepId, setSelectedStepId] = useState("");
-  const [selectedEdgeId, setSelectedEdgeId] = useState("");
   const [error, setError] = useState("");
 
   const [startGoalTitle, setStartGoalTitle] = useState("");
   const [startStepType, setStartStepType] = useState<EditableStepType>("goal");
-  const [newStepType, setNewStepType] = useState<EditableStepType>("goal");
   const [newStepTitle, setNewStepTitle] = useState("");
   const [newStepStatus, setNewStepStatus] = useState<StepStatus>("waiting");
   const [newPredecessorNodeId, setNewPredecessorNodeId] = useState("");
@@ -227,42 +232,15 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     [sortedSteps, selectedStepId, currentFocusGoal?.id, startNode?.id]
   );
 
-  const selectedEdge = useMemo(
-    () => edges.find((edge) => edge.id === selectedEdgeId) ?? null,
-    [edges, selectedEdgeId]
-  );
-
-  const selectedEdgeWithContext = useMemo(() => {
-    if (!selectedEdge) return null;
-    return {
-      ...selectedEdge,
-      fromTitle: stepById.get(selectedEdge.from_node_id)?.title ?? selectedEdge.from_node_id,
-      toTitle: stepById.get(selectedEdge.to_node_id)?.title ?? selectedEdge.to_node_id
-    };
-  }, [selectedEdge, stepById]);
-
   const inspectorTarget = useMemo(() => {
-    if (selectedEdgeWithContext) {
-      return { kind: "edge", edge: selectedEdgeWithContext } as const;
-    }
-    if (selectedStep) {
-      return { kind: "node", node: selectedStep } as const;
-    }
-    return null;
-  }, [selectedEdgeWithContext, selectedStep]);
+    if (!selectedStep) return null;
+    return { kind: "node", node: selectedStep } as const;
+  }, [selectedStep]);
 
   const inspectorLogsBasePath = useMemo(() => {
     if (!selectedFlowId || !inspectorTarget) return "";
-    if (inspectorTarget.kind === "edge") {
-      return `/api/v1/routes/${selectedFlowId}/edges/${inspectorTarget.edge.id}/logs`;
-    }
     return `/api/v1/routes/${selectedFlowId}/nodes/${inspectorTarget.node.id}/logs`;
   }, [inspectorTarget, selectedFlowId]);
-
-  const createStepStatuses = useMemo(
-    () => createStatusOptions(newStepType),
-    [newStepType]
-  );
 
   const predecessorNode = useMemo(
     () => stepById.get(newPredecessorNodeId) ?? null,
@@ -270,8 +248,8 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
   );
 
   const inferredEdgeType = useMemo(
-    () => inferEdgeRelation(predecessorNode?.node_type ?? null, newStepType),
-    [predecessorNode?.node_type, newStepType]
+    () => inferEdgeRelation(predecessorNode?.node_type ?? null),
+    [predecessorNode?.node_type]
   );
 
   const successorsByStepId = useMemo(() => {
@@ -477,7 +455,6 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
 
   const inspectorTargetKey = useMemo(() => {
     if (!inspectorTarget) return "";
-    if (inspectorTarget.kind === "edge") return `edge:${inspectorTarget.edge.id}`;
     return `node:${inspectorTarget.node.id}`;
   }, [inspectorTarget]);
 
@@ -527,7 +504,6 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
       const target = event.target as HTMLElement;
       if (
         target.closest(".taskDagNode") ||
-        target.closest(".taskDagEdgeHit") ||
         target.closest(".taskDagInlinePanel") ||
         target.closest(".taskDagToolbar") ||
         target.closest(".taskDagInspector")
@@ -592,7 +568,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     setError("");
     try {
       const result = await apiGet<FlowGraphOut>(`/api/v1/routes/${routeId}/graph`);
-      setSteps(result.nodes);
+      setSteps(result.nodes.map(normalizeStepForDag));
       setEdges(result.edges);
     } catch (e) {
       setError((e as Error).message);
@@ -631,12 +607,10 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
       setSteps([]);
       setEdges([]);
       setSelectedStepId("");
-      setSelectedEdgeId("");
       setShouldAutoFitDag(true);
       resetDagViewport();
       return;
     }
-    setSelectedEdgeId("");
     setShouldAutoFitDag(true);
     void loadGraph(selectedFlowId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -673,18 +647,6 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     setNodeMenuOpenFor(null);
     setInlineActionMode(null);
   }, [selectedStep?.id]);
-
-  useEffect(() => {
-    if (!createStepStatuses.includes(newStepStatus)) {
-      setNewStepStatus(defaultCreateStatus(newStepType));
-    }
-  }, [createStepStatuses, newStepStatus, newStepType]);
-
-  useEffect(() => {
-    if (!selectedEdgeId) return;
-    if (edges.some((edge) => edge.id === selectedEdgeId)) return;
-    setSelectedEdgeId("");
-  }, [edges, selectedEdgeId]);
 
   useEffect(() => {
     if (!inspectorTarget || !inspectorLogsBasePath) {
@@ -781,7 +743,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
         assignee_type: "human"
       });
 
-      const startEdgeRelation = inferEdgeRelation("start", startStepType) ?? "refine";
+      const startEdgeRelation = inferEdgeRelation("start") ?? "initiate";
 
       await createNodeWithEdge({
         routeId: createdFlow.id,
@@ -807,28 +769,19 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
 
   function onSelectNode(nodeId: string) {
     setSelectedStepId(nodeId);
-    setSelectedEdgeId("");
     setNewPredecessorNodeId(nodeId);
     setInlineActionMode(null);
     setNodeMenuOpenFor(null);
   }
 
-  function onSelectEdge(edgeId: string) {
-    setSelectedEdgeId(edgeId);
-    setNodeMenuOpenFor(null);
-    setInlineActionMode(null);
-  }
-
   function onOpenNodeMenu(nodeId: string) {
     setSelectedStepId(nodeId);
-    setSelectedEdgeId("");
     setInlineActionMode(null);
     setNodeMenuOpenFor((prev) => (prev === nodeId ? null : nodeId));
   }
 
   function onOpenAddStepPanel(nodeId: string) {
     setSelectedStepId(nodeId);
-    setSelectedEdgeId("");
     setNewPredecessorNodeId(nodeId);
     setNewStepTitle("");
     setNodeMenuOpenFor(null);
@@ -846,7 +799,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
     try {
       await createNodeWithEdge({
         routeId: selectedFlowId,
-        nodeType: newStepType,
+        nodeType: "goal",
         title: newStepTitle.trim(),
         status: newStepStatus,
         predecessorNodeId: newPredecessorNodeId,
@@ -917,7 +870,6 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
       setNodeMenuOpenFor(null);
       setInlineActionMode(null);
       setSelectedStepId("");
-      setSelectedEdgeId("");
       await loadGraph(selectedFlowId);
     } catch (e) {
       setError((e as Error).message);
@@ -1114,46 +1066,19 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                             const y2 = to.y + DAG_NODE_HEIGHT / 2;
                             const midX = x1 + (x2 - x1) / 2;
                             const d = `M ${x1} ${y1} L ${midX} ${y1} L ${midX} ${y2} L ${x2} ${y2}`;
-                            const edgeSelected = selectedEdgeId === edge.id;
                             return (
                               <g key={edge.id}>
                                 <path
                                   d={d}
-                                  className={`taskDagEdge ${mapEdgeClass(edge.toStatus)}${edgeSelected ? " taskDagEdgeSelected" : ""}`}
+                                  className={`taskDagEdge ${mapEdgeClass(edge.toStatus)}`}
                                 />
-                                <path
-                                  d={d}
-                                  className="taskDagEdgeHit"
-                                  onClick={(event) => {
-                                    event.stopPropagation();
-                                    onSelectEdge(edge.id);
-                                  }}
-                                />
-                                <text
-                                  x={midX}
-                                  y={y1 + (y2 - y1) / 2 - 4}
-                                  textAnchor="middle"
-                                  className="taskDagEdgeLabel"
-                                >
-                                  {t(`tasks.execution.edgeType.${edge.relation}`)}
-                                </text>
-                                {edge.has_logs ? (
-                                  <text
-                                    x={midX}
-                                    y={y1 + (y2 - y1) / 2 + 10}
-                                    textAnchor="middle"
-                                    className="taskDagEdgeLogBadge"
-                                  >
-                                    {t("tasks.execution.logBadge")}
-                                  </text>
-                                ) : null}
                               </g>
                             );
                           })}
                         </svg>
 
                         {dagNodes.positioned.map(({ node, x, y }) => {
-                          const isSelected = !selectedEdgeId && selectedStep?.id === node.id;
+                          const isSelected = selectedStep?.id === node.id;
                           return (
                             <div
                               key={node.id}
@@ -1196,8 +1121,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                           );
                         })}
 
-                        {!selectedEdgeId &&
-                        selectedStep &&
+                        {selectedStep &&
                         selectedDagNode &&
                         inlinePanelPosition &&
                         (nodeMenuOpenFor === selectedStep.id || inlineActionMode !== null) ? (
@@ -1262,17 +1186,6 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                               <div className="taskDagInlineEditor">
                                 <h4 className="taskSectionTitle">{t("tasks.execution.addStep")}</h4>
                                 <div className="taskDagInlineForm">
-                                  <select
-                                    className="taskInput"
-                                    value={newStepType}
-                                    onChange={(event) => setNewStepType(event.target.value as EditableStepType)}
-                                  >
-                                    {EDITABLE_NODE_TYPES.map((type) => (
-                                      <option key={type} value={type}>
-                                        {t(`routes.nodeType.${type}`)}
-                                      </option>
-                                    ))}
-                                  </select>
                                   <input
                                     className="taskInput"
                                     value={newStepTitle}
@@ -1284,21 +1197,17 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                                     value={newStepStatus}
                                     onChange={(event) => setNewStepStatus(event.target.value as StepStatus)}
                                   >
-                                    {createStepStatuses.map((status) => (
+                                    {nodeStatusOptions("goal").map((status) => (
                                       <option key={status} value={status}>
                                         {t(`routes.nodeStatus.${status}`)}
                                       </option>
                                     ))}
                                   </select>
                                 </div>
-                                <p className="meta taskDagComposerHint">
-                                  {t("tasks.execution.edgeSummary")}:{" "}
-                                  {inferredEdgeType ? t(`tasks.execution.edgeType.${inferredEdgeType}`) : t("tasks.execution.predecessorHint")}
-                                </p>
                                 <div className="taskDagInlineActions">
                                   <button
                                     className="badge"
-                                    disabled={creatingStep || !newStepTitle.trim() || !newPredecessorNodeId || !inferredEdgeType}
+                                    disabled={creatingStep || !newStepTitle.trim() || !newPredecessorNodeId}
                                     onClick={onAddStep}
                                   >
                                     {t("tasks.execution.addAction")}
@@ -1324,36 +1233,19 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                   <h4 className="taskSectionTitle">{t("tasks.execution.inspectorTitle")}</h4>
                   {inspectorTarget ? (
                     <>
-                      {inspectorTarget.kind === "node" ? (
-                        <div className="taskDagInspectorMeta">
-                          <p className="taskDagInspectorLine">
-                            <span className="changesSummaryKey">{t("tasks.execution.inspectorNode")}:</span> {inspectorTarget.node.title}
-                          </p>
-                          <p className="taskDagInspectorLine">
-                            <span className="changesSummaryKey">{t("routes.nodeType")}:</span>{" "}
-                            {t(`routes.nodeType.${inspectorTarget.node.node_type}`)}
-                          </p>
-                          <p className="taskDagInspectorLine">
-                            <span className="changesSummaryKey">{t("tasks.execution.stepStatus")}:</span>{" "}
-                            {t(`routes.nodeStatus.${inspectorTarget.node.status}`)}
-                          </p>
-                        </div>
-                      ) : (
-                        <div className="taskDagInspectorMeta">
-                          <p className="taskDagInspectorLine">
-                            <span className="changesSummaryKey">{t("tasks.execution.inspectorEdge")}:</span>{" "}
-                            {t(`tasks.execution.edgeType.${inspectorTarget.edge.relation}`)}
-                          </p>
-                          <p className="taskDagInspectorLine">
-                            <span className="changesSummaryKey">{t("tasks.execution.inspectorFrom")}:</span>{" "}
-                            {inspectorTarget.edge.fromTitle}
-                          </p>
-                          <p className="taskDagInspectorLine">
-                            <span className="changesSummaryKey">{t("tasks.execution.inspectorTo")}:</span>{" "}
-                            {inspectorTarget.edge.toTitle}
-                          </p>
-                        </div>
-                      )}
+                      <div className="taskDagInspectorMeta">
+                        <p className="taskDagInspectorLine">
+                          <span className="changesSummaryKey">{t("tasks.execution.inspectorNode")}:</span> {inspectorTarget.node.title}
+                        </p>
+                        <p className="taskDagInspectorLine">
+                          <span className="changesSummaryKey">{t("routes.nodeType")}:</span>{" "}
+                          {t(`routes.nodeType.${inspectorTarget.node.node_type}`)}
+                        </p>
+                        <p className="taskDagInspectorLine">
+                          <span className="changesSummaryKey">{t("tasks.execution.stepStatus")}:</span>{" "}
+                          {t(`routes.nodeStatus.${inspectorTarget.node.status}`)}
+                        </p>
+                      </div>
                       <div className="taskDagLogComposer">
                         <label className="taskField">
                           <span>{t("tasks.execution.logs")}</span>
@@ -1361,11 +1253,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                             className="taskInput taskTextArea"
                             value={newLogDraft}
                             onChange={(event) => setNewLogDraft(event.target.value)}
-                            placeholder={
-                              inspectorTarget.kind === "edge"
-                                ? t("tasks.execution.logPlaceholderEdge")
-                                : t("tasks.execution.logPlaceholderNode")
-                            }
+                            placeholder={t("tasks.execution.logPlaceholderNode")}
                           />
                         </label>
                         <div className="taskDagInspectorActions">
