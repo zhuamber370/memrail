@@ -493,16 +493,30 @@ class RouteGraphService:
 
     def append_node_log(self, route_id: str, node_id: str, payload: NodeLogCreate) -> NodeLog:
         node = self._ensure_node_in_route(route_id, node_id)
+        content = payload.content.strip()
+        if not content:
+            raise ValueError("ROUTE_LOG_CONTENT_EMPTY")
+        log_id = f"nlg_{uuid.uuid4().hex[:12]}"
         log = NodeLog(
-            id=f"nlg_{uuid.uuid4().hex[:12]}",
+            id=log_id,
             node_id=node.id,
             actor_type=payload.actor_type,
             actor_id=payload.actor_id,
-            content=payload.content,
+            content=content,
             log_type=payload.log_type,
             source_ref=payload.source_ref,
         )
+        entity_log = EntityLog(
+            id=log_id,
+            route_id=route_id,
+            entity_type="route_node",
+            entity_id=node.id,
+            actor_type=payload.actor_type,
+            actor_id=payload.actor_id,
+            content=content,
+        )
         self.db.add(log)
+        self.db.add(entity_log)
         self.db.commit()
         self.db.refresh(log)
         log_audit_event(
@@ -524,6 +538,65 @@ class RouteGraphService:
                 select(NodeLog).where(NodeLog.node_id == node_id).order_by(NodeLog.created_at.desc())
             )
         )
+
+    def patch_node_log(self, route_id: str, node_id: str, log_id: str, payload: EntityLogPatch) -> NodeLog:
+        self._ensure_node_in_route(route_id, node_id)
+        content = payload.content.strip()
+        if not content:
+            raise ValueError("ROUTE_LOG_CONTENT_EMPTY")
+
+        log = self.db.scalar(select(NodeLog).where(NodeLog.id == log_id, NodeLog.node_id == node_id))
+        if log is None:
+            raise ValueError("ROUTE_ENTITY_LOG_NOT_FOUND")
+
+        log.content = content
+        self.db.add(log)
+
+        entity_log = self.db.scalar(
+            select(EntityLog).where(
+                EntityLog.id == log_id,
+                EntityLog.route_id == route_id,
+                EntityLog.entity_type == "route_node",
+                EntityLog.entity_id == node_id,
+            )
+        )
+        if entity_log is None:
+            entity_log = EntityLog(
+                id=log_id,
+                route_id=route_id,
+                entity_type="route_node",
+                entity_id=node_id,
+                actor_type=log.actor_type,
+                actor_id=log.actor_id,
+                content=content,
+            )
+        else:
+            entity_log.content = content
+        self.db.add(entity_log)
+
+        self.db.commit()
+        self.db.refresh(log)
+        return log
+
+    def delete_node_log(self, route_id: str, node_id: str, log_id: str) -> bool:
+        self._ensure_node_in_route(route_id, node_id)
+        log = self.db.scalar(select(NodeLog).where(NodeLog.id == log_id, NodeLog.node_id == node_id))
+        if log is None:
+            raise ValueError("ROUTE_ENTITY_LOG_NOT_FOUND")
+
+        entity_log = self.db.scalar(
+            select(EntityLog).where(
+                EntityLog.id == log_id,
+                EntityLog.route_id == route_id,
+                EntityLog.entity_type == "route_node",
+                EntityLog.entity_id == node_id,
+            )
+        )
+        if entity_log is not None:
+            self.db.delete(entity_log)
+        self.db.delete(log)
+        self.db.commit()
+        return True
 
     def _ensure_entity_in_route(self, *, route_id: str, entity_type: str, entity_id: str) -> None:
         self._ensure_route(route_id)

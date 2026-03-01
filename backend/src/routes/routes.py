@@ -6,6 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session
 
 from src.schemas import (
+    EntityLogCreate,
+    EntityLogListOut,
+    EntityLogOut,
+    EntityLogPatch,
     NodeLogCreate,
     NodeLogListOut,
     NodeLogOut,
@@ -30,6 +34,7 @@ def _raise_from_code(code: str) -> None:
         "ROUTE_NOT_FOUND",
         "ROUTE_NODE_NOT_FOUND",
         "ROUTE_EDGE_NOT_FOUND",
+        "ROUTE_ENTITY_LOG_NOT_FOUND",
         "TASK_NOT_FOUND",
         "ROUTE_PARENT_NOT_FOUND",
         "ROUTE_NODE_PARENT_NOT_FOUND",
@@ -47,6 +52,7 @@ def _raise_from_code(code: str) -> None:
         "ROUTE_EDGE_GOAL_TO_GOAL_FORBIDDEN",
         "ROUTE_EDGE_NODE_TYPE_UNSUPPORTED",
         "ROUTE_NODE_HAS_SUCCESSORS",
+        "ROUTE_ENTITY_CROSS_ROUTE",
     }:
         status_code = 409
     raise HTTPException(status_code=status_code, detail={"code": code, "message": code.lower()})
@@ -172,5 +178,64 @@ def build_router(get_db_dep):
         except ValueError as exc:
             _raise_from_code(str(exc))
         return {"items": items}
+
+    @router.patch("/{route_id}/nodes/{node_id}/logs/{log_id}", response_model=NodeLogOut)
+    def patch_node_log(
+        route_id: str,
+        node_id: str,
+        log_id: str,
+        payload: EntityLogPatch,
+        db: Session = Depends(get_db_dep),
+    ):
+        try:
+            return RouteGraphService(db).patch_node_log(route_id, node_id, log_id, payload)
+        except ValueError as exc:
+            _raise_from_code(str(exc))
+
+    @router.delete("/{route_id}/nodes/{node_id}/logs/{log_id}", status_code=204)
+    def delete_node_log(route_id: str, node_id: str, log_id: str, db: Session = Depends(get_db_dep)):
+        try:
+            RouteGraphService(db).delete_node_log(route_id, node_id, log_id)
+        except ValueError as exc:
+            _raise_from_code(str(exc))
+        return Response(status_code=204)
+
+    @router.post("/{route_id}/edges/{edge_id}/logs", response_model=EntityLogOut, status_code=201)
+    def append_edge_log(
+        route_id: str, edge_id: str, payload: EntityLogCreate, db: Session = Depends(get_db_dep)
+    ):
+        try:
+            return RouteGraphService(db).append_entity_log(route_id, "route_edge", edge_id, payload)
+        except ValueError as exc:
+            _raise_from_code(str(exc))
+
+    @router.get("/{route_id}/edges/{edge_id}/logs", response_model=EntityLogListOut)
+    def list_edge_logs(route_id: str, edge_id: str, db: Session = Depends(get_db_dep)):
+        try:
+            items = RouteGraphService(db).list_entity_logs(route_id, "route_edge", edge_id)
+        except ValueError as exc:
+            _raise_from_code(str(exc))
+        return {"items": items}
+
+    @router.patch("/{route_id}/edges/{edge_id}/logs/{log_id}", response_model=EntityLogOut)
+    def patch_edge_log(
+        route_id: str,
+        edge_id: str,
+        log_id: str,
+        payload: EntityLogPatch,
+        db: Session = Depends(get_db_dep),
+    ):
+        try:
+            return RouteGraphService(db).patch_entity_log(route_id, "route_edge", edge_id, log_id, payload)
+        except ValueError as exc:
+            _raise_from_code(str(exc))
+
+    @router.delete("/{route_id}/edges/{edge_id}/logs/{log_id}", status_code=204)
+    def delete_edge_log(route_id: str, edge_id: str, log_id: str, db: Session = Depends(get_db_dep)):
+        try:
+            RouteGraphService(db).delete_entity_log(route_id, "route_edge", edge_id, log_id)
+        except ValueError as exc:
+            _raise_from_code(str(exc))
+        return Response(status_code=204)
 
     return router

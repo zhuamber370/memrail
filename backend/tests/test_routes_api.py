@@ -531,6 +531,90 @@ def test_entity_logs_crud_for_node_and_edge():
     engine.dispose()
 
 
+def test_entity_log_routes_exposed():
+    client = make_client()
+    task_id = create_test_task(client, prefix="entity_log_routes_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('entity_log_routes')}",
+            "goal": "entity log route exposure",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    node1 = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "N1", "description": ""},
+    )
+    assert node1.status_code == 201
+    node1_id = node1.json()["id"]
+
+    node2 = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "N2", "description": ""},
+    )
+    assert node2.status_code == 201
+    node2_id = node2.json()["id"]
+
+    edge = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={"from_node_id": node1_id, "to_node_id": node2_id, "relation": "handoff"},
+    )
+    assert edge.status_code == 201
+    edge_id = edge.json()["id"]
+
+    node_log = client.post(
+        f"/api/v1/routes/{route_id}/nodes/{node1_id}/logs",
+        json={"content": f"node-log-{uniq('route')}", "actor_type": "human", "actor_id": "tester"},
+    )
+    assert node_log.status_code == 201
+    node_log_id = node_log.json()["id"]
+
+    patched_node_log = client.patch(
+        f"/api/v1/routes/{route_id}/nodes/{node1_id}/logs/{node_log_id}",
+        json={"content": "node-log-updated"},
+    )
+    assert patched_node_log.status_code == 200
+    assert patched_node_log.json()["content"] == "node-log-updated"
+
+    listed_edge_logs = client.get(f"/api/v1/routes/{route_id}/edges/{edge_id}/logs")
+    assert listed_edge_logs.status_code == 200
+    assert listed_edge_logs.json()["items"] == []
+
+    created_edge_log = client.post(
+        f"/api/v1/routes/{route_id}/edges/{edge_id}/logs",
+        json={"content": "edge-log-created", "actor_type": "human", "actor_id": "tester"},
+    )
+    assert created_edge_log.status_code == 201
+    edge_log_id = created_edge_log.json()["id"]
+    assert created_edge_log.json()["entity_type"] == "route_edge"
+
+    patched_edge_log = client.patch(
+        f"/api/v1/routes/{route_id}/edges/{edge_id}/logs/{edge_log_id}",
+        json={"content": "edge-log-updated"},
+    )
+    assert patched_edge_log.status_code == 200
+    assert patched_edge_log.json()["content"] == "edge-log-updated"
+
+    deleted_edge_log = client.delete(f"/api/v1/routes/{route_id}/edges/{edge_id}/logs/{edge_log_id}")
+    assert deleted_edge_log.status_code == 204
+
+    deleted_node_log = client.delete(f"/api/v1/routes/{route_id}/nodes/{node1_id}/logs/{node_log_id}")
+    assert deleted_node_log.status_code == 204
+
+    empty_content = client.post(
+        f"/api/v1/routes/{route_id}/edges/{edge_id}/logs",
+        json={"content": "   ", "actor_type": "human", "actor_id": "tester"},
+    )
+    assert empty_content.status_code == 422
+    assert empty_content.json()["error"]["code"] == "ROUTE_LOG_CONTENT_EMPTY"
+
+
 def test_route_edges_are_inferred_by_node_type():
     client = make_client()
     task_id = create_test_task(client, prefix="route_edge_relations_task")
