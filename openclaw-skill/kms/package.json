@@ -1,7 +1,7 @@
 {
-  "name": "openclaw-memrail-skill",
+  "name": "openclaw-memlineage-skill",
   "version": "1.0.0",
-  "description": "OpenClaw native skill for Memrail task/journal/knowledge governance",
+  "description": "OpenClaw native skill for MemLineage task/journal/knowledge governance",
   "main": "index.js",
   "license": "Apache-2.0"
 }

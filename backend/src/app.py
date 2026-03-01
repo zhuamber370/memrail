@@ -41,7 +41,7 @@ def create_app(
     def get_db_dep():
         yield from get_db(session_local)
 
-    app = FastAPI(title="Memrail Backend")
+    app = FastAPI(title="MemLineage Backend")
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[

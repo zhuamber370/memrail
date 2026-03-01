@@ -43,4 +43,4 @@ def test_options_preflight_allows_localhost_custom_port():
 
 def test_auth_enabled_requires_api_key():
     with pytest.raises(RuntimeError, match="KMS_API_KEY"):
-        create_app(database_url="sqlite+pysqlite:////tmp/memrail-auth-test.db", require_auth=True, api_key="")
+        create_app(database_url="sqlite+pysqlite:////tmp/memlineage-auth-test.db", require_auth=True, api_key="")

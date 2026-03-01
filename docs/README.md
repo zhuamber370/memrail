@@ -1,6 +1,6 @@
 # Docs Index
 
-This is the documentation entrypoint for Memrail.
+This is the documentation entrypoint for MemLineage.
 
 ## Start Here
 

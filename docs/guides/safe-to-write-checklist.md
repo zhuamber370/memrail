@@ -2,7 +2,7 @@
 
 Use this checklist before allowing agent writes into persistent systems.
 
-This page is implementation-agnostic. You can use it with Memrail or map it to your own control plane.
+This page is implementation-agnostic. You can use it with MemLineage or map it to your own control plane.
 
 ## 1) Scope and Risk Classification
 
@@ -69,9 +69,9 @@ Before production rollout, confirm all items below are true:
 - [ ] At least one incident-response drill has been run.
 - [ ] Dashboard or query exists for open/pending/rejected write proposals.
 
-## Memrail Mapping
+## MemLineage Mapping
 
-If you are using Memrail, the default governed flow is:
+If you are using MemLineage, the default governed flow is:
 
 `dry-run -> diff preview -> human approve/reject -> commit -> audit (+ undo)`
 

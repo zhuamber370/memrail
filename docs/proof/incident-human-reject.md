@@ -4,7 +4,7 @@ Scenario: an agent proposes a knowledge change that should **not** be committed.
 
 Why this matters:
 - Without governance, agent writes can silently pollute memory/knowledge.
-- With Memrail, every write is a proposal; humans can review the **diff** first.
+- With MemLineage, every write is a proposal; humans can review the **diff** first.
 
 ## Steps
 1. Create a proposal via **dry-run** (you get `change_set_id` + diff preview)

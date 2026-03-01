@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Idempotent PostgreSQL bootstrap for local Memrail setup.
+"""Idempotent PostgreSQL bootstrap for local MemLineage setup.
 
 This script creates or updates:
 1) application role/user

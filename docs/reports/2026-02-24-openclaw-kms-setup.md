@@ -1,12 +1,12 @@
 > Documentation Status: Current
 > Last synced: 2026-02-27
 
-# OpenClaw x Memrail Setup Guide (workspace skill flow)
+# OpenClaw x MemLineage Setup Guide (workspace skill flow)
 
 ## Goal
 
-Use Memrail as the governed persistence layer for OpenClaw:
-- read/write tasks, journals, notes, knowledge, and route data through Memrail
+Use MemLineage as the governed persistence layer for OpenClaw:
+- read/write tasks, journals, notes, knowledge, and route data through MemLineage
 - use proposal-first governance (`dry-run -> commit/reject`)
 - keep rollback available (`undo_last_commit`)
 

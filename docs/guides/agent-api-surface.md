@@ -1,7 +1,7 @@
 > Documentation Status: Current
 > Last synced: 2026-02-27
 
-# Agent API Surface (Memrail)
+# Agent API Surface (MemLineage)
 
 This document defines the current agent-facing API contract.
 

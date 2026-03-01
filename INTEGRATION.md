@@ -1,6 +1,6 @@
-# Memrail Integration (OpenClaw-first)
+# MemLineage Integration (OpenClaw-first)
 
-Memrail is designed to be the **governed memory & change-governance layer** for OpenClaw workflows.
+MemLineage is designed to be the **governed memory & change-governance layer** for OpenClaw workflows.
 
 It helps you prevent "agent writes" from silently polluting memory/knowledge by enforcing a PR-like loop:
 
@@ -10,9 +10,9 @@ It helps you prevent "agent writes" from silently polluting memory/knowledge by 
 
 ## What you integrate
 
-Integrate Memrail at the boundary of *writes*:
+Integrate MemLineage at the boundary of *writes*:
 
-Agent/Skill wants to write → Memrail **dry-run** (diff) → human review → **commit** → data applied + audit trail.
+Agent/Skill wants to write → MemLineage **dry-run** (diff) → human review → **commit** → data applied + audit trail.
 
 Reads are safe by default.
 
@@ -20,7 +20,7 @@ Reads are safe by default.
 
 ## Minimal setup
 
-1) Run Memrail backend + frontend (see `README.md` Quickstart)
+1) Run MemLineage backend + frontend (see `README.md` Quickstart)
 
 2) Install OpenClaw skill:
 
@@ -53,7 +53,7 @@ bash scripts/install_openclaw_kms_skill.sh
 
 ## Integration checklist (for OpenClaw skill / UI authors)
 
-- [ ] Every write path is routed through Memrail changes pipeline
+- [ ] Every write path is routed through MemLineage changes pipeline
 - [ ] You can display: `change_set_id`, `summary`, `diff_items`
 - [ ] You can trigger: commit (`approved_by` + `client_request_id`)
 - [ ] You can audit: commit id / who approved / when
@@ -64,11 +64,11 @@ bash scripts/install_openclaw_kms_skill.sh
 ## Need help integrating?
 
 Open an **Integration Request** issue (template included):
-- https://github.com/zhuamber370/memrail/issues/new?template=integration_request.yml
+- https://github.com/zhuamber370/memlineage/issues/new?template=integration_request.yml
 
 Please include:
 
 - Your target workflow (what is writing what)
 - Where you want human approval to happen
 - What you want the diff to look like
-- Your environment (OS / Memrail version / OpenClaw version)
+- Your environment (OS / MemLineage version / OpenClaw version)

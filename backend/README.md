@@ -1,6 +1,6 @@
 # Backend
 
-FastAPI backend for Memrail.
+FastAPI backend for MemLineage.
 
 ## Environment
 

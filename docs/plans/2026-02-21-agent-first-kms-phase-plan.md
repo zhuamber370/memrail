@@ -1,11 +1,11 @@
 > Documentation Status: Historical Snapshot
 > Last synced: 2026-02-25
 
-# Memrail Phase Plan Implementation Plan
+# MemLineage Phase Plan Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
-**Goal:** Deliver Memrail MVP end-to-end (backend, API, skill, frontend) with task-management enhancements and governed write operations.
+**Goal:** Deliver MemLineage MVP end-to-end (backend, API, skill, frontend) with task-management enhancements and governed write operations.
 
 **Architecture:** Cloud-style REST API as the single write center. Web UI and OpenClaw skill share the same service surface. Batch writes follow governed flow (`dry-run/diff/commit/reject/undo/audit`) with conservative dedupe.
 

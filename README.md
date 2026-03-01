@@ -1,10 +1,10 @@
-# Memrail
+# MemLineage
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
-[![Open Issues](https://img.shields.io/github/issues/zhuamber370/memrail)](https://github.com/zhuamber370/memrail/issues)
-[![Last Commit](https://img.shields.io/github/last-commit/zhuamber370/memrail)](https://github.com/zhuamber370/memrail/commits/main)
+[![Open Issues](https://img.shields.io/github/issues/zhuamber370/memlineage)](https://github.com/zhuamber370/memlineage/issues)
+[![Last Commit](https://img.shields.io/github/last-commit/zhuamber370/memlineage)](https://github.com/zhuamber370/memlineage/commits/main)
 
-Memrail is **OpenClaw's governed memory + task infrastructure**.
+MemLineage is **OpenClaw's governed memory + task infrastructure**.
 
 It adds a PR-like control loop in front of agent writes:
 **dry-run -> diff preview -> human approve/reject -> commit -> audit (+ undo)**.
@@ -15,7 +15,7 @@ Quick links:
 - Integrate with OpenClaw: [INTEGRATION.md](INTEGRATION.md)
 - Runtime/API contract: [docs/guides/agent-api-surface.md](docs/guides/agent-api-surface.md)
 - Production controls: [Safe-to-Write Checklist](docs/guides/safe-to-write-checklist.md)
-- Operator feedback thread: [GitHub Discussion #20](https://github.com/zhuamber370/memrail/discussions/20)
+- Operator feedback thread: [GitHub Discussion #20](https://github.com/zhuamber370/memlineage/discussions/20)
 
 ## 5-Minute Evaluation Path
 
@@ -25,16 +25,16 @@ If you need to assess write safety quickly:
 2. Open `/changes` and review one proposed diff.
 3. Commit once, then run an undo to verify rollback + audit behavior.
 
-If you run agents in production, please share your checklist in [Discussion #20](https://github.com/zhuamber370/memrail/discussions/20).
+If you run agents in production, please share your checklist in [Discussion #20](https://github.com/zhuamber370/memlineage/discussions/20).
 
-## Why Memrail
+## Why MemLineage
 
 OpenClaw-heavy workflows often break when:
 - agent writes silently pollute memory and docs
 - changes are hard to review, trace, and roll back
 - tasks, knowledge, and execution context drift across tools
 
-Memrail keeps workflows **governed, traceable, and reversible**.
+MemLineage keeps workflows **governed, traceable, and reversible**.
 
 ## Who It Is For
 
@@ -58,7 +58,7 @@ Memrail keeps workflows **governed, traceable, and reversible**.
 
 ```mermaid
 flowchart LR
-A["Agent / Skill proposes change"] --> B["Memrail dry-run"]
+A["Agent / Skill proposes change"] --> B["MemLineage dry-run"]
 B --> C["Diff preview"]
 C --> D{"Human review"}
 D -- Reject --> E["Reject + audit log"]
@@ -90,7 +90,7 @@ curl -sS -X POST http://127.0.0.1:8000/api/v1/changes/dry-run \
       {
         "type": "create_knowledge",
         "payload": {
-          "title": "Memrail dry-run demo",
+          "title": "MemLineage dry-run demo",
           "body": "Hello from dry-run. This is only written after commit.",
           "category": "mechanism_spec"
         }
@@ -131,8 +131,8 @@ If you do not approve, reject it in `/changes` (or just do not commit).
 ### 1) Clone
 
 ```bash
-git clone https://github.com/zhuamber370/memrail.git
-cd memrail
+git clone https://github.com/zhuamber370/memlineage.git
+cd memlineage
 ```
 
 ### 2) Configure env
@@ -197,7 +197,7 @@ Integration references:
 ## Operator Feedback Thread
 
 We are collecting production feedback for governed agent writes:
-- Discussion: [What is your minimum safe-to-write checklist for production AI agents?](https://github.com/zhuamber370/memrail/discussions/20)
+- Discussion: [What is your minimum safe-to-write checklist for production AI agents?](https://github.com/zhuamber370/memlineage/discussions/20)
 - Focus questions:
   1. Which approval/audit fields are non-negotiable before commit?
   2. Where should approval happen in practice (app layer, queue boundary, CI gate, or elsewhere)?
@@ -207,7 +207,7 @@ We are collecting production feedback for governed agent writes:
 
 - Start guide: [CONTRIBUTING.md](CONTRIBUTING.md)
 - Contributor dev setup: [docs/contributing/dev-setup.md](docs/contributing/dev-setup.md)
-- Good first issues: <https://github.com/zhuamber370/memrail/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22>
+- Good first issues: <https://github.com/zhuamber370/memlineage/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22>
 
 ## Security
 

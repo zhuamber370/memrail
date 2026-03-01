@@ -1,6 +1,6 @@
 # Frontend
 
-Next.js frontend for Memrail.
+Next.js frontend for MemLineage.
 
 ## Environment
 

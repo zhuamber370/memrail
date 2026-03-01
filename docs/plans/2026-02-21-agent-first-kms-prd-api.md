@@ -1,7 +1,7 @@
 > Documentation Status: Historical Snapshot
 > Last synced: 2026-02-25
 
-# Memrail API Contract (v0.7, Synced 2026-02-25)
+# MemLineage API Contract (v0.7, Synced 2026-02-25)
 
 ## 1. Scope and Role Split
 - UI is for human review and correction.

@@ -1,8 +1,8 @@
 # Contributing
 
-Thanks for contributing to **Memrail**.
+Thanks for contributing to **MemLineage**.
 
-Memrail is an OpenClaw workflow command center where **agent proposals are governed by human review** (with audit + undo). Contributions that improve reliability, clarity, and contributor experience are especially welcome.
+MemLineage is an OpenClaw workflow command center where **agent proposals are governed by human review** (with audit + undo). Contributions that improve reliability, clarity, and contributor experience are especially welcome.
 
 ## Quick start for contributors
 

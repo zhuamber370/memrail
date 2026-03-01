@@ -1,7 +1,7 @@
 > Documentation Status: Historical Snapshot
 > Last synced: 2026-02-25
 
-# Memrail Implementation Input Pack (v0.7, Synced 2026-02-25)
+# MemLineage Implementation Input Pack (v0.7, Synced 2026-02-25)
 
 ## 1. Build target
 

@@ -1,7 +1,7 @@
 ---
 name: kms
 version: 1.0.0
-description: Memrail integration for governed read/write access (tasks, journals, notes, knowledge, routes).
+description: MemLineage integration for governed read/write access (tasks, journals, notes, knowledge, routes).
 metadata:
   openclaw:
     emoji: "🗂️"
@@ -11,14 +11,14 @@ metadata:
         - KMS_API_KEY
 ---
 
-# Memrail Skill
+# MemLineage Skill
 
-Use this skill when you need to read or write Memrail data.
+Use this skill when you need to read or write MemLineage data.
 
 ## Governance Rules
 
 1. Single source of truth
-- Tasks, journals, notes, knowledge, and route execution data are read/written in Memrail only.
+- Tasks, journals, notes, knowledge, and route execution data are read/written in MemLineage only.
 
 2. Explicit write trigger
 - Write only when the user gives an explicit write command.

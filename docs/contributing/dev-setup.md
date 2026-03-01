@@ -16,8 +16,8 @@ This guide is optimized for getting a new contributor to a working local environ
 ## 1) Clone
 
 ```bash
-git clone https://github.com/zhuamber370/memrail.git
-cd memrail
+git clone https://github.com/zhuamber370/memlineage.git
+cd memlineage
 ```
 
 ## 2) Configure env
