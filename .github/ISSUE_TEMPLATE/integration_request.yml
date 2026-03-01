@@ -1,14 +1,14 @@
 name: Integration Request
-description: Request help integrating Memrail as a governed memory / change-governance layer (OpenClaw-first)
+description: Request help integrating MemLineage as a governed memory / change-governance layer (OpenClaw-first)
 title: "[integration] <short summary>"
 labels: ["integration"]
 body:
   - type: markdown
     attributes:
       value: |
-        Thanks for integrating Memrail!
+        Thanks for integrating MemLineage!
 
-        Memrail is designed as a PR-like governance layer for agent writes:
+        MemLineage is designed as a PR-like governance layer for agent writes:
         **dry-run → diff preview → human approve/reject → commit → audit (+ undo)**
 
   - type: dropdown
@@ -60,11 +60,11 @@ body:
     id: workflow
     attributes:
       label: Your workflow
-      description: Describe what writes happen and where you want Memrail in the loop.
+      description: Describe what writes happen and where you want MemLineage in the loop.
       placeholder: |
         Example:
         1) Agent drafts a knowledge note
-        2) Memrail dry-run returns diff
+        2) MemLineage dry-run returns diff
         3) Human approves in /changes
         4) Commit applied and logged
     validations:
@@ -74,9 +74,9 @@ body:
     id: environment
     attributes:
       label: Environment
-      description: OS, Memrail version/commit, OpenClaw version, logs (if any).
+      description: OS, MemLineage version/commit, OpenClaw version, logs (if any).
       placeholder: |
         - OS:
-        - Memrail version/commit:
+        - MemLineage version/commit:
         - OpenClaw version:
         - Logs:

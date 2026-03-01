@@ -608,7 +608,7 @@ def _sqlite_rebuild_tasks_table_if_needed(conn) -> None:
         conn.execute(
             text(
                 """
-                CREATE TABLE tasks__memrail_new (
+                CREATE TABLE tasks__memlineage_new (
                   id VARCHAR(40) PRIMARY KEY,
                   title VARCHAR(120) NOT NULL,
                   description TEXT NOT NULL DEFAULT '',
@@ -630,13 +630,13 @@ def _sqlite_rebuild_tasks_table_if_needed(conn) -> None:
         conn.execute(
             text(
                 f"""
-                INSERT INTO tasks__memrail_new ({", ".join(target_columns)})
+                INSERT INTO tasks__memlineage_new ({", ".join(target_columns)})
                 SELECT {", ".join(select_expr[column] for column in target_columns)}
                 FROM tasks
                 """
             )
         )
         conn.execute(text("DROP TABLE tasks"))
-        conn.execute(text("ALTER TABLE tasks__memrail_new RENAME TO tasks"))
+        conn.execute(text("ALTER TABLE tasks__memlineage_new RENAME TO tasks"))
     finally:
         conn.execute(text("PRAGMA foreign_keys=ON"))

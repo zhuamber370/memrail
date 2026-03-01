@@ -8,7 +8,7 @@ body:
     attributes:
       label: What happened?
       description: A clear and concise description of the bug.
-      placeholder: "When I ..., Memrail ..."
+      placeholder: "When I ..., MemLineage ..."
     validations:
       required: true
   - type: textarea
