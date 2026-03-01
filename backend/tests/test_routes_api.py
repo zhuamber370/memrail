@@ -615,6 +615,70 @@ def test_entity_log_routes_exposed():
     assert empty_content.json()["error"]["code"] == "ROUTE_LOG_CONTENT_EMPTY"
 
 
+def test_route_graph_marks_has_logs_for_node_and_edge():
+    client = make_client()
+    task_id = create_test_task(client, prefix="graph_has_logs_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('graph_has_logs')}",
+            "goal": "graph has_logs markers",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    node1 = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "N1", "description": ""},
+    )
+    assert node1.status_code == 201
+    node1_id = node1.json()["id"]
+
+    node2 = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "N2", "description": ""},
+    )
+    assert node2.status_code == 201
+    node2_id = node2.json()["id"]
+
+    edge = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={"from_node_id": node1_id, "to_node_id": node2_id, "relation": "handoff"},
+    )
+    assert edge.status_code == 201
+    edge_id = edge.json()["id"]
+
+    graph_before = client.get(f"/api/v1/routes/{route_id}/graph")
+    assert graph_before.status_code == 200
+    node_before = next(item for item in graph_before.json()["nodes"] if item["id"] == node1_id)
+    edge_before = next(item for item in graph_before.json()["edges"] if item["id"] == edge_id)
+    assert node_before["has_logs"] is False
+    assert edge_before["has_logs"] is False
+
+    node_log = client.post(
+        f"/api/v1/routes/{route_id}/nodes/{node1_id}/logs",
+        json={"content": "node graph log", "actor_type": "human", "actor_id": "tester"},
+    )
+    assert node_log.status_code == 201
+
+    edge_log = client.post(
+        f"/api/v1/routes/{route_id}/edges/{edge_id}/logs",
+        json={"content": "edge graph log", "actor_type": "human", "actor_id": "tester"},
+    )
+    assert edge_log.status_code == 201
+
+    graph_after = client.get(f"/api/v1/routes/{route_id}/graph")
+    assert graph_after.status_code == 200
+    node_after = next(item for item in graph_after.json()["nodes"] if item["id"] == node1_id)
+    edge_after = next(item for item in graph_after.json()["edges"] if item["id"] == edge_id)
+    assert node_after["has_logs"] is True
+    assert edge_after["has_logs"] is True
+
+
 def test_route_edges_are_inferred_by_node_type():
     client = make_client()
     task_id = create_test_task(client, prefix="route_edge_relations_task")

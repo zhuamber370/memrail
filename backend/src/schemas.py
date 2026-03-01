@@ -643,6 +643,7 @@ class RouteNodeOut(BaseModel):
     order_hint: int
     assignee_type: RouteAssigneeType
     assignee_id: Optional[str]
+    has_logs: bool = False
     created_at: datetime
     updated_at: datetime
 
@@ -668,6 +669,7 @@ class RouteEdgeOut(BaseModel):
     to_node_id: str
     relation: RouteEdgeRelation
     description: str
+    has_logs: bool = False
     created_at: datetime
 
 

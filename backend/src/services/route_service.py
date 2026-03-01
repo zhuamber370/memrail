@@ -407,6 +407,39 @@ class RouteGraphService:
                 .order_by(RouteEdge.created_at.asc())
             )
         )
+        node_ids = [node.id for node in nodes]
+        edge_ids = [edge.id for edge in edges]
+
+        node_has_logs: set[str] = set()
+        edge_has_logs: set[str] = set()
+        if node_ids:
+            node_has_logs = set(
+                self.db.scalars(
+                    select(EntityLog.entity_id)
+                    .where(
+                        EntityLog.route_id == route_id,
+                        EntityLog.entity_type == "route_node",
+                        EntityLog.entity_id.in_(node_ids),
+                    )
+                    .distinct()
+                )
+            )
+        if edge_ids:
+            edge_has_logs = set(
+                self.db.scalars(
+                    select(EntityLog.entity_id)
+                    .where(
+                        EntityLog.route_id == route_id,
+                        EntityLog.entity_type == "route_edge",
+                        EntityLog.entity_id.in_(edge_ids),
+                    )
+                    .distinct()
+                )
+            )
+        for node in nodes:
+            setattr(node, "has_logs", node.id in node_has_logs)
+        for edge in edges:
+            setattr(edge, "has_logs", edge.id in edge_has_logs)
         return nodes, edges
 
     def append_entity_log(
