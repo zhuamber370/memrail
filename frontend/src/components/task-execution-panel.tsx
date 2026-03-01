@@ -85,7 +85,7 @@ const DAG_ROW_GAP = 12;
 const DAG_PADDING_X = 16;
 const DAG_PADDING_Y = 14;
 const EDITABLE_NODE_TYPES: EditableStepType[] = ["goal"];
-const DAG_ACTION_PANEL_WIDTH = 304;
+const DAG_ACTION_PANEL_WIDTH = 248;
 const DAG_MIN_ZOOM = 0.48;
 const DAG_MAX_ZOOM = 1.8;
 const DAG_ZOOM_STEP = 0.14;
@@ -1083,7 +1083,7 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                                         key={status}
                                         className={`taskDagInlineStatusBtn${
                                           selectedStep.status === status ? " taskDagInlineStatusBtnActive" : ""
-                                        }`}
+                                        } taskDagInlineStatusBtn${status === "waiting" ? "Waiting" : status === "execute" ? "Execute" : "Done"}`}
                                         onClick={() => {
                                           void onSetStepStatus(selectedStep.id, status);
                                         }}
