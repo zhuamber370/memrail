@@ -6,8 +6,10 @@ from typing import Optional
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
-from src.models import NodeLog, Route, RouteEdge, RouteNode, Task
+from src.models import EntityLog, NodeLog, Route, RouteEdge, RouteNode, Task
 from src.schemas import (
+    EntityLogCreate,
+    EntityLogPatch,
     NodeLogCreate,
     RouteCreate,
     RouteEdgeCreate,
@@ -407,6 +409,88 @@ class RouteGraphService:
         )
         return nodes, edges
 
+    def append_entity_log(
+        self, route_id: str, entity_type: str, entity_id: str, payload: EntityLogCreate
+    ) -> EntityLog:
+        self._ensure_entity_in_route(route_id=route_id, entity_type=entity_type, entity_id=entity_id)
+        content = payload.content.strip()
+        if not content:
+            raise ValueError("ROUTE_LOG_CONTENT_EMPTY")
+
+        log = EntityLog(
+            id=f"elg_{uuid.uuid4().hex[:12]}",
+            route_id=route_id,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            actor_type=payload.actor_type,
+            actor_id=payload.actor_id,
+            content=content,
+        )
+        self.db.add(log)
+        self.db.commit()
+        self.db.refresh(log)
+        return log
+
+    def list_entity_logs(self, route_id: str, entity_type: str, entity_id: str) -> list[EntityLog]:
+        self._ensure_entity_in_route(route_id=route_id, entity_type=entity_type, entity_id=entity_id)
+        return list(
+            self.db.scalars(
+                select(EntityLog)
+                .where(
+                    EntityLog.route_id == route_id,
+                    EntityLog.entity_type == entity_type,
+                    EntityLog.entity_id == entity_id,
+                )
+                .order_by(EntityLog.created_at.desc())
+            )
+        )
+
+    def patch_entity_log(
+        self,
+        route_id: str,
+        entity_type: str,
+        entity_id: str,
+        log_id: str,
+        payload: EntityLogPatch,
+    ) -> EntityLog:
+        self._ensure_entity_in_route(route_id=route_id, entity_type=entity_type, entity_id=entity_id)
+        content = payload.content.strip()
+        if not content:
+            raise ValueError("ROUTE_LOG_CONTENT_EMPTY")
+
+        log = self.db.scalar(
+            select(EntityLog).where(
+                EntityLog.id == log_id,
+                EntityLog.route_id == route_id,
+                EntityLog.entity_type == entity_type,
+                EntityLog.entity_id == entity_id,
+            )
+        )
+        if log is None:
+            raise ValueError("ROUTE_ENTITY_LOG_NOT_FOUND")
+
+        log.content = content
+        self.db.add(log)
+        self.db.commit()
+        self.db.refresh(log)
+        return log
+
+    def delete_entity_log(self, route_id: str, entity_type: str, entity_id: str, log_id: str) -> bool:
+        self._ensure_entity_in_route(route_id=route_id, entity_type=entity_type, entity_id=entity_id)
+        log = self.db.scalar(
+            select(EntityLog).where(
+                EntityLog.id == log_id,
+                EntityLog.route_id == route_id,
+                EntityLog.entity_type == entity_type,
+                EntityLog.entity_id == entity_id,
+            )
+        )
+        if log is None:
+            raise ValueError("ROUTE_ENTITY_LOG_NOT_FOUND")
+        self.db.delete(log)
+        self.db.commit()
+        return True
+
     def append_node_log(self, route_id: str, node_id: str, payload: NodeLogCreate) -> NodeLog:
         node = self._ensure_node_in_route(route_id, node_id)
         log = NodeLog(
@@ -440,6 +524,20 @@ class RouteGraphService:
                 select(NodeLog).where(NodeLog.node_id == node_id).order_by(NodeLog.created_at.desc())
             )
         )
+
+    def _ensure_entity_in_route(self, *, route_id: str, entity_type: str, entity_id: str) -> None:
+        self._ensure_route(route_id)
+        if entity_type == "route_node":
+            entity = self.db.get(RouteNode, entity_id)
+        elif entity_type == "route_edge":
+            entity = self.db.get(RouteEdge, entity_id)
+        else:
+            raise ValueError("ROUTE_ENTITY_TYPE_UNSUPPORTED")
+
+        if entity is None:
+            raise ValueError("ROUTE_ENTITY_LOG_NOT_FOUND")
+        if entity.route_id != route_id:
+            raise ValueError("ROUTE_ENTITY_CROSS_ROUTE")
 
     def _ensure_route(self, route_id: str) -> Route:
         route = self.db.get(Route, route_id)

@@ -1,4 +1,7 @@
-from tests.helpers import create_test_task, make_client, uniq
+from src.db import build_engine, build_session_local
+from src.schemas import EntityLogCreate, EntityLogPatch
+from src.services.route_service import RouteGraphService
+from tests.helpers import create_test_task, database_url, make_client, uniq
 
 
 def test_create_active_route_promotes_task_to_in_progress():
@@ -364,6 +367,168 @@ def test_entity_log_response_shape():
     assert "updated_at" in body
     assert body["entity_type"] == "route_node"
     assert body["entity_id"] == node_id
+
+
+def test_entity_logs_crud_for_node_and_edge():
+    client = make_client()
+    task_id = create_test_task(client, prefix="entity_logs_service_task")
+
+    route = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('entity_logs_service')}",
+            "goal": "service entity logs",
+            "status": "candidate",
+        },
+    )
+    assert route.status_code == 201
+    route_id = route.json()["id"]
+
+    node = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "Node", "description": ""},
+    )
+    assert node.status_code == 201
+    node_id = node.json()["id"]
+
+    node2 = client.post(
+        f"/api/v1/routes/{route_id}/nodes",
+        json={"node_type": "goal", "title": "Node2", "description": ""},
+    )
+    assert node2.status_code == 201
+    node2_id = node2.json()["id"]
+
+    edge = client.post(
+        f"/api/v1/routes/{route_id}/edges",
+        json={"from_node_id": node_id, "to_node_id": node2_id, "relation": "handoff"},
+    )
+    assert edge.status_code == 201
+    edge_id = edge.json()["id"]
+
+    route2 = client.post(
+        "/api/v1/routes",
+        json={
+            "task_id": task_id,
+            "name": f"route_test_{uniq('entity_logs_service_r2')}",
+            "goal": "cross route guard",
+            "status": "candidate",
+        },
+    )
+    assert route2.status_code == 201
+    route2_id = route2.json()["id"]
+
+    route2_node = client.post(
+        f"/api/v1/routes/{route2_id}/nodes",
+        json={"node_type": "goal", "title": "R2 Node", "description": ""},
+    )
+    assert route2_node.status_code == 201
+    route2_node_id = route2_node.json()["id"]
+
+    engine = build_engine(database_url())
+    session_local = build_session_local(engine)
+    db = session_local()
+    service = RouteGraphService(db)
+
+    node_log = service.append_entity_log(
+        route_id,
+        "route_node",
+        node_id,
+        EntityLogCreate(content=f"node-log-{uniq('entry')}", actor_type="human", actor_id="tester"),
+    )
+    assert node_log.entity_type == "route_node"
+    assert node_log.entity_id == node_id
+
+    node_logs = service.list_entity_logs(route_id, "route_node", node_id)
+    assert any(item.id == node_log.id for item in node_logs)
+
+    patched_node_log = service.patch_entity_log(
+        route_id,
+        "route_node",
+        node_id,
+        node_log.id,
+        EntityLogPatch(content="node-log-updated"),
+    )
+    assert patched_node_log is not None
+    assert patched_node_log.content == "node-log-updated"
+
+    edge_log = service.append_entity_log(
+        route_id,
+        "route_edge",
+        edge_id,
+        EntityLogCreate(content=f"edge-log-{uniq('entry')}", actor_type="human", actor_id="tester"),
+    )
+    assert edge_log.entity_type == "route_edge"
+    assert edge_log.entity_id == edge_id
+
+    edge_logs = service.list_entity_logs(route_id, "route_edge", edge_id)
+    assert any(item.id == edge_log.id for item in edge_logs)
+
+    patched_edge_log = service.patch_entity_log(
+        route_id,
+        "route_edge",
+        edge_id,
+        edge_log.id,
+        EntityLogPatch(content="edge-log-updated"),
+    )
+    assert patched_edge_log is not None
+    assert patched_edge_log.content == "edge-log-updated"
+
+    assert service.delete_entity_log(route_id, "route_node", node_id, node_log.id) is True
+    assert service.delete_entity_log(route_id, "route_edge", edge_id, edge_log.id) is True
+    try:
+        service.delete_entity_log(route_id, "route_edge", edge_id, edge_log.id)
+        assert False, "expected ROUTE_ENTITY_LOG_NOT_FOUND"
+    except ValueError as exc:
+        assert str(exc) == "ROUTE_ENTITY_LOG_NOT_FOUND"
+
+    try:
+        service.append_entity_log(
+            route_id,
+            "route_group",  # type: ignore[arg-type]
+            node_id,
+            EntityLogCreate(content="invalid", actor_type="human", actor_id="tester"),
+        )
+        assert False, "expected ROUTE_ENTITY_TYPE_UNSUPPORTED"
+    except ValueError as exc:
+        assert str(exc) == "ROUTE_ENTITY_TYPE_UNSUPPORTED"
+
+    try:
+        service.append_entity_log(
+            route_id,
+            "route_node",
+            route2_node_id,
+            EntityLogCreate(content="cross-route", actor_type="human", actor_id="tester"),
+        )
+        assert False, "expected ROUTE_ENTITY_CROSS_ROUTE"
+    except ValueError as exc:
+        assert str(exc) == "ROUTE_ENTITY_CROSS_ROUTE"
+
+    try:
+        service.append_entity_log(
+            route_id,
+            "route_node",
+            node_id,
+            EntityLogCreate(content="   ", actor_type="human", actor_id="tester"),
+        )
+        assert False, "expected ROUTE_LOG_CONTENT_EMPTY"
+    except ValueError as exc:
+        assert str(exc) == "ROUTE_LOG_CONTENT_EMPTY"
+
+    try:
+        service.patch_entity_log(
+            route_id,
+            "route_node",
+            node_id,
+            "elg_missing",
+            EntityLogPatch(content="x"),
+        )
+        assert False, "expected ROUTE_ENTITY_LOG_NOT_FOUND"
+    except ValueError as exc:
+        assert str(exc) == "ROUTE_ENTITY_LOG_NOT_FOUND"
+
+    db.close()
+    engine.dispose()
 
 
 def test_route_edges_are_inferred_by_node_type():
