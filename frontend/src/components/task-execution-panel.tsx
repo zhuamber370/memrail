@@ -108,6 +108,7 @@ function mapNodeClass(step: Step, selected: boolean): string {
   if (normalized === "execute") classes.push("taskDagNodeExecute");
   if (normalized === "done") classes.push("taskDagNodeDone");
   if (normalized === "waiting") classes.push("taskDagNodeWaiting");
+  if (step.has_logs) classes.push("taskDagNodeHasLogs");
   if (selected) classes.push("taskDagNodeSelected");
   return classes.join(" ");
 }
@@ -1136,6 +1137,16 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                                 >
                                   {t(`tasks.execution.edgeType.${edge.relation}`)}
                                 </text>
+                                {edge.has_logs ? (
+                                  <text
+                                    x={midX}
+                                    y={y1 + (y2 - y1) / 2 + 10}
+                                    textAnchor="middle"
+                                    className="taskDagEdgeLogBadge"
+                                  >
+                                    {t("tasks.execution.logBadge")}
+                                  </text>
+                                ) : null}
                               </g>
                             );
                           })}
@@ -1170,6 +1181,11 @@ export function TaskExecutionPanel({ taskId, onTaskStarted }: { taskId: string; 
                                 >
                                   ...
                                 </button>
+                              ) : null}
+                              {node.has_logs ? (
+                                <span className="taskDagLogBadge" aria-label={t("tasks.execution.logBadge")}>
+                                  {t("tasks.execution.logBadge")}
+                                </span>
                               ) : null}
                               <div className="taskDagNodeTitle">{node.title}</div>
                               <div className="taskDagNodeMeta">

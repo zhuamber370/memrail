@@ -1154,6 +1154,16 @@ a {
   pointer-events: none;
 }
 
+.taskDagEdgeLogBadge {
+  fill: #7a4a00;
+  font-size: 9px;
+  font-weight: 700;
+  paint-order: stroke;
+  stroke: #fff8d7;
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
 .taskDagComposerHint {
   margin: 0;
 }
@@ -1220,6 +1230,10 @@ a {
   overflow: hidden;
 }
 
+.taskDagNodeHasLogs .taskDagNodeTitle {
+  margin-left: 32px;
+}
+
 .taskDagNodeMeta {
   display: flex;
   flex-wrap: wrap;
@@ -1241,6 +1255,20 @@ a {
   line-height: 1;
   padding: 2px 6px;
   cursor: pointer;
+}
+
+.taskDagLogBadge {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  border: 1px solid #c58100;
+  border-radius: 999px;
+  background: #fff8d7;
+  color: #7a4a00;
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 5px;
 }
 
 .taskDagInlinePanel {
